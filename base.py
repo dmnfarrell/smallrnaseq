@@ -10,7 +10,46 @@ import types, re, subprocess
 import pylab as plt
 import numpy as np
 import pandas as pd
+import ConfigParser
 import HTSeq
+
+def writeDefaultConfig(conffile='default.conf', defaults={}):
+    """Write a default config file"""
+    if not os.path.exists(conffile):
+        cp = createConfigParserfromDict(defaults, ['base'])
+        cp.write(open(conffile,'w'))
+        print 'wrote config file %s' %conffile
+    return conffile
+
+def createConfigParserfromDict(data, sections, **kwargs):
+    """Helper method to create a ConfigParser from a dict and/or keywords"""
+    cp = ConfigParser.ConfigParser()
+    for s in sections:
+        cp.add_section(s)
+        if not data.has_key(s):
+            continue
+        for i in data[s]:
+            name,val = i
+            cp.set(s, name, val)
+    #use kwargs to create specific settings in the appropriate section
+    for s in cp.sections():
+        opts = cp.options(s)
+        for k in kwargs:
+            if k in opts:
+                cp.set(s, k, kwargs[k])
+    return cp
+
+def parseConfig(conffile=None):
+    """Parse a configparser file"""
+    f = open(conffile,'r')
+    cp = ConfigParser.ConfigParser()
+    try:
+        cp.read(conffile)
+    except Exception,e:
+        print 'failed to read config file! check format'
+        print 'Error returned:', e
+        return
+    return cp
 
 def seabornsetup():
     global sns
@@ -26,7 +65,7 @@ def first(x):
     return x.iloc[0]
 
 def doHeatMap(df,fname=None,cmap='seismic'):
-
+    """Plot a heat map"""
     f=plt.figure(figsize=(8,8))
     ax=f.add_subplot(111)
     hm = ax.pcolor(df,cmap=cmap,vmax=-df.min().min())
@@ -40,6 +79,7 @@ def doHeatMap(df,fname=None,cmap='seismic'):
     return ax
 
 def venndiagram(names,labels,ax=None):
+    """Plot venn diagrams"""
     from matplotlib_venn import venn2,venn3
     f=None
     if ax==None:
@@ -81,7 +121,7 @@ def createHtml(df,name,path='.'):
     f.write(body)
     return
 
-def getSubsetFasta(infile, labels=['bta']):
+def getSubsetFasta(infile, labels=['bta'], outfile='found.fa'):
     """Get a subset of sequences matching a label"""
 
     fastafile = HTSeq.FastaReader(infile)
@@ -94,7 +134,7 @@ def getSubsetFasta(infile, labels=['bta']):
         found.append(f)
     df = pd.concat(found)
     print 'found %s sequences' %len(df)
-    dataframe2Fasta(df,outfile='found.fa')
+    dataframe2Fasta(df,outfile=outfile)
     return
 
 def filterFasta(infile):
