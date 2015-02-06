@@ -126,7 +126,7 @@ def removeKnownRNAs(path, outpath='data_RNAremoved'):
 
     return
 
-def mapRNAs(files=None, path=None, indexes=[], adapters=None):
+def mapRNAs(files=None, path=None, indexes=[], adapters=None, labels=None):
     """Map to various ncRNA annotations and quantify perc of reads mapping.
         The order of indexes will affect results.
         path: input path with read files
@@ -146,11 +146,12 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None):
         cut = os.path.join(outpath,label+'_cut.fastq')
         cfile = os.path.join(outpath,label+'.fa')
         print cut,cfile
-        if not os.path.exists(cut) and adapters!=None:
-            trimAdapters(f, adapters, cut)
-        else:
-            cut = f
-        collapseReads(cut, outfile=cfile)
+        if not os.path.exists(cfile):
+            if not os.path.exists(cut) and adapters!=None:
+                trimAdapters(f, adapters, cut)
+            elif adapters==None:
+                cut = f
+            collapseReads(cut, outfile=cfile)
         outfiles.append(cfile)
 
     #cfiles = glob.glob(os.path.join(outpath,'*.fa'))
@@ -207,34 +208,32 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None):
     df['name'] = df['name'].apply(lambda r: ' '.join(r.split('_')[2:5]))
     df = df.set_index('name')
     print df
-
+    if labels != None:
+        df = df.rename(columns=labels)
     plt.figure(figsize=(8,8))
-    df.mean().plot(kind='pie',colormap='Paired',autopct='%.2f',startangle=90,
-                    labels=None,legend=True)
+    x=df.mean()
+    x.sort()
+    explode = [0.00 for i in range(len(x))]
+
+    x.plot(kind='pie',colormap='Paired',autopct='%.1f%%',startangle=0,
+                    labels=None,legend=True,pctdistance=1.1,explode=explode,fontsize=16)
     plt.title('mean percentage small RNAs mapped by category')
     plt.tight_layout()
-    plt.savefig('ncrna_means.png',dpi=80)
+    plt.savefig('ncrna_means.png',dpi=150)
 
-    '''l = mp.plot(kind='bar',stacked=True,cmap='Paired',figsize=(12,6))
+    l = df.plot(kind='bar',stacked=True,cmap='Paired',figsize=(12,6))
     plt.xlabel('percent mapped')
     plt.legend(ncol=2)
     plt.tight_layout()
-    plt.savefig('ncrna_bysample.png')
+    plt.savefig('ncrna_bysample.png',dpi=150)
 
-    plt.figure(figsize=(12,8))
+    '''plt.figure(figsize=(12,8))
     ax=base.sns.boxplot(mp,color='Paired')
     plt.ylabel('percent mapped')
     plt.title('mean percentage small RNAs mapped by category')
     plt.tight_layout()
-    plt.savefig('ncrna_dists.png')
-
-    ax=df[df.pool==1].plot('total','bosTau6-tRNAs',kind='scatter',s=40,color='blue')
-    df[df.pool==2].plot('total','bosTau6-tRNAs',kind='scatter',s=40,color='red',ax=ax)
-    plt.title('percentage mapped vs total reads')
-    plt.legend(['pool 1','pool 2'])
-    plt.xlabel('total reads')
-    plt.savefig('ncrna_mappedvreads.png')'''
-    plt.show()
+    plt.savefig('ncrna_dists.png')'''
+    #plt.show()
     return
 
 def compareMethods():
@@ -267,16 +266,22 @@ def compareMethods():
     return
 
 def test():
-    path = '/opt/mirnaseq/data/vegh_13'
-    #files = ['/opt/mirnaseq/analysis/test.fastq']
-    files = ['/opt/mirnaseq/data/vegh_13/SRR576286.fastq']
-    bidx =  ['mirbase-mature','Rfam_btau','bosTau6-tRNAs','noncodev4_btau','bos_taurus_alt']
+    base.seabornsetup()
+    #path = '/opt/mirnaseq/data/vegh_13'
+    path = '/opt/mirnaseq/data/combined'
+    files = ['/opt/mirnaseq/analysis/test.fastq']
+    #files = ['/opt/mirnaseq/data/vegh_13/SRR576286.fastq']
+    #bidx =  ['mirbase-mature','Rfam_btau','bosTau6-tRNAs','noncodev4_btau','bos_taurus_alt']
+    bidx =  ['mirdeep_found','Rfam_btau','bosTau6-tRNAs','bostau-snRNA','noncodev4_btau','bos_taurus_alt']
     #adapters for our data
     adapters = ['TGGAATTCTCGGGTGCCAAGG','GCATTGTGGTTCAGTGGTAGAATTCTCGC']
     #adapters for Vegh data
-    adapters = ['TAGCTTATCAGACTGATGTTGA','AGATCGGAAGAGCACACGTCTGAACTCC']
-    #mapRNAs(files=files, indexes=bidx, adapters=adapters)
-    summariseReads(path)
+    #adapters = ['TAGCTTATCAGACTGATGTTGA','AGATCGGAAGAGCACACGTCTGAACTCC']
+    labels = {'bosTau6-tRNAs':'tRNA (GtRNAdb)', 'Rfam_btau':'rRNA (RFAM)',
+                'noncodev4_btau':'NONCODE v4', 'bos_taurus_alt':'UMD3.1',
+                'mirdeep_found':'miRNA (miRDeep2)'}
+    mapRNAs(path=path, indexes=bidx, adapters=adapters, labels=labels)
+    #summariseReads(path)
     return
 
 if __name__ == '__main__':
