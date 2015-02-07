@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import base
 
+srbpath = '/local/sRNAbench'
 srnabenchoptions = {'base': [('input',''),('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
                     ('bowtieindex',''),('refgenome',''),('species','hsa'),
                     ('mature',''), ('hairpin',''), ('other',''),('mirbase',os.getcwd()),
@@ -23,7 +24,7 @@ def getShortlabel(label):
     x=label.split('_')
     return x[2]+'_'+x[4]
 
-def run(infile, outpath, overwrite=True, adapter=None):
+def run(infile, outpath, overwrite=True, adapter=None, ref='bos_taurus_alt'):
     """Run sRNAbench for a fastq file"""
 
     label = os.path.splitext(os.path.basename(infile))[0]
@@ -34,11 +35,10 @@ def run(infile, outpath, overwrite=True, adapter=None):
     print 'running %s' %infile
     if os.path.exists(outdir):
         if overwrite == False:
-            return None
+            return outdir
         else:
             shutil.rmtree(outdir)
-    srbpath = '/local/sRNAbench'
-    ref = 'bos_taurus_alt'
+
     #libs = 'bosTau6-tRNAs.fa'
     cmd = ('java -jar %s/sRNAbench.jar dbPath=%s input=%s microRNA=bta' #libs=%s'
            ' species=%s output=%s predict=true plotMiR=true' %(srbpath,srbpath,infile,ref,outdir))
@@ -78,7 +78,7 @@ def readResultsFile(path, infile='mature_sense.grouped', filter=True):
     g = g.reset_index()
     return g
 
-def getResults(path, outpath=None):
+def getResults(path, outpath=None, plot=True):
     """Get single results"""
 
     if outpath!=None:
@@ -94,13 +94,14 @@ def getResults(path, outpath=None):
     ncols = ['name2','5pRC','3pRC','chrom','chromStart','chromEnd']#,'5pSeq','3pSeq']
     print k[k['read count']>300][kcols]
     print n[ncols]
-    fig,ax=plt.subplots(figsize=(8,6))
-    ax.set_title('sRNAbench top 10')
-    #k.set_index('name')['perc'][:10].plot(kind='pie',ax=ax,
-    #                colormap='Set2',autopct='%.2f',startangle=90)
-    k.set_index('name')['read count'][:10].plot(kind='barh',colormap='Set2',ax=ax,log=True)
-    plt.tight_layout()
-    fig.savefig('srnabench_summary_known.png',dpi=80)
+    if plot==True:
+        fig,ax=plt.subplots(figsize=(8,6))
+        ax.set_title('sRNAbench top 10')
+        #k.set_index('name')['perc'][:10].plot(kind='pie',ax=ax,
+        #                colormap='Set2',autopct='%.2f',startangle=90)
+        k.set_index('name')['read count'][:10].plot(kind='barh',colormap='Set2',ax=ax,log=True)
+        plt.tight_layout()
+        fig.savefig('srnabench_summary_known.png',dpi=80)
     return k,n
 
 def getMultipleResults(path):

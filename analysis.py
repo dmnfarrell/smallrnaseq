@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 import HTSeq
 import base
+import srnabench as srb
+import mirdeep2 as mdp
 
 def first(x):
     return x.iloc[0]
@@ -126,7 +128,7 @@ def removeKnownRNAs(path, outpath='data_RNAremoved'):
 
     return
 
-def mapRNAs(files=None, path=None, indexes=[], adapters=None, labels=None):
+def mapRNAs(files=None, path=None, indexes=[], adapters=None):
     """Map to various ncRNA annotations and quantify perc of reads mapping.
         The order of indexes will affect results.
         path: input path with read files
@@ -201,7 +203,12 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None, labels=None):
 
     df = pd.DataFrame(res,columns=colnames)
     df.to_csv('ncrna_mapped.csv',float_format='%.3f')
-    #df = pd.read_csv('ncrna_mapped.csv')
+    return
+
+def plotRNAmapped(labels=None):
+    """Plot RNA map results"""
+
+    df = pd.read_csv('ncrna_mapped.csv',index_col=0)
     df=df.sort('total')
     df = df.drop('total',1)
     df['unmapped'] = 1-df.sum(1)
@@ -214,16 +221,16 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None, labels=None):
     x=df.mean()
     x.sort()
     explode = [0.00 for i in range(len(x))]
-
-    x.plot(kind='pie',colormap='Paired',autopct='%.1f%%',startangle=0,
+    x.plot(kind='pie',colormap='Spectral',autopct='%.1f%%',startangle=0,
                     labels=None,legend=True,pctdistance=1.1,explode=explode,fontsize=16)
     plt.title('mean percentage small RNAs mapped by category')
     plt.tight_layout()
     plt.savefig('ncrna_means.png',dpi=150)
 
-    l = df.plot(kind='bar',stacked=True,cmap='Paired',figsize=(12,6))
-    plt.xlabel('percent mapped')
-    plt.legend(ncol=2)
+    df=df.reindex(columns=x.index)
+    l = df.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
+    plt.ylabel('percent mapped')
+    plt.legend(ncol=4)
     plt.tight_layout()
     plt.savefig('ncrna_bysample.png',dpi=150)
 
@@ -265,6 +272,133 @@ def compareMethods():
     plt.show()
     return
 
+def KStest(df):
+    """KS test to determine rc freq distributions of replicates
+    threshold count is the one which corresponds to the first minimum.
+    i.e.  when the distributions of reads amongst replicates begin to be similar
+    see http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2822534/  """
+
+    def getMin(x):
+        r=0
+        x=list(x)
+        m=x[0]
+        for i in range(len(x)):
+            if x[i]<m and x[i+1]>x[i] and abs(m-x[i])>0.02:
+                r=readcuts[i]
+                break
+        return r
+
+    from scipy.stats import ks_2samp
+    readcuts = np.arange(0,400,10)
+    result=[]
+    ids=[('s11','s22'),('s23','s28'),('s27','s29'),('s26','s03'),('s36','s37'),
+        #,('s53','s54'),('s38','s39'),('s41','s42'),
+        ('s44','s45'),('s46','s47')]
+    testdata=[]
+    for i in ids:
+        stats=[]
+        for rc in readcuts:
+            d = mdp.filterExprResults(df,score=-500,freq=0,meanreads=rc,totalreads=0)
+            testdata.append(d)
+            s1,s2=i
+            x=d[s1+'(norm)']
+            y=d[s2+'(norm)']
+            val = ks_2samp(x, y)
+            print len(x),len(y),rc, val
+            stats.append(val[0])
+        result.append(stats)
+    result = pd.DataFrame(np.array(result).T)
+    result=result.set_index(readcuts)
+    result.plot(lw=2,colormap='Set1',legend=False)
+    tmins = result.apply(getMin)
+    print tmins
+    mean=tmins.mean()
+    std=tmins.std()
+
+    plt.axvspan(mean-std/2,mean+std/2,color='g',alpha=0.3)
+    plt.xlabel('read count threshold')
+    plt.ylabel('KS')
+    plt.savefig('KS_test.png')
+
+    '''f,axs=plt.subplots(4,3)
+    grid=axs.flat
+    i=0
+    for d in testdata[:12]:
+        ax=grid[i]
+        print len(d)
+        bins = 10 ** np.linspace(np.log10(10), np.log10(1e6),80)
+        ax.hist(d['s22(norm)'],bins=bins,alpha=0.9)
+        #ax.hist(d['s11(norm)'],bins=bins,alpha=0.9)
+        ax.set_xscale('log')
+        ax.set_xticklabels([])
+        i+=1'''
+    plt.show()
+    return
+
+def mirnaDiscoveryTest(sourcefile):
+    """Test miRNAs found per read file size"""
+
+    path = 'benchmarking'
+    #sourcefile = 'small.fastq'
+    #sizes = np.arange(5e5,7.e6,5e5)
+    #sizes = np.insert(sizes,0,[5e4,1e5,2e5])
+    #base.createRandomFastqFiles(sourcefile, path, sizes)
+
+    #mirdeep2
+    #mdp.runMultiple(path, 'fa')
+    outpath = 'benchmarking/mirdeep'
+    a = mdp.getResults(outpath)
+    #a=pd.concat([k,n])
+    mapping = mdp.getFilesMapping(outpath)
+    results1 = []
+    found = []
+    for i,r in mapping.iterrows():
+        f = r.filename
+        i = float(re.findall("\d+.\d+",f)[0])
+        df = a[a[r.id]>0]
+        new = df[-df['#miRNA'].isin(found)]
+        found.extend(new['#miRNA'].values)
+        rcm = new['read_count'].mean()
+        results1.append((i,len(found),len(new),rcm))
+    r1 = pd.DataFrame(results1,columns=['reads','total','new','rcm'])
+
+    #srnabench
+    files = glob.glob(os.path.join(path,'*.fa'))
+    outpath = 'benchmarking/srnabench'
+    results2 = []
+    found = []
+    for f in sorted(files):
+        outdir = srb.run(f,outpath,overwrite=False)
+        k,n = srb.getResults(outdir,plot=False)
+        i = float(re.findall("\d+.\d+",f)[0])
+        new = k[-k['name'].isin(found)]
+        found.extend(new.name.values)
+        rcm = new['RPM (lib)'].mean()
+        results2.append((i,len(found),len(new),rcm))
+
+    r2 = pd.DataFrame(results2,columns=['reads','total','new','rcm'])
+    final = pd.merge(r1,r2,on='reads')
+    print final
+    fig=plt.figure(figsize=(8,6))
+    ax=fig.add_subplot(111)
+    #final.plot('reads','new_x',kind='scatter',style='.-',color='blue',ax=ax)
+
+    l1=ax.plot(final.reads,final.total_x,color='blue',lw=2,ls='-')
+    #ax2 = ax.twinx()
+    l2=ax.plot(final.reads,final.total_y,color='green',lw=2,ls='-')
+    ax.set_xlabel('reads (million)')
+    ax.set_ylabel('total miRNA found')
+    #ax2.set_ylabel('mirna found (srnabench)')
+    ax.legend(l1+l2,['mirdeep2','srnabench'],loc=2)
+    ax3 = plt.axes([.5, .25, .3, .3])
+    ax3.semilogy(final.reads,final.rcm_x,color='blue',ls='-')
+    ax3.semilogy(final.reads,final.rcm_y,color='green',ls='-')
+    ax3.set_title('mean abundance (new miRNAs)')
+    plt.tight_layout()
+    fig.savefig('benchmark_discovery.png',dpi=150)
+    plt.show()
+    return
+
 def test():
     base.seabornsetup()
     #path = '/opt/mirnaseq/data/vegh_13'
@@ -280,8 +414,12 @@ def test():
     labels = {'bosTau6-tRNAs':'tRNA (GtRNAdb)', 'Rfam_btau':'rRNA (RFAM)',
                 'noncodev4_btau':'NONCODE v4', 'bos_taurus_alt':'UMD3.1',
                 'mirdeep_found':'miRNA (miRDeep2)'}
-    mapRNAs(path=path, indexes=bidx, adapters=adapters, labels=labels)
+    #mapRNAs(path=path, indexes=bidx, adapters=adapters)
+    plotRNAmapped(labels)
     #summariseReads(path)
+    #compareMethods()
+    infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
+    #mirnaDiscoveryTest(infile)
     return
 
 if __name__ == '__main__':
