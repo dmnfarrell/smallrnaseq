@@ -21,15 +21,19 @@ import mirdeep2 as mdp
 def first(x):
     return x.iloc[0]
 
-def readLengthDist(df,ax=None):
+def readLengthDist(df):
 
     df['length'] = df.seq.str.len()
     bins=np.linspace(1,df.length.max(),df.length.max())
-    if ax!=None:
-        df.hist('length',bins=bins,ax=ax)
-        plt.title('read length distribution')
-        plt.xlabel('length')
-    return np.histogram(df.length,bins=bins)
+    fig,ax=plt.subplots(1,1,figsize=(10,6))
+    df.hist('length',bins=bins,ax=ax,normed=True)
+    plt.title('read length distribution')
+    plt.xlabel('length')
+    plt.ylabel('frequency')
+    plt.tight_layout()
+    plt.savefig('readlengths_dist.png',dpi=150)
+    plt.show()
+    return
 
 def fastq2fasta(infile, rename=True):
 
@@ -142,6 +146,7 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None):
         os.mkdir(outpath)
 
     outfiles = []
+    print files
     for f in files:
         print f
         label = os.path.splitext(os.path.basename(f))[0]
@@ -167,9 +172,6 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None):
         total = counts['descr'].sum()
         x=[label,total]
         rem = None
-        #fig,axs = plt.subplots(5,1)
-        #grid=axs.flat
-        #bins=np.arange(15,45,1.)
         i=0
         for index in indexes:
             if rem != None:
@@ -190,12 +192,7 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None):
                 fc = nr['descr'].sum()
                 perc = fc/float(total)
                 print index, len(f), fc, total, round(perc,3)
-                #found['length'] = found.seq.str.len()
-                #found.length.hist(ax=grid[i],bins=bins)
-                #grid[i].set_title(index)
-                #plt.xlim((15,45))
-                #plt.tight_layout()
-                #i+=1
+
             else: perc = 0.0
             print '%s: %.4f of total reads aligned' %(index,perc)
             x.append(perc)
@@ -247,22 +244,28 @@ def compareMethods():
     """Compare 2 methods for subsets of samples"""
 
     path1 = 'results_mirdeep_rnafiltered'
-    path2 = 'results_srnabench_rnafiltered'
+    path2 = 'results_srnabench_combined'
 
     #compare means of filtered knowns
     df = mdp.getResults(path1)
     df = df[df.novel==False]
     mk = mdp.filterExprResults(df,meanreads=200,freq=0.8)
-    k,n = srb.getResults(path2)
+    #k,n = srb.getResults(path2)
+    k,n = srb.getMultipleResults(path2)
     #sk = k[(k['mean read count']>=10) & (k['freq']>=0.8)]
-    sk = k[(k['read count']>=500)]
+    #print k.columns
+    sk = k[(k['total']>=500)]
+
     x = pd.merge(mk,sk,left_on='#miRNA',right_on='name',how='inner',suffixes=['1','2'])
+    diff = x[(abs(x.total1-x.total2)/x.total2>.2)]
+    print diff[['#miRNA','total1','total2']]
+    print np.corrcoef(np.log10(x.total1),np.log10(x.total2))
     fig = plt.figure(figsize=(12,6))
     ax=fig.add_subplot(121)
     base.venndiagram([mk['#miRNA'], sk['name']],['mirdeep2','srnabench'],ax=ax)
-    #print sk[-sk.name.isin(mk['#miRNA'])][['name','total']]
+
     ax=fig.add_subplot(122)
-    x.plot('total','read count',kind='scatter',ax=ax, logx=True,logy=True,alpha=0.8,s=40)
+    x.plot('total1','total2',kind='scatter',ax=ax, logx=True,logy=True,alpha=0.8,s=40)
     ax.plot(ax.get_xlim(), ax.get_ylim(), ls="--", color='red')
     ax.set_xlabel('mirdeep2')
     ax.set_ylabel('srnabench')
@@ -415,9 +418,9 @@ def test():
                 'noncodev4_btau':'NONCODE v4', 'bos_taurus_alt':'UMD3.1',
                 'mirdeep_found':'miRNA (miRDeep2)'}
     #mapRNAs(path=path, indexes=bidx, adapters=adapters)
-    plotRNAmapped(labels)
+    #plotRNAmapped(labels)
     #summariseReads(path)
-    #compareMethods()
+    compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     return

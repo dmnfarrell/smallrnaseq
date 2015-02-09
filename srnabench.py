@@ -49,11 +49,11 @@ def run(infile, outpath, overwrite=True, adapter=None, ref='bos_taurus_alt'):
     print result
     return outdir
 
-def runAll(path, outpath='runs', overwrite=False):
+def runAll(path, outpath='runs', overwrite=False, filetype='fastq'):
     """Run all fastq files in folder"""
 
     if os.path.isdir(path):
-        files = glob.glob(os.path.join(path,'*.fastq'))
+        files = glob.glob(os.path.join(path,'*.'+filetype))
     else:
         files = [path]
     print 'running sRNAbench for %s files' %len(files)
@@ -247,7 +247,7 @@ def main():
     opts, remainder = parser.parse_args()
     pd.set_option('display.width', 800)
     if opts.run == True:
-        runAll(opts.input)
+        runAll(opts.input, filetype='fa')
     elif opts.summarise != None:
         k,n = getMultipleResults(opts.summarise)
         summariseAll(k,n)
