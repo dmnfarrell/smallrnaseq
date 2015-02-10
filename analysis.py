@@ -26,7 +26,9 @@ def readLengthDist(df):
     df['length'] = df.seq.str.len()
     bins=np.linspace(1,df.length.max(),df.length.max())
     fig,ax=plt.subplots(1,1,figsize=(10,6))
-    df.hist('length',bins=bins,ax=ax,normed=True)
+    #df.hist('length',bins=bins,ax=ax,normed=True)
+    x=np.histogram(df.length,bins=bins)
+    ax.bar(x[1][:-1],x[0], align='center')
     plt.title('read length distribution')
     plt.xlabel('length')
     plt.ylabel('frequency')
@@ -48,14 +50,17 @@ def fastq2fasta(infile, rename=True):
     outfile.close()
     return
 
-def summariseFastq(f, filetype='fastq'):
+def summariseFastq(f):
 
-    if filetype=='fastq':
+    ext = os.path.splitext(f)[1]
+    if ext=='.fastq':
         ffile = HTSeq.FastqReader(f, "solexa")
-    else:
+    elif ext == '.fa':
         ffile = HTSeq.FastaReader(f)
+    else:
+        return
     sequences = [(s.name,s.seq) for s in ffile]
-    #df = pd.DataFrame(sequences,columns=['id','seq'])
+    df = pd.DataFrame(sequences,columns=['id','seq'])
     return df
 
 def summariseReads(path):
@@ -101,10 +106,13 @@ def collapseReads(infile, outfile='collapsed.fa'):
     x=df.length.value_counts()
     return x
 
-def trimAdapters(infile, adapters, outfile='cut.fastq'):
+def trimAdapters(infile, adapters=[], outfile='cut.fastq'):
     """Trim adapters using cutadapt"""
 
-    if os.path.exists(outfile):
+    #if os.path.exists(outfile):
+    #    return
+    if len(adapters)==0:
+        print 'no adapters!'
         return
     adptstr = ' -a '.join(adapters)
     cmd = 'cutadapt -m 15 -O 5 -q 20 --discard-untrimmed -a %s %s -o %s' %(adptstr,infile,outfile)
@@ -113,17 +121,19 @@ def trimAdapters(infile, adapters, outfile='cut.fastq'):
     #print result
     return
 
-def removeKnownRNAs(path, outpath='data_RNAremoved'):
+def removeKnownRNAs(path, adapters=[], outpath='RNAremoved'):
     """Map to annotated RNAs and put remaining reads in output dir"""
 
     index = 'bosTau6-tRNAs'
     params = '-v 0 --best'
     files = glob.glob(os.path.join(path,'*.fastq'))
     #files = ['test.fastq']
+    if not os.path.exists(outpath):
+        os.mkdir(outpath)
     for f in files:
         print f
         label = os.path.splitext(os.path.basename(f))[0]
-        #trimAdapters(f)
+        trimAdapters(f, adapters)
         fastq2fasta('cut.fastq')
         rem = os.path.join(outpath, label+'.fa')
         #samfile = os.path.join(outpath, '%s_%s_mapped.sam' %(label,index))
@@ -244,7 +254,7 @@ def compareMethods():
     """Compare 2 methods for subsets of samples"""
 
     path1 = 'results_mirdeep_rnafiltered'
-    path2 = 'results_srnabench_combined'
+    path2 = 'results_srnabench_rnafiltered'
 
     #compare means of filtered knowns
     df = mdp.getResults(path1)
@@ -252,9 +262,9 @@ def compareMethods():
     mk = mdp.filterExprResults(df,meanreads=200,freq=0.8)
     #k,n = srb.getResults(path2)
     k,n = srb.getMultipleResults(path2)
-    #sk = k[(k['mean read count']>=10) & (k['freq']>=0.8)]
+    sk = k[(k['mean read count']>=10) & (k['freq']>=0.8)]
     #print k.columns
-    sk = k[(k['total']>=500)]
+    #sk = k[(k['total']>=500)]
 
     x = pd.merge(mk,sk,left_on='#miRNA',right_on='name',how='inner',suffixes=['1','2'])
     diff = x[(abs(x.total1-x.total2)/x.total2>.2)]
@@ -420,10 +430,32 @@ def test():
     #mapRNAs(path=path, indexes=bidx, adapters=adapters)
     #plotRNAmapped(labels)
     #summariseReads(path)
-    compareMethods()
+    removeKnownRNAs(path, adapters)
+    #compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     return
 
+def main():
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option("-s", "--summarise", dest="summarise",
+                           help="summarise fastq reads")
+    parser.add_option("-i", "--input", dest="input",
+                           help="input path or file")
+    parser.add_option("-t", "--test", dest="test", action='store_true',
+                           help="testing")
+    opts, remainder = parser.parse_args()
+    base.seabornsetup()
+    if opts.summarise != None:
+        if os.path.isdir(opts.summarise):
+            summariseReads(opts.summarise)
+        else:
+            df = summariseFastq(opts.summarise)
+            print '%s reads' %len(df)
+            readLengthDist(df)
+    elif opts.test == True:
+        test()
+
 if __name__ == '__main__':
-    test()
+    main()

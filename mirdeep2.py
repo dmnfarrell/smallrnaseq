@@ -266,10 +266,10 @@ def analyseResults(path, outpath=None, **kwargs):
     #ax.set_xscale('log')
     plt.title('miRDeep2 top 10')
     plt.tight_layout()
-    fig.savefig('mirdeep_top_known.png',dpi=80)
+    fig.savefig('mirdeep_top_known.png',dpi=150)
     fig, ax = plt.subplots(figsize=(8,8))
     df.plot('freq','mean_norm',kind='scatter',ax=ax,logy=True,alpha=0.8)
-    fig.savefig('mirdeep_freqsvcounts.png')
+    fig.savefig('mirdeep_freqsvcounts.png',dpi=150)
     fig=plt.figure()
 
     fig = plotReadCountDists(n,h=5)
@@ -444,7 +444,7 @@ def main():
                            help="testing")
     opts, remainder = parser.parse_args()
     pd.set_option('display.width', 800)
-    #base.seabornsetup()
+    base.seabornsetup()
 
     if opts.run == True:
         #all other options are stored in config file

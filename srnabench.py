@@ -33,6 +33,7 @@ def run(infile, outpath, overwrite=True, adapter=None, ref='bos_taurus_alt'):
         os.mkdir(outpath)
     outdir = os.path.join(outpath, label)
     print 'running %s' %infile
+
     if os.path.exists(outdir):
         if overwrite == False:
             return outdir
@@ -124,11 +125,14 @@ def getMultipleResults(path):
     print cols
     k = pd.concat(k)
     n = pd.concat(n)
+
     #combine known into useful format
     p = k.pivot(index='name', columns='path', values='read count')
+    samples = len(p.columns)
     g = k.groupby('name').agg({'read count':[np.size,np.mean,np.sum]})
     g.columns = ['freq','mean read count','total']
     g['perc'] = g['total']/g['total'].sum()
+    g['freq'] = g.freq/float(samples)
     k = p.merge(g,left_index=True,right_index=True)
     k = k.reset_index()
     k = k.sort('mean read count',ascending=False)
@@ -154,12 +158,11 @@ def summariseAll(k,n,outpath=None):
     cols = ['name','freq','mean read count','total']
     print
     print 'found:'
-    final = k[(k['mean read count']>=10) & (k['freq']>=20)]
+    final = k[(k['mean read count']>=10) & (k['freq']>=1)]
     print final[cols]
     print '-------------------------------'
     print '%s total' %len(k)
-    print '%s with >=5 mean reads' %len(k[k['mean read count']>=5])
-    print '%s found in >=5 samples' %len(k[k['freq']>=20])
+    print '%s with >=10 mean reads' %len(k[k['mean read count']>=10])
     print '%s found in 1 sample only' %len(k[k['freq']==1])
     print 'top 10 account for %2.2f' %k['perc'][:10].sum()
 
@@ -171,7 +174,7 @@ def summariseAll(k,n,outpath=None):
     fig.savefig('srnabench_known_counts.png')
     print
     #print n[n.columns[:8]].sort('chromStart')
-    n['loc'] = n.apply( lambda x: x.chrom+':'+str(x.chromStart)+'-'+str(x.chromEnd),1)
+    #n['loc'] = n.apply( lambda x: x.chrom+':'+str(x.chromStart)+'-'+str(x.chromEnd),1)
     #print n.groupby(['loc']).agg({'name':np.size,'5pRC':np.mean,'3pRC':np.mean,
     #                        'chrom':base.first,'chromStart':base.first}) #'3pSeq':base.first,
     return k
