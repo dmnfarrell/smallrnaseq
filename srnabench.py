@@ -40,7 +40,6 @@ def run(infile, outpath, overwrite=True, adapter=None, ref='bos_taurus_alt'):
         else:
             shutil.rmtree(outdir)
 
-    #libs = 'bosTau6-tRNAs.fa'
     cmd = ('java -jar %s/sRNAbench.jar dbPath=%s input=%s microRNA=bta' #libs=%s'
            ' species=%s output=%s predict=true plotMiR=true' %(srbpath,srbpath,infile,ref,outdir))
     if adapter != None:

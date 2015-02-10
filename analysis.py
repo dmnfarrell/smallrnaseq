@@ -412,6 +412,13 @@ def mirnaDiscoveryTest(sourcefile):
     plt.show()
     return
 
+def novelConservation():
+    import ensembl
+    df = pd.read_csv('novel_mirdeep.csv')
+    #ensembl.getmiRNAOrthologs(df)
+    ensembl.summarise(df)
+    return
+
 def test():
     base.seabornsetup()
     #path = '/opt/mirnaseq/data/vegh_13'
@@ -430,10 +437,11 @@ def test():
     #mapRNAs(path=path, indexes=bidx, adapters=adapters)
     #plotRNAmapped(labels)
     #summariseReads(path)
-    removeKnownRNAs(path, adapters)
+    #removeKnownRNAs(path, adapters)
     #compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
+    novelConservation()
     return
 
 def main():
