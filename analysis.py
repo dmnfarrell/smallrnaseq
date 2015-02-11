@@ -263,25 +263,24 @@ def compareMethods():
     #k,n = srb.getResults(path2)
     k,n = srb.getMultipleResults(path2)
     sk = k[(k['mean read count']>=10) & (k['freq']>=0.8)]
-    #print k.columns
+    print sk.columns
     #sk = k[(k['total']>=500)]
-
     x = pd.merge(mk,sk,left_on='#miRNA',right_on='name',how='inner',suffixes=['1','2'])
-    diff = x[(abs(x.total1-x.total2)/x.total2>.2)]
+    diff = x[(abs(x.total1-x.total2)/x.total2>.3)]
     print diff[['#miRNA','total1','total2']]
-    print np.corrcoef(np.log10(x.total1),np.log10(x.total2))
+    #print np.corrcoef(np.log10(x.total1),np.log10(x.total2))
     fig = plt.figure(figsize=(12,6))
     ax=fig.add_subplot(121)
     base.venndiagram([mk['#miRNA'], sk['name']],['mirdeep2','srnabench'],ax=ax)
 
     ax=fig.add_subplot(122)
     x.plot('total1','total2',kind='scatter',ax=ax, logx=True,logy=True,alpha=0.8,s=40)
-    ax.plot(ax.get_xlim(), ax.get_ylim(), ls="--", color='red')
+    ax.plot([0, 1], [0, 1], transform=ax.transAxes,color='red',alpha=0.7)
     ax.set_xlabel('mirdeep2')
     ax.set_ylabel('srnabench')
     ax.set_title('total read count comparison')
     plt.tight_layout()
-    plt.savefig('mirdeep_vs_srnabench.png')
+    plt.savefig('mirdeep_vs_srnabench.png',dpi=150)
     plt.show()
     return
 
@@ -438,10 +437,10 @@ def test():
     #plotRNAmapped(labels)
     #summariseReads(path)
     #removeKnownRNAs(path, adapters)
-    #compareMethods()
+    compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
-    novelConservation()
+    #novelConservation()
     return
 
 def main():

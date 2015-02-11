@@ -15,16 +15,18 @@ import pandas as pd
 import base
 
 srbpath = '/local/sRNAbench'
-srnabenchoptions = {'base': [('input',''),('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
+srnabenchoptions = {'base': [('input',''),('outpath','srnabench_runs'),
+                    ('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
                     ('bowtieindex',''),('refgenome',''),('species','hsa'),
-                    ('mature',''), ('hairpin',''), ('other',''),('mirbase',os.getcwd()),
-                    ('overwrite',1)]}
+                    ('mature',''), ('hairpin',''), ('other',''), ('isomir','false'),
+                    ('overwrite',1), ('matureMM',0), ('p',3)]}
 
 def getShortlabel(label):
     x=label.split('_')
     return x[2]+'_'+x[4]
 
-def run(infile, outpath, overwrite=True, adapter=None, ref='bos_taurus_alt'):
+def run(infile, outpath='srnabench_runs', overwrite=True, adapter=None,
+            ref='bos_taurus_alt', predict='false', **kwargs):
     """Run sRNAbench for a fastq file"""
 
     label = os.path.splitext(os.path.basename(infile))[0]
@@ -40,8 +42,9 @@ def run(infile, outpath, overwrite=True, adapter=None, ref='bos_taurus_alt'):
         else:
             shutil.rmtree(outdir)
 
-    cmd = ('java -jar %s/sRNAbench.jar dbPath=%s input=%s microRNA=bta' #libs=%s'
-           ' species=%s output=%s predict=true plotMiR=true' %(srbpath,srbpath,infile,ref,outdir))
+    cmd = ('java -jar %s/sRNAbench.jar dbPath=%s input=%s microRNA=bta'
+           ' species=%s output=%s predict=%s plotMiR=true matureMM=0' # isoMiR=true'
+           ' p=3' %(srbpath,srbpath,infile,ref,outdir,predict))
     if adapter != None:
         cmd += ' adapter=%s' %adapter
     print cmd
@@ -115,16 +118,18 @@ def getMultipleResults(path):
     for o in outdirs:
         r = readResultsFile(o, 'mature_sense.grouped')
         x = getNovel(o)
-        if n is not None:
+        if x is not None:
             n.append(x)
         if r is not None:
             k.append(r)
         cols.append(c)
         c+=1
-    print cols
+    #print cols
     k = pd.concat(k)
-    n = pd.concat(n)
-
+    if len(n)>0:
+        n = pd.concat(n)
+    else:
+        n=None
     #combine known into useful format
     p = k.pivot(index='name', columns='path', values='read count')
     samples = len(p.columns)
@@ -244,11 +249,18 @@ def main():
                            help="input path or file")
     parser.add_option("-s", "--summarise", dest="summarise",
                            help="analyse results of multiple runs together")
+    parser.add_option("-c", "--config", dest="config",
+                            help="config file")
     parser.add_option("-a", "--analyse", dest="analyse",
                            help="analyse results of single run")
     opts, remainder = parser.parse_args()
     pd.set_option('display.width', 800)
     if opts.run == True:
+        if opts.config == None:
+            base.writeDefaultConfig('srnabench.conf',defaults=srnabenchoptions)
+            cp = base.parseConfig('srnabench.conf')#opts.config)
+            options = cp._sections['base']
+            print options
         runAll(opts.input, filetype='fa')
     elif opts.summarise != None:
         k,n = getMultipleResults(opts.summarise)

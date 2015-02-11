@@ -194,7 +194,9 @@ def getResults(path):
         q['freq'] = q.filter(regex="norm").apply(lambda r: len(r.nonzero()[0])/samples,1)
         #apply 5p id so we can merge with results file and keep star seqs
         q['id'] = q['#miRNA'].apply(lambda x: x[:-2]+'5p' if str(x).endswith('3p') else x)
-        q = q.merge(df,left_on='id',right_on=key).drop_duplicates('#miRNA')
+        #loses information on multiple precursors for a mature seq
+        q = q.merge(df,left_on=['id'],right_on=key).drop_duplicates('#miRNA')
+
         res.append(q)
     res = pd.concat(res)
 
@@ -295,7 +297,7 @@ def analyseResults(path, outpath=None, **kwargs):
     x = core.sort('chr').groupby('chr').size()
     x.plot(kind='bar')
     plt.title('miRNA per chromosome')
-    fig.savefig('mirdeep_chromosome_dist.png')
+    fig.savefig('mirdeep_chromosome_dist.png',dpi=150)
     #plt.show()
     #plt.close()
     return df,k,n
