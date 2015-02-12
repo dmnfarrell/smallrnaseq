@@ -148,6 +148,16 @@ def filterFasta(infile):
         myseq.write_to_fasta_file(out)
     return
 
+def fasta2DataFrame(infile,idindex=0):
+    """Get fasta proteins into dataframe"""
+
+    keys = ['name','sequence','description']
+    fastafile = HTSeq.FastaReader(infile)
+    data = [(s.name, s.seq, s.descr) for s in fastafile]
+    df = pd.DataFrame(data,columns=(keys))
+    df.set_index(['name'],inplace=True)
+    return df
+
 def dataframe2Fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
     """Convert dataframe to fasta"""
 

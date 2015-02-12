@@ -136,7 +136,7 @@ def getMultipleResults(path):
         m['total'] = m.sum(1)
         m['mean read count'] = m[cols].mean(1)
         m['freq'] = m[cols].apply(lambda r: len(r.nonzero()[0])/samples,1)
-        m=m[m.freq>0.3]
+        #m=m[m.freq>0.3]
         m=m.sort(['total'],ascending=False)
         #print m[['name','total','freq']]
     return k,n,m
@@ -205,8 +205,10 @@ def analyseIsomiRs(iso):
     #g[:40].plot(kind='barh')
     fig,ax = plt.subplots(1,1)
     g.plot('size','sum',kind='scatter',logy=True,logx=True,alpha=0.8,s=50,ax=ax)
-    ax.set_title('no. isomiRs per miRNA vs total reads')
-    fig.savefig('srnabench_isomirs.png')
+    ax.set_title('no. isomiRs per miRNA vs total adundance')
+    ax.set_xlabel('no. isomiRs')
+    ax.set_ylabel('total reads')
+    fig.savefig('srnabench_isomirs.png',dpi=150)
     #print g[:30]
     return
 

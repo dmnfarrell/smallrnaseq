@@ -262,10 +262,7 @@ def analyseResults(path, outpath=None, **kwargs):
     n=n.set_index('#miRNA')
 
     fig, ax = plt.subplots(figsize=(8,6))
-    #k['perc'][:10].plot(kind='pie',colormap='Set2',autopct='%.2f',
-    #                 startangle=90,labels=None,legend=True)
-    k['read_count'][:10].plot(kind='barh',colormap='Set2',ax=ax,log=True)
-    #ax.set_xscale('log')
+    k['read_count'][:10].plot(kind='barh',colormap='Spectral',ax=ax,log=True)
     plt.title('miRDeep2 top 10')
     plt.tight_layout()
     fig.savefig('mirdeep_top_known.png',dpi=150)
@@ -285,7 +282,7 @@ def analyseResults(path, outpath=None, **kwargs):
     fig.savefig('mirdeep_known_persamplecounts.png')'''
     #perSampleDists(k)
 
-    fig,ax = plt.subplots(figsize=(8,6))
+    fig,ax = plt.subplots(figsize=(10,6))
     core[idcols].sum().plot(kind='bar',ax=ax)
     #core.columns = idmap.filename
     plt.title('total miRNA counts per sample (unnormalised)')

@@ -418,6 +418,20 @@ def novelConservation():
     ensembl.summarise(df)
     return
 
+def compareIsomirsRef():
+    """Compare top isomiRs from srnabench to miRBase ref seq"""
+    iso = pd.read_csv('srnabench_top_isomirs.csv')
+    iso=iso[iso.freq>0.5]
+    mirbase = base.fasta2DataFrame('mature_btau_alt.fa')
+    #k = pd.read_csv('known_mirdeep.csv')
+    #print k[:2]
+    x = iso.merge(mirbase,left_on='name',right_index=True)
+    print len(iso)
+    s = x[x.read==x.sequence]
+    print s.sort('total',ascending=False)[:10]
+    print 'perc with ref as dominant isomir:', len(s)/float(len(x))
+    return
+
 def test():
     base.seabornsetup()
     #path = '/opt/mirnaseq/data/vegh_13'
@@ -437,10 +451,11 @@ def test():
     #plotRNAmapped(labels)
     #summariseReads(path)
     #removeKnownRNAs(path, adapters)
-    compareMethods()
+    #compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     #novelConservation()
+    compareIsomirsRef()
     return
 
 def main():
