@@ -195,14 +195,14 @@ def getResults(path):
         #apply 5p id so we can merge with results file and keep star seqs
         q['id'] = q['#miRNA'].apply(lambda x: x[:-2]+'5p' if str(x).endswith('3p') else x)
         #loses information on multiple precursors for a mature seq
-        q = q.merge(df,left_on=['id'],right_on=key).drop_duplicates('#miRNA')
-
+        q = q.merge(df,left_on=['id'],right_on=key)
         res.append(q)
     res = pd.concat(res)
 
     #get mean normalised count
     res['mean_norm'] = res.filter(regex="norm").apply(lambda r: r[r.nonzero()[0]].mean(),1)
     res = res.sort(['read_count'],ascending=False)
+    res = res.drop_duplicates('#miRNA')
     #res['std'] = res.filter(regex="norm").std(1)
     #res['cv'] = res['std']/res['mean_norm']
     return res
