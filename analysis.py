@@ -420,16 +420,17 @@ def novelConservation():
 
 def compareIsomirsRef():
     """Compare top isomiRs from srnabench to miRBase ref seq"""
-    iso = pd.read_csv('srnabench_top_isomirs.csv')
-    iso=iso[iso.freq>0.5]
+    iso = pd.read_csv('srnabench_isomirs_dominant.csv')
+    #iso=iso[iso.freq>0.5]
     mirbase = base.fasta2DataFrame('mature_btau_alt.fa')
-    #k = pd.read_csv('known_mirdeep.csv')
-    #print k[:2]
     x = iso.merge(mirbase,left_on='name',right_index=True)
-    print len(iso)
-    s = x[x.read==x.sequence]
-    print s.sort('total',ascending=False)[:10]
-    print 'perc with ref as dominant isomir:', len(s)/float(len(x))
+    s = x[x.read!=x.sequence]
+    print s.sort('total',ascending=False)[:20]
+    print len(iso), len(s)
+    print 'perc with different dominant isomir:', len(s)/float(len(x))
+    s.to_csv('isomirs_different.csv')
+    #iso.isofreq.hist()
+    #plt.show()
     return
 
 def test():
@@ -468,6 +469,7 @@ def main():
     parser.add_option("-t", "--test", dest="test", action='store_true',
                            help="testing")
     opts, remainder = parser.parse_args()
+    pd.set_option('display.width', 800)
     base.seabornsetup()
     if opts.summarise != None:
         if os.path.isdir(opts.summarise):

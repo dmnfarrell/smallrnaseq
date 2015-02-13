@@ -20,6 +20,13 @@ srnabenchoptions = {'base': [('input',''),('outpath','srnabench_runs'),
                     ('bowtieindex',''),('refgenome',''),('species','hsa'),
                     ('mature',''), ('hairpin',''), ('other',''), ('isomir','false'),
                     ('overwrite',1), ('matureMM',0), ('p',3)]}
+isoclasses = {'lv5pT':'5p trimmed',
+                'lv5pE':'5p extended',
+                'lv5p':'5p length variant',
+                'lv3pT':'3p trimmed',
+                'lv3pE':'3p extended',
+                'lv3p':'3p length variant',
+                'mv': 'multiple length variants'}
 
 def getShortlabel(label):
     x=label.split('_')
@@ -130,13 +137,13 @@ def getMultipleResults(path):
     #combine isomirs
     if len(m)>0:
         m = pd.concat(m)
-        m = m.pivot_table(index=['read','name'], columns='path', values='read count')
+        m = m.pivot_table(index=['read','name','isoClass','NucVar'],
+                            columns='path', values='read count')
         m = m.fillna(0)
         m = m.reset_index()
         m['total'] = m.sum(1)
         m['mean read count'] = m[cols].mean(1)
         m['freq'] = m[cols].apply(lambda r: len(r.nonzero()[0])/samples,1)
-        #m=m[m.freq>0.3]
         m=m.sort(['total'],ascending=False)
         #print m[['name','total','freq']]
     return k,n,m
@@ -193,23 +200,38 @@ def analyseIsomiRs(iso):
     """Analyse isomiR results"""
 
     plt.close('all')
+    subcols = ['name','read','isoClass','NucVar','total','freq']
+    iso = iso.sort('total', ascending=False)
+    #iso=iso[iso.freq>0.2]
+    iso=iso[iso.total>20]
+    iso['length'] = iso.read.str.len()
+    #get top isomir per mirRNA
+    g = iso.groupby('name', as_index=False)
+    t=[]
+    for i,x in g:
+        r = base.first(x)
+        s = x.total.sum()
+        fq = r.total/s
+        t.append((r['name'],r.read,r.total,s,fq,np.size(x.total),r.isoClass))
+    top = pd.DataFrame(t,columns=['name','read','counts','total','isofreq','isomirs','isoClass'])
+    top.to_csv('srnabench_isomirs_dominant.csv',index=False)
     print 'top isomiRs:'
-    subcols = ['name','read','total','freq']
-    print iso[subcols][:10]
-    #top isomir per group
-    top = iso.sort('total', ascending=False).groupby('name', as_index=False).first()
-    top[subcols].to_csv('srnabench_top_isomirs.csv')
+    print top.sort('total',ascending=False)[:10]
     #stats
-    g=iso.groupby('name').agg({'total':[np.sum,np.size]})#.sort('sum',ascending=False)
-    g.columns = g.columns.get_level_values(1)
-    #g[:40].plot(kind='barh')
     fig,ax = plt.subplots(1,1)
-    g.plot('size','sum',kind='scatter',logy=True,logx=True,alpha=0.8,s=50,ax=ax)
+    top.plot('isomirs','total',kind='scatter',logy=True,logx=True,alpha=0.8,s=50,ax=ax)
     ax.set_title('no. isomiRs per miRNA vs total adundance')
     ax.set_xlabel('no. isomiRs')
     ax.set_ylabel('total reads')
-    fig.savefig('srnabench_isomirs.png',dpi=150)
-    #print g[:30]
+    #fig.savefig('srnabench_isomirs.png',dpi=150)
+    #length dists of isomirs
+    fig,ax = plt.subplots(1,1)
+    #x = iso[iso.name=='bta-miR-423-5p'][subcols]
+    x = iso[iso.name.isin(iso.name[:30])]
+    bins=range(15,30,1)
+    x.hist('length',bins=bins,ax=ax,by='name',sharex=True)
+    ax.set_title('isomiR length distributions')
+    fig.savefig('srnabench_isomir_lengths.png',dpi=150)
     return
 
 def plotReadCountDists(df,h=8):
@@ -278,7 +300,7 @@ def main():
     parser.add_option("-c", "--config", dest="config",
                             help="config file")
     opts, remainder = parser.parse_args()
-    pd.set_option('display.width', 800)
+    pd.set_option('display.width', 600)
     if opts.run == True:
         if opts.config == None:
             base.writeDefaultConfig('srnabench.conf',defaults=srnabenchoptions)
