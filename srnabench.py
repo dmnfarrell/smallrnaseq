@@ -96,14 +96,20 @@ def plotResults(k):
     fig.savefig('srnabench_summary_known.png',dpi=80)
     return
 
-def getMultipleResults(path):
+def normaliseCols(df, cols):
+    def n(s):
+        return s/s.sum()
+    print df[cols].apply(n, axis=0)
+    return
+
+def getResults(path):
     """Fetch results for all dirs and aggregate read counts"""
 
     k = []
     n = []
     m = []
     outdirs = [os.path.join(path,i) for i in os.listdir(path)]
-    labels = []
+    cols = []
     c=1
     for o in outdirs:
         r = readResultsFile(o, 'mature_sense.grouped')
@@ -112,7 +118,7 @@ def getMultipleResults(path):
             n.append(x)
         if r is not None:
             k.append(r)
-        labels.append(c)
+        cols.append(c)
         c+=1
         iso = getIsomiRs(o)
         if m is not None:
@@ -125,7 +131,8 @@ def getMultipleResults(path):
         n=None
     #combine known into useful format
     p = k.pivot_table(index='name', columns='path', values='read count')
-    cols = p.columns
+    #cols = p.columns
+    p.columns = cols
     samples = float(len(cols))
     g = k.groupby('name').agg({'read count':[np.size,np.mean,np.sum]})
     g.columns = ['freq','mean read count','total']
@@ -134,6 +141,7 @@ def getMultipleResults(path):
     k = p.merge(g,left_index=True,right_index=True)
     k = k.reset_index()
     k = k.sort('mean read count',ascending=False)
+    #normaliseCols(k, cols)
     #combine isomirs
     if len(m)>0:
         m = pd.concat(m)
@@ -167,14 +175,14 @@ def getIsomiRs(path):
     df['path'] = os.path.basename(path)
     return df
 
-def summariseAll(k,n,iso,outpath=None):
+def analyseResults(k,n,iso,outpath=None):
     """Summarise multiple results"""
 
     if outpath != None:
         os.chdir(outpath)
     ky1 = 'unique reads'
     ky2 =  'read count' #'RC'
-    cols = ['name','freq','mean read count','total']
+    cols = ['name','freq','mean read count','total','perc']
     print
     print 'found:'
     final = k[(k['mean read count']>=10) & (k['freq']>=.8)]
@@ -191,19 +199,22 @@ def summariseAll(k,n,iso,outpath=None):
     fig.savefig('srnabench_top_known.png')
     fig = plotReadCountDists(final)
     fig.savefig('srnabench_known_counts.png')
+    fig,ax = plt.subplots(figsize=(10,6))
+    k[k.columns-cols].sum().plot(kind='bar',ax=ax)
+    fig.savefig('srnabench_total_persample.png')
+    plt.show()
     print
     if iso is not None:
         analyseIsomiRs(iso)
     return k
 
 def analyseIsomiRs(iso):
-    """Analyse isomiR results"""
+    """Analyse isomiR results in detail"""
 
-    plt.close('all')
     subcols = ['name','read','isoClass','NucVar','total','freq']
     iso = iso.sort('total', ascending=False)
     #iso=iso[iso.freq>0.2]
-    iso=iso[iso.total>20]
+    iso=iso[iso.total>10] #filter low abundance reads?
     iso['length'] = iso.read.str.len()
     #get top isomir per mirRNA
     g = iso.groupby('name', as_index=False)
@@ -223,15 +234,40 @@ def analyseIsomiRs(iso):
     ax.set_title('no. isomiRs per miRNA vs total adundance')
     ax.set_xlabel('no. isomiRs')
     ax.set_ylabel('total reads')
-    #fig.savefig('srnabench_isomirs.png',dpi=150)
+    fig.savefig('srnabench_isomirs.png',dpi=150)
     #length dists of isomirs
     fig,ax = plt.subplots(1,1)
-    #x = iso[iso.name=='bta-miR-423-5p'][subcols]
     x = iso[iso.name.isin(iso.name[:30])]
     bins=range(15,30,1)
-    x.hist('length',bins=bins,ax=ax,by='name',sharex=True)
-    ax.set_title('isomiR length distributions')
+    x.hist('length',bins=bins,ax=ax,by='name',sharex=True,color="gray")
+    fig.suptitle('isomiR length distributions')
     fig.savefig('srnabench_isomir_lengths.png',dpi=150)
+    #get classes stats
+    print iso[subcols]
+    def parseisoinfo(r):
+        s = r['isoClass'].split('|')
+        if len(s)>1:
+            lv = s[0]
+            #if s[1].startswith('lv'):
+            pos = int(s[-1].split('#')[-1])
+            #else:
+            #    pos = np.nan
+        else:
+            lv=s[0]
+            pos = 0
+        return pd.Series(dict(pos=pos,lv=lv))
+
+    x = iso.apply(parseisoinfo,1)
+    iso = iso.merge(x,left_index=True,right_index=True)
+    print iso[['pos','lv']]
+    plt.close('all')
+    c = iso.lv.value_counts()
+    c=c[c>10]
+    fig,ax = plt.subplots(1,1)
+    c.plot(kind='bar',ax=ax)
+    #iso.hist('pos',ax=ax,bins=range(-5,5,1))
+    #plt.tight_layout()
+    plt.show()
     return
 
 def plotReadCountDists(df,h=8):
@@ -309,8 +345,8 @@ def main():
             print options
         runAll(opts.input, filetype='fa')
     elif opts.analyse != None:
-        k,n,iso = getMultipleResults(opts.analyse)
-        summariseAll(k,n,iso)
+        k,n,iso = getResults(opts.analyse)
+        analyseResults(k,n,iso)
     else:
         test()
 

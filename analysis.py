@@ -260,8 +260,7 @@ def compareMethods():
     df = mdp.getResults(path1)
     df = df[df.novel==False]
     mk = mdp.filterExprResults(df,meanreads=200,freq=0.8)
-    #k,n = srb.getResults(path2)
-    k,n,i = srb.getMultipleResults(path2)
+    k,n,i = srb.getResults(path2)
     sk = k[(k['mean read count']>=10) & (k['freq']>=0.8)]
     print sk.columns
     #sk = k[(k['total']>=500)]
