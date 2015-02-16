@@ -451,11 +451,10 @@ def test():
     #plotRNAmapped(labels)
     #summariseReads(path)
     #removeKnownRNAs(path, adapters)
-    #compareMethods()
+    compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     #novelConservation()
-    compareIsomirsRef()
     return
 
 def main():

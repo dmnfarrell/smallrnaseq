@@ -245,7 +245,7 @@ def analyseResults(path, outpath=None, **kwargs):
     base.createHtml(n[cols],'novel_mirdeep')
     k['perc'] = k['read_count']/k['read_count'].sum()
 
-    print k[cols[:8]]
+    print k[cols[:7]]
     print
     print n[cols[:9]]
 

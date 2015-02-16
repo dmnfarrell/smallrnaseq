@@ -50,7 +50,7 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter=None,
             shutil.rmtree(outdir)
 
     cmd = ('java -jar %s/sRNAbench.jar dbPath=%s input=%s microRNA=bta'
-           ' species=%s output=%s predict=%s plotMiR=true matureMM=0 isoMiR=true'
+           ' species=%s output=%s predict=%s plotMiR=true matureMM=0 isoMiR=true' #hierarchical=false'
            ' p=3' %(srbpath,srbpath,infile,ref,outdir,predict))
     if adapter != None:
         cmd += ' adapter=%s' %adapter
@@ -142,11 +142,12 @@ def getResults(path):
     k = k.reset_index()
     k = k.sort('mean read count',ascending=False)
     #normaliseCols(k, cols)
-    #combine isomirs
+    #combine isomir results
     if len(m)>0:
         m = pd.concat(m)
         m = m.pivot_table(index=['read','name','isoClass','NucVar'],
                             columns='path', values='read count')
+        m.columns = cols
         m = m.fillna(0)
         m = m.reset_index()
         m['total'] = m.sum(1)
@@ -202,7 +203,7 @@ def analyseResults(k,n,iso,outpath=None):
     fig,ax = plt.subplots(figsize=(10,6))
     k[k.columns-cols].sum().plot(kind='bar',ax=ax)
     fig.savefig('srnabench_total_persample.png')
-    plt.show()
+    #plt.show()
     print
     if iso is not None:
         analyseIsomiRs(iso)
@@ -222,12 +223,15 @@ def analyseIsomiRs(iso):
     for i,x in g:
         r = base.first(x)
         s = x.total.sum()
-        fq = r.total/s
-        t.append((r['name'],r.read,r.total,s,fq,np.size(x.total),r.isoClass))
-    top = pd.DataFrame(t,columns=['name','read','counts','total','isofreq','isomirs','isoClass'])
+        perc = r.total/s
+        t.append((r['name'],r.read,r.total,s,perc,np.size(x.total),r.isoClass))
+    top = pd.DataFrame(t,columns=['name','read','counts','total','domisoperc','isomirs','isoClass'])
     top.to_csv('srnabench_isomirs_dominant.csv',index=False)
     print 'top isomiRs:'
-    print top.sort('total',ascending=False)[:10]
+    print top.sort('total',ascending=False)[:20]
+    print '%s with only 1 isomir' %len(top[top.domisoperc==1])
+    print 'perc with different dominant isomir:', len(top[top.isoClass!='exact'])/float(len(top))
+    print
     #stats
     fig,ax = plt.subplots(1,1)
     top.plot('isomirs','total',kind='scatter',logy=True,logx=True,alpha=0.8,s=50,ax=ax)
@@ -243,30 +247,40 @@ def analyseIsomiRs(iso):
     fig.suptitle('isomiR length distributions')
     fig.savefig('srnabench_isomir_lengths.png',dpi=150)
     #get classes stats
-    print iso[subcols]
+    #print iso[subcols]
+    plt.close('all')
+
     def parseisoinfo(r):
+        #parse srnabench hierarchical scheme
         s = r['isoClass'].split('|')
         if len(s)>1:
             lv = s[0]
             #if s[1].startswith('lv'):
             pos = int(s[-1].split('#')[-1])
-            #else:
-            #    pos = np.nan
         else:
             lv=s[0]
             pos = 0
-        return pd.Series(dict(pos=pos,lv=lv))
+        return pd.Series(dict(pos=pos,variant=lv))
 
     x = iso.apply(parseisoinfo,1)
     iso = iso.merge(x,left_index=True,right_index=True)
-    print iso[['pos','lv']]
-    plt.close('all')
-    c = iso.lv.value_counts()
-    c=c[c>10]
+    diff = ['bta-miR-27a-3p','bta-miR-99a-5p','bta-miR-127','bta-miR-101','bta-miR-23b-3p']
+    d = iso[iso.name.isin(diff)][subcols+['pos','variant']]
+    #for i,df in d.groupby('name'):
+    #    print df
+    #print iso[['pos','variant']]
+
+    c = iso[-iso.variant.str.contains('exact')].variant.value_counts()
+    #c=c[c>10]
     fig,ax = plt.subplots(1,1)
     c.plot(kind='bar',ax=ax)
+    ax.set_title('isomiR classes')
+    ax.set_ylabel('total')
+    ax.set_xticklabels(c.index, minor=False, rotation=45)
+    plt.tight_layout()
+    fig.savefig('srnabench_isomir_classes.png',dpi=150)
     #iso.hist('pos',ax=ax,bins=range(-5,5,1))
-    #plt.tight_layout()
+
     plt.show()
     return
 
