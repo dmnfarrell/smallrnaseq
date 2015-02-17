@@ -17,7 +17,7 @@ import base
 srbpath = '/local/sRNAbench'
 srnabenchoptions = {'base': [('input',''),('outpath','srnabench_runs'),
                     ('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
-                    ('bowtieindex',''),('refgenome',''),('species','hsa'),
+                    ('bowtieindex',''),('ref',''),  ('predict','false'),
                     ('mature',''), ('hairpin',''), ('other',''), ('isomir','false'),
                     ('overwrite',1), ('matureMM',0), ('p',3)]}
 isoclasses = {'lv5pT':'5p trimmed',
@@ -59,7 +59,7 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter=None,
     print result
     return outdir
 
-def runAll(path, outpath='runs', overwrite=False, filetype='fastq'):
+def runAll(path, outpath='runs', filetype='fastq', **kwargs):
     """Run all fastq files in folder"""
 
     if os.path.isdir(path):
@@ -68,7 +68,7 @@ def runAll(path, outpath='runs', overwrite=False, filetype='fastq'):
         files = [path]
     print 'running sRNAbench for %s files' %len(files)
     for f in files:
-        res = run(f, outpath, overwrite=overwrite)
+        res = run(f, outpath, **kwargs)
         if res == None:
             print 'skipped %s' %f
     return
@@ -214,8 +214,7 @@ def analyseIsomiRs(iso):
 
     subcols = ['name','read','isoClass','NucVar','total','freq']
     iso = iso.sort('total', ascending=False)
-    iso=iso[iso.freq>0.5]
-    iso=iso[iso.total>30] #filter low abundance reads same as profiling
+    iso = iso[(iso.total>20) & (iso.freq>0.6)] #filter low abundance reads same as profiling
     iso['length'] = iso.read.str.len()
     #get top isomir per mirRNA
     g = iso.groupby('name', as_index=False)
@@ -248,29 +247,27 @@ def analyseIsomiRs(iso):
     x.hist('length',bins=bins,ax=ax,by='name',sharex=True,color="gray")
     fig.suptitle('isomiR length distributions')
     fig.savefig('srnabench_isomir_lengths.png',dpi=150)
-    #get classes stats
     #print iso[subcols]
     plt.close('all')
-
+    #get classes stats
     def parseisoinfo(r):
-        #parse srnabench hierarchical scheme
+        '''parse srnabench hierarchical scheme'''
         s = r['isoClass'].split('|')
+        lv = s[0]
         if len(s)>1:
-            lv = s[0]
-            #if s[1].startswith('lv'):
             pos = int(s[-1].split('#')[-1])
         else:
-            lv=s[0]
             pos = 0
         return pd.Series(dict(pos=pos,variant=lv))
 
     x = iso.apply(parseisoinfo,1)
     iso = iso.merge(x,left_index=True,right_index=True)
-    #diff = ['bta-miR-27a-3p','bta-miR-99a-5p','bta-miR-127','bta-miR-101','bta-miR-23b-3p']
-    #d = iso[iso.name.isin(diff)][subcols+['pos','variant']]
-    #for i,df in d.groupby('name'):
-    #    print df
+    diff = ['bta-miR-27a-3p','bta-miR-99a-5p','bta-miR-127','bta-miR-101','bta-miR-23b-3p']
+    d = iso[iso.name.isin(diff)][subcols+['pos','variant']]
+    for i,df in d.groupby('name'):
+        print df
     #print iso[['pos','variant']]
+    print iso[iso.pos<-5][subcols]
 
     #lv = iso[-iso.variant.str.contains('exact')]
     c=iso.variant.value_counts()
@@ -283,11 +280,12 @@ def analyseIsomiRs(iso):
     ax.set_title('isomiR class distribution')
     plt.tight_layout()
     fig.savefig('srnabench_isomir_classes.png',dpi=150)
-    fig,axs = plt.subplots(2,1)
+    fig,axs = plt.subplots(2,2)
     grid=axs.flat
     bins=np.arange(-6,6,1)
     i=0
-    for v in ['lv3p','lv5p']:
+    print iso.variant.unique()
+    for v in ['lv3p','lv5p','nta#A','nta#T']:
         ax=grid[i]
         iso[iso.variant==v].hist('pos',ax=ax,bins=bins)
         ax.set_title(v)
@@ -296,7 +294,7 @@ def analyseIsomiRs(iso):
         i+=1
     fig.suptitle('isomiR variant lengths')
     fig.savefig('srnabench_isomir_variantlengths.png')
-    plt.show()
+    #plt.show()
     iso.to_csv('srnabench_isomirs_all.csv',index=False)
     return
 
@@ -361,8 +359,7 @@ def main():
                            help="input path or file")
     parser.add_option("-a", "--analyse", dest="analyse",
                            help="analyse results of runs")
-    #parser.add_option("-s", "--summarise", dest="summarise",
-    #                       help="analyse results of multiple runs together")
+
     parser.add_option("-c", "--config", dest="config",
                             help="config file")
     opts, remainder = parser.parse_args()
@@ -370,10 +367,10 @@ def main():
     if opts.run == True:
         if opts.config == None:
             base.writeDefaultConfig('srnabench.conf',defaults=srnabenchoptions)
-            cp = base.parseConfig('srnabench.conf')#opts.config)
-            options = cp._sections['base']
-            print options
-        runAll(opts.input, filetype='fa')
+        cp = base.parseConfig(opts.config)
+        options = cp._sections['base']
+        print options
+        runAll(opts.input, **options)
     elif opts.analyse != None:
         k,n,iso = getResults(opts.analyse)
         analyseResults(k,n,iso)
