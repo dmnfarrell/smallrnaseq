@@ -190,7 +190,7 @@ def getResults(path):
             key='miRBase miRNA'
         q = pd.read_csv(f,sep='\t')
         samples = float(len(q.filter(regex="norm").columns))
-        print 'samples: %s' %samples
+        #print 'samples: %s' %samples
         q['freq'] = q.filter(regex="norm").apply(lambda r: len(r.nonzero()[0])/samples,1)
         #apply 5p id so we can merge with results file and keep star seqs
         q['id'] = q['#miRNA'].apply(lambda x: x[:-2]+'5p' if str(x).endswith('3p') else x)
@@ -234,8 +234,8 @@ def analyseResults(path, outpath=None, **kwargs):
     known = df[df.novel==False]
     novel = df[df.novel==True]
     idmap = getFilesMapping(path)
-    k = filterExprResults(known,score=0,freq=.7,meanreads=200)
-    n = filterExprResults(novel,score=4,freq=.7,meanreads=200)
+    k = filterExprResults(known,score=0,freq=.5,meanreads=200)
+    n = filterExprResults(novel,score=4,freq=.5,meanreads=200)
     cols = mirdeepcols
     core = pd.concat([k,n])
     base.dataframe2Fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')

@@ -417,6 +417,82 @@ def novelConservation():
     ensembl.summarise(df)
     return
 
+def getExpCondMap(path):
+    """Get mirdeep results labels mapped to our exp condition table"""
+
+    condmap = pd.read_csv('mapdata_labels.csv')
+    idmap = mdp.getFilesMapping(path)
+    def getIDMap(x):
+        r=idmap[idmap['filename'].str.contains(x)]
+        if len(r)>0:
+            return r.id.squeeze()
+        else:
+            return np.nan
+    condmap['id'] = condmap.filename.apply(lambda x: getIDMap(x),1)
+    condmap = condmap.dropna()
+    return condmap
+
+def plotFactors(path):
+    """Plots for various views of mirdeep results using seaborn facetgrids"""
+
+    df = mdp.getResults(path)
+    df = mdp.filterExprResults(df,meanreads=200)
+    condmap = getExpCondMap(path)
+    df=df.set_index('#miRNA')
+    cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
+    normcols = [i+'(norm)' for i in cols]
+    df = df[normcols]
+    #names = pd.read_csv('de_summary.csv').name
+    #names = df.index
+    names = ['bta-miR-423-5p','bta-miR-6529a','bta-miR-486','bta-miR-27a-3p','bta-miR-2285k',
+            'bta-miR-27b','bta-miR-128','23_13514','bta-miR-330','5_20172','10_1754']
+    df=df[df.index.isin(names)]
+    tporder = [0, 6, 43, 46, 49]
+    tgorder = ['START','EARLY','LATE']
+    #get numeric values for time points
+    x = pd.Categorical(condmap['month'],categories=tporder)
+    condmap['time'] = x.codes
+    #prepare data by melting it
+    t=df.T
+    t.index = cols
+    t = t.merge(condmap,left_index=True,right_on='id')
+    tm = pd.melt(t,id_vars=list(condmap.columns),
+                   var_name='miRNA',value_name='read count')
+    '''g = base.sns.factorplot('time','read count', 'elisa', tm, col='miRNA', kind="point",
+                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
+    g.set(xticklabels=tporder)
+    plt.savefig('de_lineplots_timepoints.png')
+    g = base.sns.factorplot('timegroup','read count','elisa', tm, col='miRNA', kind="box",x_order=tgorder,
+                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
+    plt.savefig('de_boxplots_timegroups.png')
+    g = base.sns.factorplot('time','read count', 'animal', tm, col='miRNA', kind="point",
+                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
+    plt.savefig('de_animals_timepoints.png')
+
+    g = base.sns.factorplot('miRNA','read count', 'infection', tm, kind="box",
+                            size=8,aspect=1.5,legend_out=False,x_order=names)
+    g.despine(offset=10, trim=True)
+    g.set(yscale='log')
+    locs, labels = plt.xticks()
+    plt.setp(labels, rotation=45)
+    plt.tight_layout()
+    plt.savefig('counts_byinfection.png')'''
+    g = base.sns.factorplot('time','read count','elisa',tm, col='miRNA', kind="bar",col_wrap=4,
+                            size=4,aspect=0.9,legend_out=True,sharey=False,palette='Spectral')
+
+    x = dict(list(t.groupby('elisa')))
+    import scipy
+    ts,p = scipy.stats.ttest_ind(x['N'][names], x['P'][names])
+    pv = pd.Series(p, index=names).order()
+    print pv[pv<0.05]
+    plt.savefig('counts_byanimal.png')
+    p=t[['pool','infection']]
+    fig,ax = plt.subplots(1,1)
+    #p.groupby(['pool'])
+    p.plot(kind='bar',by='pool')
+    plt.show()
+    return
+
 def compareIsomirsRef():
     """Compare top isomiRs from srnabench to miRBase ref seq"""
     iso = pd.read_csv('srnabench_isomirs_dominant.csv')
@@ -428,8 +504,29 @@ def compareIsomirsRef():
     print len(iso), len(s)
     print 'perc with different dominant isomir:', len(s)/float(len(x))
     s.to_csv('isomirs_different.csv')
-    #iso.isofreq.hist()
-    #plt.show()
+    return
+
+def analyseisomirs():
+    """check isomir or other expr profiles by category"""
+
+    fmap = pd.read_csv('srnabench_colnames.csv')
+    condmap = pd.read_csv('mapdata_labels.csv')
+    fmap['filename'] = fmap.filename.str[:-8]
+    c = fmap.merge(condmap,on='filename')
+    iso = pd.read_csv('srnabench_isomirs_all.csv')
+    i=0
+    iso = iso[iso.name=='bta-miR-486'][:10]
+    #iso = iso[iso.read=='TCCTGTACTGATCTGCCCCGA']
+    df = iso.set_index('read')
+    t = df.T
+    t = t.merge(c,left_index=True,right_on='col')
+    print c.columns
+    tm = pd.melt(t,id_vars=list(c.columns),
+                   var_name='read',value_name='total')
+    print tm
+    g = base.sns.factorplot('animal','total', data=tm, col='read', kind="bar", hue='pool',
+                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
+    plt.show()
     return
 
 def test():
@@ -450,11 +547,14 @@ def test():
     #mapRNAs(path=path, indexes=bidx, adapters=adapters)
     #plotRNAmapped(labels)
     #summariseReads(path)
-    removeKnownRNAs(path, adapters)
+    #removeKnownRNAs(path, adapters)
     #compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     #novelConservation()
+    plotFactors('results_mirdeep_rnafiltered')
+    #compareIsomirsRef()
+    #analyseisomirs()
     return
 
 def main():
