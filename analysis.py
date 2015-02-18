@@ -428,8 +428,24 @@ def compareIsomirsRef():
     print len(iso), len(s)
     print 'perc with different dominant isomir:', len(s)/float(len(x))
     s.to_csv('isomirs_different.csv')
-    #iso.isofreq.hist()
-    #plt.show()
+    return
+
+def analyseisomirs():
+    """check isomir or other expr profiles by category"""
+    fmap = pd.read_csv('srnabench_colnames.csv')
+    condmap = pd.read_csv('mapdata_labels.csv')
+    fmap['filename'] = fmap.filename.str[:-8]
+    c = fmap.merge(condmap,on='filename')
+    iso = pd.read_csv('srnabench_isomirs_all.csv')
+    i=0
+    clrs=['r','g','b']
+    x = iso[iso.name=='bta-miR-423-5p'].T
+    #x['pool'] = x.map(lambda x: cx.col
+    for i,df in c.groupby('pool'):
+        x = iso[iso.name=='bta-miR-423-5p'][df.col]
+        x.mean().plot(kind='bar',width=0.5,color=clrs[i])
+        i+=1
+    plt.show()
     return
 
 def test():
@@ -451,10 +467,12 @@ def test():
     #plotRNAmapped(labels)
     #summariseReads(path)
     #removeKnownRNAs(path, adapters)
-    compareMethods()
+    #compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     #novelConservation()
+    #compareIsomirsRef()
+    analyseisomirs()
     return
 
 def main():
