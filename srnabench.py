@@ -32,7 +32,7 @@ def getShortlabel(label):
     x=label.split('_')
     return x[2]+'_'+x[4]
 
-def run(infile, outpath='srnabench_runs', overwrite=True, adapter=None,
+def run(infile, outpath='srnabench_runs', overwrite=True, adapter='',
             ref='bos_taurus_alt', predict='false', **kwargs):
     """Run sRNAbench for a fastq file"""
 
@@ -52,7 +52,7 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter=None,
     cmd = ('java -jar %s/sRNAbench.jar dbPath=%s input=%s microRNA=bta'
            ' species=%s output=%s predict=%s plotMiR=true matureMM=0 isoMiR=true' #hierarchical=false'
            ' p=3' %(srbpath,srbpath,infile,ref,outdir,predict))
-    if adapter != None:
+    if adapter != '':
         cmd += ' adapter=%s' %adapter
     print cmd
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')

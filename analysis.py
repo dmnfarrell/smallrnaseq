@@ -115,7 +115,7 @@ def trimAdapters(infile, adapters=[], outfile='cut.fastq'):
         print 'no adapters!'
         return
     adptstr = ' -a '.join(adapters)
-    cmd = 'cutadapt -m 15 -O 5 -q 20 --discard-untrimmed -a %s %s -o %s' %(adptstr,infile,outfile)
+    cmd = 'cutadapt -m 18 -O 5 -q 20 --discard-untrimmed -a %s %s -o %s' %(adptstr,infile,outfile)
     print cmd
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     #print result
@@ -450,8 +450,8 @@ def test():
     #mapRNAs(path=path, indexes=bidx, adapters=adapters)
     #plotRNAmapped(labels)
     #summariseReads(path)
-    #removeKnownRNAs(path, adapters)
-    compareMethods()
+    removeKnownRNAs(path, adapters)
+    #compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     #novelConservation()
