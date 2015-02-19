@@ -413,7 +413,7 @@ def mirnaDiscoveryTest(sourcefile):
 def novelConservation():
     import ensembl
     df = pd.read_csv('novel_mirdeep.csv')
-    #ensembl.getmiRNAOrthologs(df)
+    ensembl.getmiRNAOrthologs(df)
     ensembl.summarise(df)
     return
 
@@ -432,20 +432,40 @@ def getExpCondMap(path):
     condmap = condmap.dropna()
     return condmap
 
+def compareSubsets(path):
+    """compare found sets across time etc"""
+    df = mdp.getResults(path)
+    #df = mdp.filterExprResults(df,meanreads=100,freq=0.2)
+    df=df.set_index('#miRNA')
+    cm = getExpCondMap(path)
+    c1 = cm[cm.month==0].id
+    nc1 = [i+'(norm)' for i in c1]
+    a = df[nc1]
+    a= a[a.mean(1)>100]
+    c2 = cm[cm.month==49].id
+    nc2 = [i+'(norm)' for i in c2]
+    b = df[nc2]
+    b= b[b.mean(1)>100]
+    print set(a.index) - set(b.index)
+    #compare start and end miRNA sets?
+    return
+
 def plotFactors(path):
     """Plots for various views of mirdeep results using seaborn facetgrids"""
 
     df = mdp.getResults(path)
     df = mdp.filterExprResults(df,meanreads=200)
+    df = df[df.novel==False]
     condmap = getExpCondMap(path)
     df=df.set_index('#miRNA')
     cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
     normcols = [i+'(norm)' for i in cols]
     df = df[normcols]
     #names = pd.read_csv('de_summary.csv').name
-    #names = df.index
-    names = ['bta-miR-423-5p','bta-miR-6529a','bta-miR-486','bta-miR-27a-3p','bta-miR-2285k',
-            'bta-miR-27b','bta-miR-128','23_13514','bta-miR-330','5_20172','10_1754']
+    names = df.index[:60]
+    #names = ['bta-miR-423-5p','bta-miR-6529a','bta-miR-486','bta-miR-27a-3p','bta-miR-2285k',
+    #        'bta-miR-27b','bta-miR-128','23_13514','bta-miR-330','5_20172','10_1754']
+    #names = ['bta-miR-150','bta-miR-151-3p','bta-miR-186']
     df=df[df.index.isin(names)]
     tporder = [0, 6, 43, 46, 49]
     tgorder = ['START','EARLY','LATE']
@@ -456,6 +476,7 @@ def plotFactors(path):
     t=df.T
     t.index = cols
     t = t.merge(condmap,left_index=True,right_on='id')
+    t=t[t.timegroup=='LATE']
     tm = pd.melt(t,id_vars=list(condmap.columns),
                    var_name='miRNA',value_name='read count')
     '''g = base.sns.factorplot('time','read count', 'elisa', tm, col='miRNA', kind="point",
@@ -464,12 +485,12 @@ def plotFactors(path):
     plt.savefig('de_lineplots_timepoints.png')
     g = base.sns.factorplot('timegroup','read count','elisa', tm, col='miRNA', kind="box",x_order=tgorder,
                             col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
-    plt.savefig('de_boxplots_timegroups.png')
-    g = base.sns.factorplot('time','read count', 'animal', tm, col='miRNA', kind="point",
+    plt.savefig('de_boxplots_timegroups.png')'''
+    g = base.sns.factorplot('time','read count', 'elisa', tm, col='miRNA', kind="point",
                             col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
     plt.savefig('de_animals_timepoints.png')
 
-    g = base.sns.factorplot('miRNA','read count', 'infection', tm, kind="box",
+    '''g = base.sns.factorplot('miRNA','read count', 'elisa', tm, kind="box",
                             size=8,aspect=1.5,legend_out=False,x_order=names)
     g.despine(offset=10, trim=True)
     g.set(yscale='log')
@@ -477,19 +498,22 @@ def plotFactors(path):
     plt.setp(labels, rotation=45)
     plt.tight_layout()
     plt.savefig('counts_byinfection.png')'''
-    g = base.sns.factorplot('time','read count','elisa',tm, col='miRNA', kind="bar",col_wrap=4,
-                            size=4,aspect=0.9,legend_out=True,sharey=False,palette='Spectral')
+
+    g = base.sns.factorplot('elisa','read count', 'animal', data=tm, col='miRNA', kind="bar",
+                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False,
+                            palette='Spectral')
+    plt.savefig('counts_byanimal.png')
 
     x = dict(list(t.groupby('elisa')))
     import scipy
     ts,p = scipy.stats.ttest_ind(x['N'][names], x['P'][names])
     pv = pd.Series(p, index=names).order()
     print pv[pv<0.05]
-    plt.savefig('counts_byanimal.png')
-    p=t[['pool','infection']]
-    fig,ax = plt.subplots(1,1)
+    #p=t[['pool','infection']]
+    #fig,ax = plt.subplots(1,1)
     #p.groupby(['pool'])
-    p.plot(kind='bar',by='pool')
+    #p.plot(kind='bar',by='pool')
+
     plt.show()
     return
 
@@ -529,6 +553,14 @@ def analyseisomirs():
     plt.show()
     return
 
+def checknovel():
+    novel = pd.read_csv('novel_conserved.csv')
+    for i,r in novel.iterrows():
+        ms=r['consensus mature sequence'].replace('u','t').upper()
+        ref = r['seedmatch']
+        print r['#miRNA'],ms,ref
+    return
+
 def test():
     base.seabornsetup()
     #path = '/opt/mirnaseq/data/vegh_13'
@@ -555,6 +587,7 @@ def test():
     plotFactors('results_mirdeep_rnafiltered')
     #compareIsomirsRef()
     #analyseisomirs()
+    #checknovel()
     return
 
 def main():

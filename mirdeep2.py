@@ -235,7 +235,7 @@ def analyseResults(path, outpath=None, **kwargs):
     novel = df[df.novel==True]
     idmap = getFilesMapping(path)
     k = filterExprResults(known,score=0,freq=.5,meanreads=200)
-    n = filterExprResults(novel,score=4,freq=.5,meanreads=200)
+    n = filterExprResults(novel,score=4,freq=.4,meanreads=200)
     cols = mirdeepcols
     core = pd.concat([k,n])
     base.dataframe2Fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
@@ -256,6 +256,8 @@ def analyseResults(path, outpath=None, **kwargs):
     print '%s/%s known' %(len(k),len(known))
     print '%s/%s novel' %(len(n),len(novel))
     print 'top 10 known account for %2.2f' %k['perc'][:10].sum()
+    print '%s are 3p strand' %len(k[k['#miRNA'].str.contains('3p')])
+    #print df[(df.mean_norm>300) & (df.freq<0.5)][cols[:7]]
     print
 
     k=k.set_index('#miRNA')

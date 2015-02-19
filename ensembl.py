@@ -129,7 +129,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
             a['location'] = getLocations(regions[0])
 
             #get RNAfold energy for each sequence
-            a['energy'] = a.apply(lambda x : base.RNAfold(x.seq, x['#miRNA']+'_'+x.species)[1],1)
+            a['energy'] = a.apply(lambda x : base.RNAfold(x.seq)[1],1)
             results.append(a)
             print a
         print '--------------------------------------------------------'
