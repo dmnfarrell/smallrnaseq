@@ -432,22 +432,85 @@ def getExpCondMap(path):
     condmap = condmap.dropna()
     return condmap
 
-def compareSubsets(path):
-    """compare found sets across time etc"""
+def getSubGroups(condmap, column, catnames=None, subcats=None):
+    """Get sub groups of conditions based on any factor column"""
+
+    c = condmap
+    if subcats != None:
+        c = condmap[condmap[column].isin(subcats)]
+    c = c.sort(column)
+    x = pd.Categorical(c[column],categories=catnames)
+    #labels for DE analysis (used in edgeR)
+    c['factor'] = x.labels
+    c['label'] = c.apply(lambda x: x.id+'_'+str(x.factor),1)
+    c = c.sort('factor')
+    #print c
+    return c
+
+def DEbyTime(df,condmap):
+    """DE over time groups"""
+
+    df = df.set_index('#miRNA')
+    infection = ['CTRL','MAP']
+    elisa = ['N','P']
+    #comparedgroups = [0, 6, 43, 46, 49]
+    comparedgroups = [['START','EARLY'], ['EARLY','LATE']]
+    groupnames = ['START','EARLY','LATE']
+    i=0
+    res = []
+    for inf in elisa:
+        for tps in comparedgroups:
+            c = condmap[condmap.elisa==inf]
+            c = getSubGroups(c, 'timegroup', groupnames, tps)
+            cols = c.id
+            data = df[cols]
+            data.columns = c.label
+            data.to_csv('decounts.csv')
+            de = base.runEdgeR('decounts.csv', 1.5)
+            print de
+            clabel = '_'.join(tps)+' '+inf
+            i+=1
+            de['comp'] = clabel
+            res.append(de)
+
+    #get heatmap
+    allde = pd.concat(res)
+    #plt.show()
+    return allde
+
+def DEbyInfection(df,condmap):
+    """DE over time groups"""
+
+    df = df.set_index('#miRNA')
+    times = ['START','EARLY','LATE']
+    i=0
+    res = []
+    for tg in times:
+        c = condmap[condmap.timegroup==tg]
+        c = getSubGroups(c, 'elisa', ['N','P'])
+        cols = c.id
+        data = df[cols]
+        data.columns = c.label
+        data.to_csv('decounts.csv')
+        de = base.runEdgeR('decounts.csv', 1.5)
+        print de
+        de['comp'] = 'CTRLVsMAP'+'_'+tg
+        res.append(de)
+        i+=1
+    allde = pd.concat(res)
+    return allde
+
+def DE():
+    path = 'results_mirdeep_rnafiltered'
     df = mdp.getResults(path)
-    #df = mdp.filterExprResults(df,meanreads=100,freq=0.2)
-    df=df.set_index('#miRNA')
-    cm = getExpCondMap(path)
-    c1 = cm[cm.month==0].id
-    nc1 = [i+'(norm)' for i in c1]
-    a = df[nc1]
-    a= a[a.mean(1)>100]
-    c2 = cm[cm.month==49].id
-    nc2 = [i+'(norm)' for i in c2]
-    b = df[nc2]
-    b= b[b.mean(1)>100]
-    print set(a.index) - set(b.index)
-    #compare start and end miRNA sets?
+    df = mdp.filterExprResults(df[df.novel==False],score=0,freq=.9,meanreads=200)
+    condmap = getExpCondMap(path)
+    det = DEbyTime(df,condmap)
+    dei = DEbyInfection(df,condmap)
+    allde = pd.concat([det,dei])
+    print allde
+    allde.to_csv('DE_all.csv')
+    #DEheatmap(det)
     return
 
 def plotFactors(path):
@@ -461,11 +524,10 @@ def plotFactors(path):
     cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
     normcols = [i+'(norm)' for i in cols]
     df = df[normcols]
-    #names = pd.read_csv('de_summary.csv').name
-    names = df.index[:60]
-    #names = ['bta-miR-423-5p','bta-miR-6529a','bta-miR-486','bta-miR-27a-3p','bta-miR-2285k',
-    #        'bta-miR-27b','bta-miR-128','23_13514','bta-miR-330','5_20172','10_1754']
-    #names = ['bta-miR-150','bta-miR-151-3p','bta-miR-186']
+    names = pd.read_csv('DE_all.csv').name
+    #names = df.index[:60]
+    #names = ['bta-miR-150','bta-miR-151-3p','bta-miR-186','bta-miR-205',
+    #        'bta-miR-92b','bta-miR-29a','bta-miR-101','bta-miR-423-5p','bta-miR-486']
     df=df[df.index.isin(names)]
     tporder = [0, 6, 43, 46, 49]
     tgorder = ['START','EARLY','LATE']
@@ -476,31 +538,28 @@ def plotFactors(path):
     t=df.T
     t.index = cols
     t = t.merge(condmap,left_index=True,right_on='id')
-    t=t[t.timegroup=='LATE']
+    #t=t[t.timegroup=='LATE']
     tm = pd.melt(t,id_vars=list(condmap.columns),
                    var_name='miRNA',value_name='read count')
-    '''g = base.sns.factorplot('time','read count', 'elisa', tm, col='miRNA', kind="point",
-                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
+    g = base.sns.factorplot('time','read count','elisa', tm, col='miRNA', kind="point",
+                            col_wrap=2,size=4,aspect=0.9,legend_out=True,sharey=False)
     g.set(xticklabels=tporder)
     plt.savefig('de_lineplots_timepoints.png')
-    g = base.sns.factorplot('timegroup','read count','elisa', tm, col='miRNA', kind="box",x_order=tgorder,
+    g = base.sns.factorplot('timegroup','read count','elisa', tm, col='miRNA', kind="bar",x_order=tgorder,
                             col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
-    plt.savefig('de_boxplots_timegroups.png')'''
-    g = base.sns.factorplot('time','read count', 'elisa', tm, col='miRNA', kind="point",
-                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
-    plt.savefig('de_animals_timepoints.png')
+    plt.savefig('de_timegroups.png')
 
-    '''g = base.sns.factorplot('miRNA','read count', 'elisa', tm, kind="box",
+    g = base.sns.factorplot('miRNA','read count', 'elisa', tm, kind="box",
                             size=8,aspect=1.5,legend_out=False,x_order=names)
     g.despine(offset=10, trim=True)
     g.set(yscale='log')
     locs, labels = plt.xticks()
     plt.setp(labels, rotation=45)
     plt.tight_layout()
-    plt.savefig('counts_byinfection.png')'''
+    plt.savefig('counts_byinfection.png')
 
-    g = base.sns.factorplot('elisa','read count', 'animal', data=tm, col='miRNA', kind="bar",
-                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False,
+    g = base.sns.factorplot('timegroup','read count','animal', data=tm, col='miRNA', kind="bar",
+                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False,x_order=tgorder,
                             palette='Spectral')
     plt.savefig('counts_byanimal.png')
 
@@ -514,20 +573,7 @@ def plotFactors(path):
     #p.groupby(['pool'])
     #p.plot(kind='bar',by='pool')
 
-    plt.show()
-    return
-
-def compareIsomirsRef():
-    """Compare top isomiRs from srnabench to miRBase ref seq"""
-    iso = pd.read_csv('srnabench_isomirs_dominant.csv')
-    #iso=iso[iso.freq>0.5]
-    mirbase = base.fasta2DataFrame('mature_btau_alt.fa')
-    x = iso.merge(mirbase,left_on='name',right_index=True)
-    s = x[x.read!=x.sequence]
-    print s.sort('total',ascending=False)[:20]
-    print len(iso), len(s)
-    print 'perc with different dominant isomir:', len(s)/float(len(x))
-    s.to_csv('isomirs_different.csv')
+    #plt.show()
     return
 
 def analyseisomirs():
@@ -553,14 +599,6 @@ def analyseisomirs():
     plt.show()
     return
 
-def checknovel():
-    novel = pd.read_csv('novel_conserved.csv')
-    for i,r in novel.iterrows():
-        ms=r['consensus mature sequence'].replace('u','t').upper()
-        ref = r['seedmatch']
-        print r['#miRNA'],ms,ref
-    return
-
 def test():
     base.seabornsetup()
     #path = '/opt/mirnaseq/data/vegh_13'
@@ -584,6 +622,7 @@ def test():
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     #novelConservation()
+    #DE()
     plotFactors('results_mirdeep_rnafiltered')
     #compareIsomirsRef()
     #analyseisomirs()
