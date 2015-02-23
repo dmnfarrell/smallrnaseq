@@ -78,7 +78,7 @@ def doHeatMap(df,fname=None,cmap='seismic'):
         f.savefig(fname+'.png')
     return ax
 
-def venndiagram(names,labels,ax=None):
+def venndiagram(names,labels,ax=None,**kwargs):
     """Plot venn diagrams"""
     from matplotlib_venn import venn2,venn3
     f=None
@@ -87,14 +87,14 @@ def venndiagram(names,labels,ax=None):
         ax=f.add_subplot(111)
     if len(names)==2:
         n1,n2=names
-        v = venn2([set(n1), set(n2)], set_labels=labels)
+        v = venn2([set(n1), set(n2)], set_labels=labels, **kwargs)
     elif len(names)==3:
         n1,n2,n3=names
-        v = venn3([set(n1), set(n2), set(n3)], set_labels=labels)
+        v = venn3([set(n1), set(n2), set(n3)], set_labels=labels, **kwargs)
     ax.axis('off')
     #f.patch.set_visible(False)
     ax.set_axis_off()
-    return f
+    return v
 
 def gzipfile(filename, remove=False):
     """Compress a file with gzip"""

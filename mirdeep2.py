@@ -195,7 +195,7 @@ def getResults(path):
         #apply 5p id so we can merge with results file and keep star seqs
         q['id'] = q['#miRNA'].apply(lambda x: x[:-2]+'5p' if str(x).endswith('3p') else x)
         #loses information on multiple precursors for a mature seq
-        q = q.merge(df,left_on=['id'],right_on=key)
+        q = q.merge(df,left_on=['id'],right_on=key).drop_duplicates('#miRNA')
         res.append(q)
     res = pd.concat(res)
 
@@ -235,7 +235,7 @@ def analyseResults(path, outpath=None, **kwargs):
     novel = df[df.novel==True]
     idmap = getFilesMapping(path)
     k = filterExprResults(known,score=0,freq=.5,meanreads=200)
-    n = filterExprResults(novel,score=4,freq=.4,meanreads=200)
+    n = filterExprResults(novel,score=4,freq=.5,meanreads=200)
     cols = mirdeepcols
     core = pd.concat([k,n])
     base.dataframe2Fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
