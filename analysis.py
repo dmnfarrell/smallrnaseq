@@ -454,7 +454,7 @@ def DEbyTime(df,condmap):
     infection = ['CTRL','MAP']
     elisa = ['N','P']
     #comparedgroups = [0, 6, 43, 46, 49]
-    comparedgroups = [['START','EARLY'], ['EARLY','LATE']]
+    comparedgroups = [['START','EARLY'], ['EARLY','LATE'],['START','LATE']]
     groupnames = ['START','EARLY','LATE']
     i=0
     res = []
@@ -542,11 +542,11 @@ def plotFactors(path):
     tm = pd.melt(t,id_vars=list(condmap.columns),
                    var_name='miRNA',value_name='read count')
     g = base.sns.factorplot('time','read count','elisa', tm, col='miRNA', kind="point",
-                            col_wrap=2,size=4,aspect=0.9,legend_out=True,sharey=False)
+                            col_wrap=3,size=4,aspect=0.9,legend_out=True,sharey=False)
     g.set(xticklabels=tporder)
     plt.savefig('de_lineplots_timepoints.png')
     g = base.sns.factorplot('timegroup','read count','elisa', tm, col='miRNA', kind="bar",x_order=tgorder,
-                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
+                            col_wrap=3,size=4,aspect=0.9,legend_out=True,sharey=False)
     plt.savefig('de_timegroups.png')
 
     g = base.sns.factorplot('miRNA','read count', 'elisa', tm, kind="box",
@@ -559,7 +559,7 @@ def plotFactors(path):
     plt.savefig('counts_byinfection.png')
 
     g = base.sns.factorplot('timegroup','read count','animal', data=tm, col='miRNA', kind="bar",
-                            col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False,x_order=tgorder,
+                            col_wrap=3,size=4,aspect=0.9,legend_out=True,sharey=False,x_order=tgorder,
                             palette='Spectral')
     plt.savefig('counts_byanimal.png')
 
@@ -568,11 +568,6 @@ def plotFactors(path):
     ts,p = scipy.stats.ttest_ind(x['N'][names], x['P'][names])
     pv = pd.Series(p, index=names).order()
     print pv[pv<0.05]
-    #p=t[['pool','infection']]
-    #fig,ax = plt.subplots(1,1)
-    #p.groupby(['pool'])
-    #p.plot(kind='bar',by='pool')
-
     #plt.show()
     return
 
@@ -606,7 +601,8 @@ def test():
     files = ['/opt/mirnaseq/analysis/test.fastq']
     #files = ['/opt/mirnaseq/data/vegh_13/SRR576286.fastq']
     #bidx =  ['mirbase-mature','Rfam_btau','bosTau6-tRNAs','noncodev4_btau','bos_taurus_alt']
-    bidx =  ['mirdeep_found','Rfam_btau','bosTau6-tRNAs','bostau-snRNA','noncodev4_btau','bos_taurus_alt']
+    bidx =  ['mirdeep_found','Rfam_btau','bosTau6-tRNAs','bostau-snRNA','noncodev4_btau',
+              'bos_taurus_alt']
     #adapters for our data
     adapters = ['TGGAATTCTCGGGTGCCAAGG','GCATTGTGGTTCAGTGGTAGAATTCTCGC']
     #adapters for Vegh data
@@ -614,7 +610,7 @@ def test():
     labels = {'bosTau6-tRNAs':'tRNA (GtRNAdb)', 'Rfam_btau':'rRNA (RFAM)',
                 'noncodev4_btau':'NONCODE v4', 'bos_taurus_alt':'UMD3.1',
                 'mirdeep_found':'miRNA (miRDeep2)'}
-    #mapRNAs(path=path, indexes=bidx, adapters=adapters)
+    #mapRNAs(files=files, indexes=bidx, adapters=adapters)
     #plotRNAmapped(labels)
     #summariseReads(path)
     #removeKnownRNAs(path, adapters)
