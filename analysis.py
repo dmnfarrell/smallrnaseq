@@ -413,7 +413,7 @@ def mirnaDiscoveryTest(sourcefile):
 def novelConservation():
     import ensembl
     df = pd.read_csv('novel_mirdeep.csv')
-    ensembl.getmiRNAOrthologs(df)
+    #ensembl.getmiRNAOrthologs(df)
     ensembl.summarise(df)
     return
 
@@ -621,12 +621,11 @@ def test():
     #compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
-    #novelConservation()
+    novelConservation()
     #DE()
-    plotFactors('results_mirdeep_rnafiltered')
+    #plotFactors('results_mirdeep_rnafiltered')
     #compareIsomirsRef()
     #analyseisomirs()
-    #checknovel()
     return
 
 def main():

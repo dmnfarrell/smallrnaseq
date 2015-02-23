@@ -98,7 +98,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
         mature = r['consensus mature sequence'].replace('u','t').upper()
         star = r['consensus star sequence'].replace('u','t').upper()
         seed = r['seed'].replace('u','t').upper()
-        seedmatch = r['mirbase seed match']
+        mbmatch = r['mirbase seed match']
         print r['#miRNA'], seed, mature, star, seedmatch
         c,locs,strand = r['precursor coordinate'].split(':')
         start,end = locs.split('..')
@@ -112,7 +112,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
             a['ident'] = getIdentities(aln)
             print 'max identity: %s' %a.ident.max()
             a['seedpos'] = getSeqConservation(aln, seed)
-            a['seedmatch'] = seedmatch
+            a['mirbase'] = mbmatch
             orthgenes = getGenesinRegion(regions[0])
             targets=[]
             #find possible targets in 3'UTR of containing gene
@@ -205,28 +205,30 @@ def getESTs(region):
     return
 
 def summarise(df):
-    """Categorise candidates from ensembl results"""
+    """Summarise candidates from ensembl results"""
 
     n = pd.read_csv('novel_orthologs.csv')
     x = n.groupby('#miRNA').agg({
                     'seq':np.size,
-                    'energy':np.min,'ident':np.max,
+                    'energy':np.min,
+                    'ident': lambda x: len(x[x>=0.65]), #np.max,
                     'seed': base.first,
                     'seedpos': lambda x: len(x)-list(x).count(-1),
-                    'seedmatch':base.first,
+                    'mirbase': base.first,
                     'genes': base.first, 'location': base.first })
+
 
     x = x.merge(df[['#miRNA','read_count','miRDeep2 score','freq','consensus mature sequence']],
                 left_index=True,right_on='#miRNA')
     x=x.set_index('#miRNA')
     #entries with at least 1 alignment and conserved seed are best candidates
     def isconserved(x):
-        return (x.seq>1) & (x.seedpos>=2) & (x.ident>=0.9)
+        return (x.seq>1) & (x.seedpos>=2)
     x['conserved'] = x.apply(isconserved,1)
     x = x.sort(['conserved','read_count'],ascending=False)
-    print x
+    x=x.fillna('-')
     x.to_csv('novel_conserved.csv',float_format='%2.2f')
-    return
+    return x
 
 def test():
 
