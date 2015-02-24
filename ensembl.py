@@ -99,11 +99,11 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
         star = r['consensus star sequence'].replace('u','t').upper()
         seed = r['seed'].replace('u','t').upper()
         mbmatch = r['mirbase seed match']
-        print r['#miRNA'], seed, mature, star, seedmatch
+        print r['#miRNA'], seed, mature, star, mbmatch
         c,locs,strand = r['precursor coordinate'].split(':')
         start,end = locs.split('..')
         coords = (c,int(start),int(end),strand)
-        regions, aln = getSyntenicAlignment(comp, ref, coords)
+        regions, aln = getSyntenicAlignment(comp, ref, coords, fname=r['#miRNA']+'.aln.fa')
 
         if aln != None:
             a = base.cogentAlignment2DataFrame(aln.degap())
@@ -111,7 +111,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
             a['seed'] = seed
             a['ident'] = getIdentities(aln)
             print 'max identity: %s' %a.ident.max()
-            a['seedpos'] = getSeqConservation(aln, seed)
+            a['seedcons'] = getSeqConservation(aln, seed)
             a['mirbase'] = mbmatch
             orthgenes = getGenesinRegion(regions[0])
             targets=[]
@@ -208,24 +208,26 @@ def summarise(df):
     """Summarise candidates from ensembl results"""
 
     n = pd.read_csv('novel_orthologs.csv')
+    n = n[n.ident!=0]
     x = n.groupby('#miRNA').agg({
                     'seq':np.size,
-                    'energy':np.min,
-                    'ident': lambda x: len(x[x>=0.65]), #np.max,
+                    'energy':np.mean,
+                    'ident': {'maxident': np.max, 'idents': lambda r: len(r[r>=0.65])},
+
                     'seed': base.first,
-                    'seedpos': lambda x: len(x)-list(x).count(-1),
+                    'seedcons': lambda r: len(r[r>-1]),
                     'mirbase': base.first,
                     'genes': base.first, 'location': base.first })
-
-
+    x.columns = x.columns.get_level_values(0)
+    print x
     x = x.merge(df[['#miRNA','read_count','miRDeep2 score','freq','consensus mature sequence']],
                 left_index=True,right_on='#miRNA')
     x=x.set_index('#miRNA')
     #entries with at least 1 alignment and conserved seed are best candidates
     def isconserved(x):
-        return (x.seq>1) & (x.seedpos>=2)
-    x['conserved'] = x.apply(isconserved,1)
-    x = x.sort(['conserved','read_count'],ascending=False)
+        return (x.seq>1) & (x.seedcons>=2)
+    #x['conserved'] = x.apply(isconserved,1)
+    x = x.sort(['read_count'],ascending=False)
     x=x.fillna('-')
     x.to_csv('novel_conserved.csv',float_format='%2.2f')
     return x

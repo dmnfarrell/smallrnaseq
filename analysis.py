@@ -413,7 +413,7 @@ def mirnaDiscoveryTest(sourcefile):
 def novelConservation():
     import ensembl
     df = pd.read_csv('novel_mirdeep.csv')
-    #ensembl.getmiRNAOrthologs(df)
+    ensembl.getmiRNAOrthologs(df)
     ensembl.summarise(df)
     return
 

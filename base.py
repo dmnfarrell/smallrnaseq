@@ -356,7 +356,6 @@ def cogentAlignment2DataFrame(A):
     """Pycogent alignment to dataframe"""
 
     res=[]
-
     for s in zip(A.Names,A.Seqs):
         res.append((s[0].split(':')[0],str(s[1])))
     df = pd.DataFrame(res,columns=['species','seq'])
