@@ -5,7 +5,7 @@
    Copyright (C) Damien Farrell
 """
 
-import sys, os, string, types, re
+import sys, os, string, types, re, csv
 import shutil, glob, collections
 import itertools
 import subprocess
@@ -594,6 +594,23 @@ def analyseisomirs():
     plt.show()
     return
 
+def getmiFam():
+    """Get miRBase family data"""
+
+    cr=list(csv.reader(open('miFam.csv','r')))
+    data=[]
+    i=0
+    for row in cr:
+        if row[0]=='ID':
+            fam=row[1]
+        elif row[0]=='AC' or row[0]=='//':
+            continue
+        else:
+            data.append((row[1],row[2],fam))
+        i+=1
+    df = pd.DataFrame(data,columns=['id','name','family'])
+    return df
+
 def test():
     base.seabornsetup()
     #path = '/opt/mirnaseq/data/vegh_13'
@@ -618,6 +635,7 @@ def test():
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     novelConservation()
+    #getmiFam()
     #DE()
     #plotFactors('results_mirdeep_rnafiltered')
     #compareIsomirsRef()

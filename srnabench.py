@@ -267,11 +267,14 @@ def analyseIsomiRs(iso):
     fig.savefig('srnabench_isomirs.png',dpi=150)
     #length dists of isomirs
     fig,ax = plt.subplots(1,1)
-    x = iso[iso.name.isin(iso.name[:40])]
+    x = iso[iso.name.isin(iso.name[:80])]
     bins=range(15,30,1)
     x.hist('length',bins=bins,ax=ax,by='name',sharex=True,color="gray")
+    #base.sns.distplot(iso.length, kde=False)
     fig.suptitle('isomiR length distributions')
     fig.savefig('srnabench_isomir_lengths.png',dpi=150)
+    #l = g.agg({'length':[np.median,np.std]})
+
     #print iso[subcols]
     plt.close('all')
 
@@ -279,7 +282,7 @@ def analyseIsomiRs(iso):
     #d = iso[iso.name.isin(diff)][subcols+['pos','variant']]
     #for i,df in d.groupby('name'):
     #    print df
-    print iso[iso.pos<-5][subcols]
+    #print iso[iso.pos<-5][subcols]
 
     #lv = iso[-iso.variant.str.contains('exact')]
     c=iso.variant.value_counts()
