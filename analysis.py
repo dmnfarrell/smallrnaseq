@@ -413,6 +413,7 @@ def mirnaDiscoveryTest(sourcefile):
 def novelConservation():
     import ensembl
     df = pd.read_csv('novel_mirdeep.csv')
+    #df = pd.read_csv('known_mirdeep.csv')
     ensembl.getmiRNAOrthologs(df)
     ensembl.summarise(df)
     return
@@ -509,7 +510,7 @@ def DE():
     dei = DEbyInfection(df,condmap)
     allde = pd.concat([det,dei])
     print allde
-    allde.to_csv('DE_all.csv')
+    allde.to_csv('DE_all.csv')#,float_format='%.4f')
     #DEheatmap(det)
     return
 

@@ -117,12 +117,12 @@ def run(infile, refgenome, bowtieindex, mature='', hairpin='', other='',
         pass #move files..
     return
 
-def quantifier(path, mature, precursor, star=None, collapsed='collapsedreads.fa'):
+def quantifier(path, mature, precursor, star=None, collapsed='collapsedreads.fa', time='novel'):
     """Run quantifier module using custom known mature/precursors"""
 
     current = os.getcwd()
     os.chdir(path)
-    cmd = 'quantifier.pl -p %s -m %s -r %s -y novel -k -d' %(precursor,mature,collapsed)
+    cmd = 'quantifier.pl -p %s -m %s -r %s -y %s -k -d -n -g 1 -U' %(precursor,mature,collapsed,time)
     print cmd
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     os.chdir(current)
@@ -167,17 +167,19 @@ def getResults(path):
     resfile = glob.glob(os.path.join(path,'result*.csv'))[0]
     df = readResultsFile(resfile)
 
-    #use quantifier module to get novel expression results from predicted precursors if not done already
-    novelmature = os.path.join(path, 'novel_mature.fa')
-    novelprecursor = os.path.join(path, 'novel_precursor.fa')
-    if not os.path.exists(novelmature):
+    #use quantifier module to get novel expression results from predicted precursors
+    #if not done already
+    novelmature = os.path.join(path,'novel_mature.fa')
+    novelprecursor = os.path.join(path,'novel_precursor.fa')
+    res = os.path.join(path, 'expression_novel.html')
+    reads = 'collapsedreads.fa'
+    if not os.path.exists(res):
         novel = df[df.novel==True]
         mkey = 'consensus mature sequence'
         pkey = 'consensus precursor sequence'
         base.dataframe2Fasta(novel, mkey, 'provisional id', outfile=novelmature)
         base.dataframe2Fasta(novel, pkey, 'provisional id', outfile=novelprecursor)
-        quantifier(path, os.path.abspath(novelmature), os.path.abspath(novelprecursor),
-                    'collapsedreads.fa')
+        quantifier(path, os.path.abspath(novelmature), os.path.abspath(novelprecursor))
 
     #get expression results and filter by score by merging with predictions
     files = glob.glob(os.path.join(path,'miRNAs_expressed_all_samples*.csv'))
@@ -213,10 +215,10 @@ def filterExprResults(n, cols=None, score=0, freq=0.5, meanreads=0, totalreads=5
     if cols is None:
         cols = [i for i in n.columns if (i.startswith('s') and len(i)<=3)]
     normcols = [i+'(norm)' for i in cols]
-    n = n[(n['miRDeep2 score']>score)]# | (n['read_count']>10000)]
+    n = n[(n['miRDeep2 score']>=score)]# | (n['read_count']>10000)]
     n = n[n.freq>freq]
-    n = n[n['read_count']>totalreads]
-    n = n[n['mean_norm']>meanreads]
+    n = n[n['read_count']>=totalreads]
+    n = n[n['mean_norm']>=meanreads]
     n = n[n['randfold'].isin(['yes','-'])]
     #n = n[n['rfam alert']=='-']
     n = n.reset_index(drop=True)
@@ -235,7 +237,7 @@ def analyseResults(path, outpath=None, **kwargs):
     novel = df[df.novel==True]
     idmap = getFilesMapping(path)
     k = filterExprResults(known,score=0,freq=.5,meanreads=200)
-    n = filterExprResults(novel,score=4,freq=.5,meanreads=200)
+    n = filterExprResults(novel,score=4,freq=.8,meanreads=200)
     cols = mirdeepcols
     core = pd.concat([k,n])
     base.dataframe2Fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
@@ -389,7 +391,7 @@ def testQuantifier(path):
     return
 
 def checkQuantifierResults(path):
-    """Check quantifier vs results file"""
+    """Check quantifier vs results file in case of miscounts"""
 
     resfile = glob.glob(os.path.join(path,'result*.csv'))[0]
     df = readResultsFile(resfile)
@@ -398,13 +400,15 @@ def checkQuantifierResults(path):
     key='provisional id'
     m=q.merge(df,left_on='#miRNA',right_on=key).drop_duplicates('#miRNA')
     m.sc = m['miRDeep2 score']
-    m['diff'] = m['read_count']-m['total read count']
+    m['err'] = abs(m['read_count']-m['total read count'])
     cols=['#miRNA','total read count','read_count','miRDeep2 score']
-    print m.sort('diff',ascending=False)[cols]
-    #m['size'] = np.select([m.sc < 2, m.sc < 3, m.sc < 4], [20,40,50], 80)
-    m.plot(x='total read count',y='read_count', kind='scatter',s=60,alpha=0.6)
+    print m[m.err>400].sort('total read count',ascending=False)[cols]
+    m['size'] = np.select([m.sc < 2, m.sc < 3, m.sc < 4], [20,40,50], 80)
+    f,ax=plt.subplots(1,1)
     plt.xscale('log')
     plt.yscale('log')
+    m.plot(x='total read count',y='read_count', kind='scatter',s=60,alpha=0.6,ax=ax)
+    #ax.plot([0, 1], [0, 1], transform=ax.transAxes,color='red',alpha=0.7)
     plt.show()
     return
 

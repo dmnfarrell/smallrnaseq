@@ -213,15 +213,14 @@ def summarise(df):
                     'seq':np.size,
                     'energy':np.mean,
                     'ident': {'maxident': np.max, 'idents': lambda r: len(r[r>=0.65])},
-
                     'seed': base.first,
                     'seedcons': lambda r: len(r[r>-1]),
                     'mirbase': base.first,
                     'genes': base.first, 'location': base.first })
     x.columns = x.columns.get_level_values(0)
-    print x
     x = x.merge(df[['#miRNA','read_count','miRDeep2 score','freq','consensus mature sequence']],
                 left_index=True,right_on='#miRNA')
+    #print x
     x=x.set_index('#miRNA')
     #entries with at least 1 alignment and conserved seed are best candidates
     def isconserved(x):
