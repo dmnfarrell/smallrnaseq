@@ -64,12 +64,17 @@ def seabornsetup():
 def first(x):
     return x.iloc[0]
 
-def doHeatMap(df,fname=None,cmap='seismic'):
+def doHeatMap(df,fname=None,cmap='seismic',log=False):
     """Plot a heat map"""
+
+    from matplotlib.colors import LogNorm
     f=plt.figure(figsize=(8,8))
     ax=f.add_subplot(111)
-    hm = ax.pcolor(df,cmap=cmap,vmax=-df.min().min())
-    plt.colorbar(hm,ax=ax,shrink=0.6)
+    norm=None
+    if log==True:
+        norm=LogNorm(vmin=df.min().min(), vmax=df.max().max())
+    hm = ax.pcolor(df,cmap=cmap,norm=norm)
+    plt.colorbar(hm,ax=ax,shrink=0.6,norm=norm)
     plt.yticks(np.arange(0.5, len(df.index), 1), df.index)
     plt.xticks(np.arange(0.5, len(df.columns), 1), df.columns, rotation=90)
     #ax.axvline(4, color='gray'); ax.axvline(8, color='gray')

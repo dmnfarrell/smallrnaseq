@@ -514,6 +514,26 @@ def DE():
     #DEheatmap(det)
     return
 
+def clustering(df):
+    """see http://stackoverflow.com/questions/2455761 """
+
+    from scipy.cluster.hierarchy import linkage, dendrogram, leaves_list
+    import scipy.spatial.distance as dist
+    f = plt.figure()
+    distm = dist.pdist(df,'euclidean')
+    lm = linkage(distm)
+    #print lm
+    dendro = dendrogram(lm,labels=df.index)
+    leaves = dendro['leaves']
+    #axdendro = f.add_axes([0.09,0.1,0.2,0.8])
+    hmorder = leaves_list(lm)
+    #print hmorder
+    ordered = df.values[hmorder,:]
+    #df.index = df.index[hmorder,:]
+    cl = pd.DataFrame(data=ordered, index=df.index)
+    #base.doHeatMap(cl,cmap='Blues',log=True)
+    return
+
 def plotFactors(path):
     """Plots for various views of mirdeep results using seaborn facetgrids"""
 
@@ -529,6 +549,7 @@ def plotFactors(path):
     #names = df.index[:60]
     #names = ['bta-miR-150','bta-miR-151-3p','bta-miR-186','bta-miR-205',
     #        'bta-miR-92b','bta-miR-29a','bta-miR-101','bta-miR-423-5p','bta-miR-486']
+    #names = ['12_3861', '14_5598', '20_11630', '28_16560', '13_4103', '9_24296']
     df=df[df.index.isin(names)]
     tporder = [0, 6, 43, 46, 49]
     tgorder = ['START','EARLY','LATE']
@@ -540,6 +561,11 @@ def plotFactors(path):
     t.index = cols
     t = t.merge(condmap,left_index=True,right_on='id')
     #t=t[t.timegroup=='LATE']
+    gp = t.groupby(['pool','animal']).size()
+    gp.unstack(level=0).plot(kind='bar',subplots=True,grid=False)
+    plt.tight_layout()
+    plt.savefig('pools_animalbias.png')
+
     tm = pd.melt(t,id_vars=list(condmap.columns),
                    var_name='miRNA',value_name='read count')
     g = base.sns.factorplot('time','read count','elisa', tm, col='miRNA', kind="point",
@@ -559,8 +585,8 @@ def plotFactors(path):
     plt.tight_layout()
     plt.savefig('counts_byinfection.png')
 
-    g = base.sns.factorplot('timegroup','read count','animal', data=tm, col='miRNA', kind="bar",
-                            col_wrap=3,size=4,aspect=0.9,legend_out=True,sharey=False,x_order=tgorder,
+    g = base.sns.factorplot('animal','read count', data=tm, col='miRNA', kind="bar",
+                            col_wrap=3,size=4,aspect=2,legend_out=True,sharey=False,#x_order=tgorder,
                             palette='Spectral')
     plt.savefig('counts_byanimal.png')
 
@@ -612,6 +638,34 @@ def getmiFam():
     df = pd.DataFrame(data,columns=['id','name','family'])
     return df
 
+def exprAnalysis(path):
+    #heatmap across animals
+
+    df = mdp.getResults(path)
+    df = mdp.filterExprResults(df,meanreads=200)
+    df = df[df.novel==False]
+    condmap = getExpCondMap(path)
+    df=df.set_index('#miRNA')
+    cols,normcols=mdp.getColumnNames(df)
+    df = df[normcols]
+    df=df.replace(0,.1)
+    t=df.T
+    t.index = cols
+    t = t.merge(condmap,left_index=True,right_on='id',how='inner')
+
+    g = t.groupby('animal').mean()
+    #t=t.set_index('animal').sort()
+    #print t[t.columns[:3]]
+    names = df.index
+    clustering(g)
+    #base.doHeatMap(g[names],cmap='YlGnBu',log=True)
+    from matplotlib.colors import LogNorm
+    #hm = plt.pcolor(t,cmap='seismic',
+    #                norm=LogNorm(vmin=t.min().min(), vmax=t.max().max()))
+    #plt.savefig('heatmap_expr.png')
+    plt.show()
+    return
+
 def test():
     base.seabornsetup()
     #path = '/opt/mirnaseq/data/vegh_13'
@@ -635,10 +689,11 @@ def test():
     #compareMethods()
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
-    novelConservation()
+    #novelConservation()
     #getmiFam()
     #DE()
-    #plotFactors('results_mirdeep_rnafiltered')
+    plotFactors('results_mirdeep_rnafiltered')
+    #exprAnalysis('results_mirdeep_rnafiltered')
     #compareIsomirsRef()
     #analyseisomirs()
     return
