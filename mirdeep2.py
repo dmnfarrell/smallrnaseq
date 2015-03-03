@@ -128,6 +128,15 @@ def quantifier(path, mature, precursor, star=None, collapsed='collapsedreads.fa'
     os.chdir(current)
     return
 
+def getpdfPath(path):
+    """get path to pdfs"""
+    ppath = glob.glob(os.path.join(path,'pdf*'))[0]
+    return ppath
+
+def getresultsHtml(path):
+    resfile = glob.glob(os.path.join(path,'result*html'))[0]
+    return resfile
+
 def moveResults(dest):
     """Move results from mirdeep to a clean folder"""
 

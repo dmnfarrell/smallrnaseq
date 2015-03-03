@@ -662,8 +662,9 @@ def exprAnalysis(path):
     from matplotlib.colors import LogNorm
     #hm = plt.pcolor(t,cmap='seismic',
     #                norm=LogNorm(vmin=t.min().min(), vmax=t.max().max()))
-    #plt.savefig('heatmap_expr.png')
-    plt.show()
+    plt.title('clustering by mean counts per animal')
+    plt.savefig('expr_clusters.png')
+    #plt.show()
     return
 
 def test():

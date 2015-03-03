@@ -116,7 +116,7 @@ def getResults(path):
         r = readResultsFile(o, 'mature_sense.grouped')
         x = getNovel(o)
         if x is not None:
-            print len(x), o
+            #print len(x), o
             n.append(x)
         if r is not None:
             k.append(r)
@@ -141,6 +141,7 @@ def getResults(path):
     g['freq'] = g.freq/float(samples)
     k = p.merge(g,left_index=True,right_index=True)
     k = k.reset_index()
+    k = k.fillna(0)
     k = k.sort('mean read count',ascending=False)
     #normaliseCols(k, cols)
     #combine isomir results
@@ -186,7 +187,7 @@ def getIsomiRs(path):
     df['path'] = os.path.basename(path)
     return df
 
-def analyseResults(k,n,iso,outpath=None):
+def analyseResults(k,n,outpath=None):
     """Summarise multiple results"""
 
     if outpath != None:
@@ -214,15 +215,15 @@ def analyseResults(k,n,iso,outpath=None):
     k[k.columns-cols].sum().plot(kind='bar',ax=ax)
     fig.savefig('srnabench_total_persample.png')
     print
-    if iso is not None:
-        analyseIsomiRs(iso)
     return k
 
-def analyseIsomiRs(iso):
+def analyseIsomiRs(iso,outpath=None):
     """Analyse isomiR results in detail"""
 
     if iso is None:
         return
+    if outpath != None:
+        os.chdir(outpath)
     subcols = ['name','read','isoClass','NucVar','total','freq']
     iso = iso.sort('total', ascending=False)
     #filter low abundance reads same as profiling
@@ -310,7 +311,7 @@ def analyseIsomiRs(iso):
     fig.savefig('srnabench_isomir_variantlengths.png')
     #plt.show()
     iso.to_csv('srnabench_isomirs_all.csv',index=False)
-    return
+    return top
 
 def plotReadCountDists(df,h=8):
     """Boxplots of read count distributions per miRNA"""
@@ -387,7 +388,8 @@ def main():
         runAll(opts.input, **options)
     elif opts.analyse != None:
         k,n,iso = getResults(opts.analyse)
-        analyseResults(k,n,iso)
+        analyseResults(k,n)
+        analyseIsomiRs(iso)
     else:
         test()
 
