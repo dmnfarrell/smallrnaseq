@@ -269,12 +269,18 @@ def analyseIsomiRs(iso,outpath=None):
     ax.set_ylabel('total reads')
     fig.savefig('srnabench_isomirs.png',dpi=150)
     fig,ax = plt.subplots(1,1)
-    top.hist('domisoperc',ax=ax)
+    top.hist('domisoperc',bins=15,ax=ax)
     fig.suptitle('distribution of dominant isomiR share of reads')
     fig.savefig('srnabench_isomir_domperc.png',dpi=150)
-    #length dists of isomirs
+
     fig,ax = plt.subplots(1,1)
     x = iso[iso.name.isin(iso.name[:40])]
+    #print x
+    x[:10].plot(y='total',kind='bar',ax=ax,by='name',subplots=True,sharex=False)
+    fig.savefig('srnabench_isomir_counts.png',dpi=150)
+    #length dists of isomirs
+
+    fig,ax = plt.subplots(1,1)
     bins=range(15,30,1)
     x.hist('length',bins=bins,ax=ax,by='name',sharex=True,color="gray")
     #base.sns.distplot(iso.length, kde=False)

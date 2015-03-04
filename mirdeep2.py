@@ -122,7 +122,7 @@ def quantifier(path, mature, precursor, star=None, collapsed='collapsedreads.fa'
 
     current = os.getcwd()
     os.chdir(path)
-    cmd = 'quantifier.pl -p %s -m %s -r %s -y %s -k -d -n -g 1 -U' %(precursor,mature,collapsed,time)
+    cmd = 'quantifier.pl -p %s -m %s -r %s -y %s -k -d -g 1 -U' %(precursor,mature,collapsed,time)
     print cmd
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     os.chdir(current)
