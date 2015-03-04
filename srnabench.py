@@ -54,6 +54,8 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter='',
            ' p=3' %(srbpath,srbpath,infile,ref,outdir,predict))
     if adapter != '':
         cmd += ' adapter=%s' %adapter
+    else:
+        cmd += ' guessAdapter=true'
     print cmd
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     print result
@@ -266,9 +268,13 @@ def analyseIsomiRs(iso,outpath=None):
     ax.set_xlabel('no. isomiRs')
     ax.set_ylabel('total reads')
     fig.savefig('srnabench_isomirs.png',dpi=150)
+    fig,ax = plt.subplots(1,1)
+    top.hist('domisoperc',ax=ax)
+    fig.suptitle('distribution of dominant isomiR share of reads')
+    fig.savefig('srnabench_isomir_domperc.png',dpi=150)
     #length dists of isomirs
     fig,ax = plt.subplots(1,1)
-    x = iso[iso.name.isin(iso.name[:80])]
+    x = iso[iso.name.isin(iso.name[:40])]
     bins=range(15,30,1)
     x.hist('length',bins=bins,ax=ax,by='name',sharex=True,color="gray")
     #base.sns.distplot(iso.length, kde=False)
