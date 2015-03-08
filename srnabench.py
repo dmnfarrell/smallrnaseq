@@ -162,9 +162,9 @@ def getResults(path):
     #novel
     if len(n)>0:
         n = pd.concat(n)
-        print n[n.columns[:8]].sort(['chrom','5pSeq'])
+        #print n[n.columns[:8]].sort(['chrom','5pSeq'])
         n = n.pivot_table(index=['5pSeq','chrom'], columns='path', values='5pRC')
-        print n[n.columns[:3]]
+        #print n[n.columns[:3]]
         #n.columns=cols
     else:
         n=None
@@ -229,8 +229,9 @@ def analyseIsomiRs(iso,outpath=None):
     subcols = ['name','read','isoClass','NucVar','total','freq']
     iso = iso.sort('total', ascending=False)
     #filter low abundance reads same as profiling
-    iso = iso[(iso.total>10) & (iso.freq>0.6)]
+    iso = iso[(iso.total>10) & (iso.freq>0.5)]
     iso['length'] = iso.read.str.len()
+
     #parse classes info
     def parseisoinfo(r):
         '''parse srnabench hierarchical scheme'''
@@ -246,6 +247,9 @@ def analyseIsomiRs(iso,outpath=None):
 
     #get top isomir per mirRNA
     g = iso.groupby('name', as_index=False)
+    #first add col for each isomirs percentage in its group
+    totals = g.agg({'total':np.sum}).set_index('name')
+    iso['perc'] = iso.apply(lambda r: r.total/totals.ix[r['name']].total,1)
     t=[]
     for i,x in g:
         r = base.first(x)
