@@ -98,11 +98,27 @@ def plotResults(k):
     fig.savefig('srnabench_summary_known.png',dpi=80)
     return
 
-def normaliseCols(df, cols):
+def normaliseCols(df):
     def n(s):
-        return s/s.sum()
-    print df[cols].apply(n, axis=0)
-    return
+        return s/s.sum()*1e6
+    cols,normcols = getColumnNames(df)
+    x = df[cols].apply(n, axis=0)
+    x.columns = [i+'_norm' for i in cols]
+    df = df.merge(x,left_index=True, right_index=True)
+    df['mean_norm'] = df[normcols].apply(lambda r: r[r.nonzero()[0]].mean(),1)
+    return df
+
+def getColumnNames(df):
+    cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
+    normcols = [i+'_norm' for i in cols]
+    return cols, normcols
+
+def filterExprResults(df, freq=0.5, meanreads=0, totalreads=50):
+    c,normcols = getColumnNames(df)
+    df = df[df.freq>freq]
+    df = df[df['total']>=totalreads]
+    df = df[df['mean_norm']>=meanreads]
+    return df
 
 def getResults(path):
     """Fetch results for all dirs and aggregate read counts"""
@@ -144,8 +160,9 @@ def getResults(path):
     k = p.merge(g,left_index=True,right_index=True)
     k = k.reset_index()
     k = k.fillna(0)
-    k = k.sort('mean read count',ascending=False)
-    #normaliseCols(k, cols)
+    k = normaliseCols(k)
+    k = k.sort('mean_norm',ascending=False)
+
     #combine isomir results
     if len(m)>0:
         m = pd.concat(m)
@@ -196,10 +213,11 @@ def analyseResults(k,n,outpath=None):
         os.chdir(outpath)
     ky1 = 'unique reads'
     ky2 =  'read count' #'RC'
-    cols = ['name','freq','mean read count','total','perc']
+    cols = ['name','freq','mean read count','mean_norm','total','perc']
     print
     print 'found:'
-    final = k[(k['mean read count']>=10) & (k['freq']>=.8)]
+    idcols,normcols = getColumnNames(k)
+    final = filterExprResults(k,freq=.8,meanreads=200)
     print final[cols]
     print '-------------------------------'
     print '%s total' %len(k)
@@ -214,7 +232,7 @@ def analyseResults(k,n,outpath=None):
     fig = plotReadCountDists(final)
     fig.savefig('srnabench_known_counts.png')
     fig,ax = plt.subplots(figsize=(10,6))
-    k[k.columns-cols].sum().plot(kind='bar',ax=ax)
+    k[idcols].sum().plot(kind='bar',ax=ax)
     fig.savefig('srnabench_total_persample.png')
     print
     return k
@@ -271,19 +289,14 @@ def analyseIsomiRs(iso,outpath=None):
     ax.set_title('no. isomiRs per miRNA vs total adundance')
     ax.set_xlabel('no. isomiRs')
     ax.set_ylabel('total reads')
-    fig.savefig('srnabench_isomirs.png',dpi=150)
+    fig.savefig('srnabench_isomir_counts.png',dpi=150)
     fig,ax = plt.subplots(1,1)
-    top.hist('domisoperc',bins=15,ax=ax)
+    #top.hist('domisoperc',bins=20,ax=ax)
+    base.sns.distplot(top.domisoperc,bins=20,ax=ax,kde_kws={"lw": 2})
     fig.suptitle('distribution of dominant isomiR share of reads')
     fig.savefig('srnabench_isomir_domperc.png',dpi=150)
 
-    fig,ax = plt.subplots(1,1)
     x = iso[iso.name.isin(iso.name[:40])]
-    #print x
-    x[:10].plot(y='total',kind='bar',ax=ax,by='name',subplots=True,sharex=False)
-    fig.savefig('srnabench_isomir_counts.png',dpi=150)
-    #length dists of isomirs
-
     fig,ax = plt.subplots(1,1)
     bins=range(15,30,1)
     x.hist('length',bins=bins,ax=ax,by='name',sharex=True,color="gray")
@@ -334,10 +347,11 @@ def plotReadCountDists(df,h=8):
 
     w=int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
+    cols,normcols = getColumnNames(df)
     df = df.set_index('name')
-    df = df.drop(['freq','mean read count','total','perc'],1)
-    t=df.T
-    t.index = df.columns
+    n = df[normcols]
+    t=n.T
+    t.index = n.columns
     #base.sns.boxplot(t,linewidth=1.0,color='coolwarm_r',saturation=0.2,)
     t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
     ax.set_yscale('log')
