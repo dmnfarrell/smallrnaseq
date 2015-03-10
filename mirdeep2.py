@@ -218,6 +218,11 @@ def getResults(path):
     #res['cv'] = res['std']/res['mean_norm']
     return res
 
+def getColumnNames(df):
+    cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
+    normcols = [i+'(norm)' for i in cols]
+    return cols, normcols
+
 def filterExprResults(n, cols=None, score=0, freq=0.5, meanreads=0, totalreads=50):
     """Additional filters for abundances/no. samples"""
 
@@ -289,15 +294,10 @@ def analyseResults(path, outpath=None, **kwargs):
     fig = plotReadCountDists(k)
     fig.savefig('mirdeep_known_counts.png')
 
-    '''fig=plotSampleDist(n, normcols)
-    fig.savefig('mirdeep_novel_persamplecounts.png')
-    fig=plotSampleDist(k, normcols)
-    fig.savefig('mirdeep_known_persamplecounts.png')'''
     #perSampleDists(k)
 
     fig,ax = plt.subplots(figsize=(10,6))
     core[idcols].sum().plot(kind='bar',ax=ax)
-    #core.columns = idmap.filename
     plt.title('total miRNA counts per sample (unnormalised)')
     plt.tight_layout()
     fig.savefig('mirdeep_total_persample.png')
@@ -321,19 +321,14 @@ def plotReadCountDists(df,h=8):
     df = df[normcols]
     t=df.T
     t.index = cols
-    #base.sns.boxplot(t,linewidth=1.0,color='coolwarm_r',saturation=0.2,)
-    t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
-    #base.sns.despine(trim=True)
+    base.sns.boxplot(t,linewidth=1.0,color='coolwarm_r',saturation=0.2,)
+    #t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
+    base.sns.despine(trim=True)
     ax.set_yscale('log')
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
     plt.ylabel('read count')
     plt.tight_layout()
     return fig
-
-def getColumnNames(df):
-    cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
-    normcols = [i+'(norm)' for i in cols]
-    return cols, normcols
 
 def perSampleDists(df,cols=None,names=None):
 
@@ -353,31 +348,6 @@ def perSampleDists(df,cols=None,names=None):
     plt.tight_layout()
     plt.savefig('mirdeep_persample_counts.png')
     return
-
-def plotSampleDist(df, cols=None, plots=12):
-    """Plot distr. of read counts for a mirna per sample"""
-
-    if len(df)>plots:
-        df = df[:plots+1]
-    c=3
-    nr = int(np.ceil(len(df) / c))+1
-    fig,axs=plt.subplots(nr,c,sharex=True,figsize=(12,8))
-    grid=axs.flat
-    i=0
-    for n,r in df.iterrows():
-        ax=grid[i]
-        #name=r['#miRNA']
-        if cols is None:
-            r = r.filter(regex="norm")
-        else:
-            r = r[cols]
-        pd.Series.plot(r,kind='bar',ax=ax,grid=False)
-        ax.set_title(n)
-        ax.set_xticks([])
-        ax.set_xlabel('')
-        i+=1
-    plt.tight_layout()
-    return fig
 
 def getFilesMapping(path):
     """Get file<->mirdeep2 id mapping"""

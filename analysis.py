@@ -250,11 +250,8 @@ def plotRNAmapped(labels=None):
     #plt.show()
     return
 
-def compareMethods():
+def compareMethods(path1,path2):
     """Compare 2 methods for subsets of samples"""
-
-    path1 = 'results_mirdeep_rnafiltered'
-    path2 = 'results_srnabench_isomirs'
 
     #compare means of filtered knowns
     df = mdp.getResults(path1)
@@ -418,10 +415,10 @@ def novelConservation():
     ensembl.summarise(df)
     return
 
-def getExpCondMap(path):
+def getExpCondMap(path, labels='mapdata_labels.csv'):
     """Get mirdeep results labels mapped to our exp condition table"""
 
-    condmap = pd.read_csv('mapdata_labels.csv')
+    condmap = pd.read_csv(labels)
     idmap = mdp.getFilesMapping(path)
     def getIDMap(x):
         r=idmap[idmap['filename'].str.contains(x)]
@@ -674,7 +671,7 @@ def test():
     files = ['/opt/mirnaseq/analysis/test.fastq']
     #files = ['/opt/mirnaseq/data/vegh_13/SRR576286.fastq']
     #bidx =  ['mirbase-mature','Rfam_btau','bosTau6-tRNAs','noncodev4_btau','bos_taurus_alt']
-    bidx =  ['mirdeep_found','Rfam_btau','bosTau6-tRNAs','bostau-snRNA','noncodev4_btau',
+    bidx =  ['mirdeep-hairpin','Rfam_btau','bosTau6-tRNAs','bostau-snRNA','noncodev4_btau',
               'bos_taurus_alt']
     #adapters for our data
     adapters = ['TGGAATTCTCGGGTGCCAAGG','GCATTGTGGTTCAGTGGTAGAATTCTCGC']
@@ -687,7 +684,8 @@ def test():
     #plotRNAmapped(labels)
     #summariseReads(path)
     #removeKnownRNAs(path, adapters)
-    #compareMethods()
+
+    compareMethods('results_mirdeep_rnafiltered','results_srnabench_rnafiltered')
     infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
     #mirnaDiscoveryTest(infile)
     #novelConservation()
