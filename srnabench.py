@@ -17,7 +17,7 @@ import base
 srbpath = '/local/sRNAbench'
 srnabenchoptions = {'base': [('input',''),('outpath','srnabench_runs'),
                     ('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
-                    ('bowtieindex',''),('ref',''),  ('predict','false'),
+                    ('bowtieindex',''),('ref',''), ('species','bta'), ('predict','false'),
                     ('mature',''), ('hairpin',''), ('other',''), ('isomir','false'),
                     ('overwrite',1), ('matureMM',0), ('p',3)]}
 isoclasses = {'lv5pT':'5p trimmed',
@@ -32,8 +32,8 @@ def getShortlabel(label):
     x=label.split('_')
     return x[2]+'_'+x[4]
 
-def run(infile, outpath='srnabench_runs', overwrite=True, adapter='',
-            ref='bos_taurus_alt', predict='false', **kwargs):
+def run(infile, outpath='srnabench_runs', overwrite=True, adapter='', species='bta',
+            ref='bos_taurus_alt', predict='false', p=2, **kwargs):
     """Run sRNAbench for a fastq file"""
 
     label = os.path.splitext(os.path.basename(infile))[0]
@@ -49,13 +49,13 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter='',
         else:
             shutil.rmtree(outdir)
 
-    cmd = ('java -jar %s/sRNAbench.jar dbPath=%s input=%s microRNA=bta'
+    cmd = ('java -jar %s/sRNAbench.jar dbPath=%s input=%s microRNA=%s'
            ' species=%s output=%s predict=%s plotMiR=true matureMM=0 isoMiR=true' #hierarchical=false'
-           ' p=3' %(srbpath,srbpath,infile,ref,outdir,predict))
+           ' p=%s' %(srbpath,srbpath,infile,species,ref,outdir,predict,p))
     if adapter != '':
         cmd += ' adapter=%s' %adapter
-    else:
-        cmd += ' guessAdapter=true'
+    #else:
+    #    cmd += ' guessAdapter=true'
     print cmd
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     print result

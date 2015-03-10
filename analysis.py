@@ -219,7 +219,7 @@ def plotRNAmapped(labels=None):
     df=df.sort('total')
     df = df.drop('total',1)
     df['unmapped'] = 1-df.sum(1)
-    df['name'] = df['name'].apply(lambda r: ' '.join(r.split('_')[2:5]))
+    #df['name'] = df['name'].apply(lambda r: ' '.join(r.split('_')[2:5]))
     df = df.set_index('name')
     print df
     if labels != None:
