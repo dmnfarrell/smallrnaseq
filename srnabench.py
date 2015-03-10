@@ -103,6 +103,7 @@ def normaliseCols(df):
         return s/s.sum()*1e6
     cols,normcols = getColumnNames(df)
     x = df[cols].apply(n, axis=0)
+    x = np.around(x,0)
     x.columns = [i+'_norm' for i in cols]
     df = df.merge(x,left_index=True, right_index=True)
     df['mean_norm'] = df[normcols].apply(lambda r: r[r.nonzero()[0]].mean(),1)
@@ -131,6 +132,8 @@ def getResults(path):
     fmap = {} #filename mapping
     c=1
     for o in outdirs:
+        if not os.path.isdir(o):
+            continue
         r = readResultsFile(o, 'mature_sense.grouped')
         x = getNovel(o)
         if x is not None:
@@ -145,8 +148,8 @@ def getResults(path):
         iso = getIsomiRs(o)
         if iso is not None:
             m.append(iso)
-    fmap = pd.DataFrame(fmap.items(),columns=['col','filename'])
-    fmap.to_csv('srnabench_colnames.csv',index=False)
+    fmap = pd.DataFrame(fmap.items(),columns=['id','filename'])
+    fmap.to_csv(os.path.join(path,'srnabench_colnames.csv'),index=False)
     #combine known into useful format
     k = pd.concat(k)
     p = k.pivot_table(index='name', columns='path', values='read count')
@@ -174,8 +177,10 @@ def getResults(path):
         m['total'] = m.sum(1)
         m['mean read count'] = m[cols].mean(1)
         m['freq'] = m[cols].apply(lambda r: len(r.nonzero()[0])/samples,1)
+        m = normaliseCols(m)
         m=m.sort(['total'],ascending=False)
-    else: m = None
+    else:
+        m = None
     #novel
     if len(n)>0:
         n = pd.concat(n)
@@ -292,7 +297,7 @@ def analyseIsomiRs(iso,outpath=None):
     fig.savefig('srnabench_isomir_counts.png',dpi=150)
     fig,ax = plt.subplots(1,1)
     #top.hist('domisoperc',bins=20,ax=ax)
-    base.sns.distplot(top.domisoperc,bins=20,ax=ax,kde_kws={"lw": 2})
+    base.sns.distplot(top.domisoperc,bins=15,ax=ax,kde_kws={"lw": 2})
     fig.suptitle('distribution of dominant isomiR share of reads')
     fig.savefig('srnabench_isomir_domperc.png',dpi=150)
 
@@ -352,13 +357,35 @@ def plotReadCountDists(df,h=8):
     n = df[normcols]
     t=n.T
     t.index = n.columns
-    #base.sns.boxplot(t,linewidth=1.0,color='coolwarm_r',saturation=0.2,)
-    t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
+    base.sns.boxplot(t,linewidth=1.0,color='coolwarm_r',saturation=0.2,)
+    base.sns.despine(trim=True)
+    #t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
     ax.set_yscale('log')
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
     plt.ylabel('read count')
     plt.tight_layout()
     return fig
+
+def getFileIDs(path):
+    """Get file-id mapping"""
+
+    idmap = pd.read_csv(os.path.join(path, 'srnabench_colnames.csv'))
+    return idmap
+
+def getLabelMap(path, labels):
+    """Get results labels mapped to labels with the filenames"""
+
+    condmap = pd.read_csv(labels)
+    idmap = getFileIDs(path)
+    def matchname(x):
+        r = idmap[idmap['filename'].str.contains(x)]
+        if len(r)>0:
+            return r.id.squeeze()
+        else:
+            return np.nan
+    condmap['id'] = condmap.filename.apply(lambda x: matchname(x),1)
+    condmap = condmap.dropna()
+    return condmap
 
 def runDE(inpath, l1, l2, cutoff=1.5):
     """DE via sRNABench"""
