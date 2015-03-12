@@ -18,7 +18,7 @@ import base
 mirdeep2options = {'base': [('input',''),('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
                     ('bowtieindex',''),('refgenome',''),('species','hsa'),
                     ('mature',''), ('hairpin',''), ('other',''),('mirbase',os.getcwd()),
-                    ('overwrite',1)]}
+                    ('randfold',1), ('overwrite',1)]}
 mirdeepcols = ['#miRNA','read_count','mean_norm','miRDeep2 score','chr','seed','precursor',
                 'precursor coordinate','freq','mirbase seed match','star read count','rfam alert',
                 'consensus mature sequence','consensus star sequence',
@@ -69,11 +69,13 @@ def runMultiple(**kwargs):
         mature, hairpin = createMiRBaseFiles(kwargs['species'], kwargs['mirbase'])
         kwargs['mature'] = mature
         kwargs['hairpin'] = hairpin
+    if kwargs['other'] != '':
+        kwargs['other'], h = createMiRBaseFiles(kwargs['other'], kwargs['mirbase'])
     run(samplemap, **kwargs)
     return
 
 def run(infile, refgenome, bowtieindex, mature='', hairpin='', other='',
-        randfold=True, overwrite=False, filetype='fastq', adapter=None,
+        randfold=False, overwrite=True, filetype='fastq', adapter=None,
         clean=True, outpath=None, **kwargs):
     """Run all mirdeep2 steps including adapter trimming.
        Uses a config file even if we only have one sample."""
@@ -82,10 +84,12 @@ def run(infile, refgenome, bowtieindex, mature='', hairpin='', other='',
     print 'running %s' %label
     os.environ["BOWTIE_INDEXES"] = os.path.dirname(bowtieindex)
     collapsed = 'collapsedreads.fa'
-    if filetype=='fasta': params='-c'
-    else: params='-e -h'
-    if randfold == False: params+=' -c'
-    other = 'none'
+    if filetype=='fasta': mapparams='-c'
+    else: mapparams='-e -h'
+    if adapter =='': adapter = 'none'
+    if randfold == False: params='-c'
+    else: params = ''
+    if other=='': other = 'none'
 
     #if mapping has been done already we can skip it
     if not os.path.exists('mapped.arf') or overwrite == True:
@@ -95,7 +99,7 @@ def run(infile, refgenome, bowtieindex, mature='', hairpin='', other='',
         except:
             pass
         cmd1 = ('mapper.pl %s -d %s -j -l 18 -m -k %s -s %s'
-                ' -p %s -t mapped.arf -v' %(infile,params,adapter,collapsed,bowtieindex))
+                ' -p %s -t mapped.arf -v' %(infile,mapparams,adapter,collapsed,bowtieindex))
         print cmd1
         result = subprocess.check_output(cmd1, shell=True, executable='/bin/bash')
     else:
@@ -103,8 +107,8 @@ def run(infile, refgenome, bowtieindex, mature='', hairpin='', other='',
 
     #mirdeep core
     cmd2 = ('miRDeep2.pl %s %s mapped.arf'
-           ' %s %s %s -z _%s'
-           ' -d > report.log' %(collapsed,refgenome,mature,other,hairpin,label))
+           ' %s %s %s -z _%s %s'
+           ' -d > report.log' %(collapsed,refgenome,mature,other,hairpin,label,params))
     print cmd2
     result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
     #remove junk
@@ -439,7 +443,7 @@ def main():
         cp = base.parseConfig(opts.config)
         if opts.input != None:
             conf.input = os.path.abspath(opts.input)
-        options = cp._sections['base']
+        options = base.getOptions(cp)
         runMultiple(**options)
     elif opts.analyse != None:
         analyseResults(opts.analyse)
