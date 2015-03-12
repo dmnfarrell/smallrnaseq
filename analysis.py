@@ -344,18 +344,15 @@ def KStest(df):
     return
 
 def mirnaDiscoveryTest(sourcefile):
-    """Test miRNAs found per read file size"""
+    """Test miRNAs found per read file size. Assumes runs have been
+     done and placed in benchmarking dir"""
 
     path = 'benchmarking'
-    #sourcefile = 'small.fastq'
     #sizes = np.arange(5e5,7.e6,5e5)
     #sizes = np.insert(sizes,0,[5e4,1e5,2e5])
     #print sizes
     #base.createRandomFastqFiles(sourcefile, path, sizes)
 
-    cp = base.parseConfig('disc_mdp.conf')
-    options = cp._sections['base']
-    mdp.runMultiple(**options)
     outpath = 'benchmarking/mirdeep'
     a = mdp.getResults(outpath)
     #a=pd.concat([k,n])
@@ -375,15 +372,18 @@ def mirnaDiscoveryTest(sourcefile):
     #srnabench
     files = glob.glob(os.path.join(path,'*.fa'))
     outpath = 'benchmarking/srnabench'
+    k,n,iso = srb.getResults(outpath)
+    mapping = srb.getFileIDs(outpath).sort('filename')
     results2 = []
     found = []
-    for f in sorted(files):
-        outdir = srb.run(f,outpath,overwrite=False)
-        k,n,iso = srb.getResults(outdir,plot=False)
+    for i,r in mapping.iterrows():
+        f = r.filename
         i = float(re.findall("\d+.\d+",f)[0])
-        new = k[-k['name'].isin(found)]
+        print f, i
+        df = k[k[r.id]>1]
+        new = df[-df['name'].isin(found)]
         found.extend(new.name.values)
-        rcm = new['RPM (lib)'].mean()
+        rcm = new['total'].mean()
         results2.append((i,len(found),len(new),rcm))
 
     r2 = pd.DataFrame(results2,columns=['reads','total','new','rcm'])
@@ -394,11 +394,11 @@ def mirnaDiscoveryTest(sourcefile):
     #final.plot('reads','new_x',kind='scatter',style='.-',color='blue',ax=ax)
 
     l1=ax.plot(final.reads,final.total_x,color='blue',lw=2,ls='-')
-    #ax2 = ax.twinx()
-    l2=ax.plot(final.reads,final.total_y,color='green',lw=2,ls='-')
+    ax2 = ax.twinx()
+    l2=ax2.plot(final.reads,final.total_y,color='green',lw=2,ls='-')
     ax.set_xlabel('reads (million)')
     ax.set_ylabel('total miRNA found')
-    #ax2.set_ylabel('mirna found (srnabench)')
+    ax2.set_ylabel('mirna found (srnabench)')
     ax.legend(l1+l2,['mirdeep2','srnabench'],loc=2)
     ax3 = plt.axes([.5, .25, .3, .3])
     ax3.semilogy(final.reads,final.rcm_x,color='blue',ls='-')
