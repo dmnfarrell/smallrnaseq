@@ -51,6 +51,16 @@ def parseConfig(conffile=None):
         return
     return cp
 
+def getOptions(cp):
+    """Makes sure boolean opts are parsed"""
+    options = cp._sections['base']
+    for o in options:
+        try:
+            options[o] = cp.getboolean('base', o)
+        except:
+            pass
+    return options
+
 def seabornsetup():
     global sns
     import seaborn as sns

@@ -116,16 +116,16 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
             orthgenes = getGenesinRegion(regions[0])
             targets=[]
             #find possible targets in 3'UTR of containing gene
-            '''for g in orthgenes:
+            for g in orthgenes:
                 try:
                     tr = g[0].CanonicalTranscript
                     l = str(tr.Utr3.complement()).find(seed)
                     targets.append(l)
                 except:
-                    targets.append(-1)'''
+                    targets.append(-1)
 
             a['genes'] = [g[0].Symbol if len(g)>0 else np.nan for g in orthgenes]
-            #a['targets'] = targets
+            a['targets'] = targets
             a['location'] = getLocations(regions[0])
 
             #get RNAfold energy for each sequence

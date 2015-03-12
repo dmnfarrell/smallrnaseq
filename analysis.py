@@ -350,10 +350,12 @@ def mirnaDiscoveryTest(sourcefile):
     #sourcefile = 'small.fastq'
     #sizes = np.arange(5e5,7.e6,5e5)
     #sizes = np.insert(sizes,0,[5e4,1e5,2e5])
+    #print sizes
     #base.createRandomFastqFiles(sourcefile, path, sizes)
 
-    #mirdeep2
-    #mdp.runMultiple(path, 'fa')
+    cp = base.parseConfig('disc_mdp.conf')
+    options = cp._sections['base']
+    mdp.runMultiple(**options)
     outpath = 'benchmarking/mirdeep'
     a = mdp.getResults(outpath)
     #a=pd.concat([k,n])
@@ -377,7 +379,7 @@ def mirnaDiscoveryTest(sourcefile):
     found = []
     for f in sorted(files):
         outdir = srb.run(f,outpath,overwrite=False)
-        k,n = srb.getResults(outdir,plot=False)
+        k,n,iso = srb.getResults(outdir,plot=False)
         i = float(re.findall("\d+.\d+",f)[0])
         new = k[-k['name'].isin(found)]
         found.extend(new.name.values)
@@ -685,13 +687,13 @@ def test():
     #summariseReads(path)
     #removeKnownRNAs(path, adapters)
 
-    compareMethods('results_mirdeep_rnafiltered','results_srnabench_rnafiltered')
-    infile = '/opt/mirnaseq/data/combined/miRNA_lib_Pool2_Sample_2_combined.fastq'
-    #mirnaDiscoveryTest(infile)
+    #compareMethods('results_mirdeep_rnafiltered','results_srnabench_rnafiltered')
+    infile = '/opt/mirnaseq/data/iconmap_feb15/combined/ncrna_map/sample_1_combined_cut.fastq'
+    mirnaDiscoveryTest(infile)
     #novelConservation()
     #getmiFam()
     #DE()
-    plotFactors('results_mirdeep_rnafiltered')
+    #plotFactors('results_mirdeep_rnafiltered')
     #exprAnalysis('results_mirdeep_rnafiltered')
     #compareIsomirsRef()
     #analyseisomirs()
