@@ -165,6 +165,7 @@ def getResults(path):
     k = k.fillna(0)
     k = normaliseCols(k)
     k = k.sort('mean_norm',ascending=False)
+    k.to_csv('srnabench_known_all.csv')
 
     #combine isomir results
     if len(m)>0:

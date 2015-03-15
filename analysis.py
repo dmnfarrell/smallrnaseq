@@ -353,57 +353,50 @@ def mirnaDiscoveryTest(sourcefile):
     #print sizes
     #base.createRandomFastqFiles(sourcefile, path, sizes)
 
+    #mirdeep
     outpath = 'benchmarking/mirdeep'
     a = mdp.getResults(outpath)
-    #a=pd.concat([k,n])
-    mapping = mdp.getFilesMapping(outpath)
-    results1 = []
-    found = []
-    for i,r in mapping.iterrows():
-        f = r.filename
-        i = float(re.findall("\d+.\d+",f)[0])
-        df = a[a[r.id]>0]
-        new = df[-df['#miRNA'].isin(found)]
-        found.extend(new['#miRNA'].values)
-        rcm = new['read_count'].mean()
-        results1.append((i,len(found),len(new),rcm))
-    r1 = pd.DataFrame(results1,columns=['reads','total','new','rcm'])
-
+    k1 = a[a.novel==False]
+    k1=k1.set_index('#miRNA')
+    mp1 = mdp.getFilesMapping(outpath)
     #srnabench
-    files = glob.glob(os.path.join(path,'*.fa'))
     outpath = 'benchmarking/srnabench'
-    k,n,iso = srb.getResults(outpath)
-    mapping = srb.getFileIDs(outpath).sort('filename')
-    results2 = []
-    found = []
-    for i,r in mapping.iterrows():
-        f = r.filename
-        i = float(re.findall("\d+.\d+",f)[0])
-        print f, i
-        df = k[k[r.id]>1]
-        new = df[-df['name'].isin(found)]
-        found.extend(new.name.values)
-        rcm = new['total'].mean()
-        results2.append((i,len(found),len(new),rcm))
+    k2,n,iso = srb.getResults(outpath)
+    k2=k2.set_index('name')
+    mp2 = srb.getFileIDs(outpath).sort('filename')
 
-    r2 = pd.DataFrame(results2,columns=['reads','total','new','rcm'])
-    final = pd.merge(r1,r2,on='reads')
-    print final
+    def getFound(k,mapping,rc=5):
+        tot = float(len(k))
+        f=[]
+        results=[]
+        for i,r in mapping.iterrows():
+            fn = r.filename
+            i = float(re.findall("\d+.\d+",fn)[0])
+            df = k[k[r.id]>rc]
+            n = df[-df.index.isin(f)]
+            f.extend(n.index)
+            results.append((i,len(f),len(f)/tot))
+        r = pd.DataFrame(results,columns=['reads','total','frac'])
+        print r
+        return r
+
+    r1 = getFound(k1, mp1)
+    r2 = getFound(k2, mp2)
+
     fig=plt.figure(figsize=(8,6))
     ax=fig.add_subplot(111)
-    #final.plot('reads','new_x',kind='scatter',style='.-',color='blue',ax=ax)
-
-    l1=ax.plot(final.reads,final.total_x,color='blue',lw=2,ls='-')
-    ax2 = ax.twinx()
-    l2=ax2.plot(final.reads,final.total_y,color='green',lw=2,ls='-')
+    l1=ax.plot(r1.reads,r1.frac,'xb-',color='blue',lw=2)
+    l2=ax.plot(r2.reads,r2.frac,color='red',lw=2,ls='-')
     ax.set_xlabel('reads (million)')
     ax.set_ylabel('total miRNA found')
-    ax2.set_ylabel('mirna found (srnabench)')
     ax.legend(l1+l2,['mirdeep2','srnabench'],loc=2)
+
+    '''
+    ax2.set_ylabel('mirna found (srnabench)')
     ax3 = plt.axes([.5, .25, .3, .3])
     ax3.semilogy(final.reads,final.rcm_x,color='blue',ls='-')
     ax3.semilogy(final.reads,final.rcm_y,color='green',ls='-')
-    ax3.set_title('mean abundance (new miRNAs)')
+    ax3.set_title('mean abundance (new miRNAs)')'''
     plt.tight_layout()
     fig.savefig('benchmark_discovery.png',dpi=150)
     plt.show()

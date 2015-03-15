@@ -227,7 +227,7 @@ def summarise(df):
     def isconserved(x):
         return (x.seq>1) & (x.seedcons>=2)
     #x['conserved'] = x.apply(isconserved,1)
-    x = x.sort(['read_count'],ascending=False)
+    x = x.sort(['seq'],ascending=False)
     x=x.fillna('-')
     x.to_csv('novel_conserved.csv',float_format='%2.2f')
     return x
