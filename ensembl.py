@@ -212,8 +212,7 @@ def summarise(df):
     x = n.groupby('#miRNA').agg({
                     'seq':np.size,
                     'energy':np.min,
-                    'ident': np.max, #'idents': lambda r: len(r[r>=0.65])},
-                    #'seed': base.first,
+                    'ident': np.max,
                     'seedcons': lambda r: len(r[r>-1]),
                     'mirbase': base.first,
                     'genes': base.first})
@@ -228,7 +227,7 @@ def summarise(df):
         return (x.seq>1) & (x.seedcons>=2)
     #x['conserved'] = x.apply(isconserved,1)
     x = x.sort(['seq'],ascending=False)
-    x=x.fillna('-')
+    x=x.fillna('')
     x.to_csv('novel_conserved.csv',float_format='%2.2f')
     return x
 

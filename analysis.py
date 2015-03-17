@@ -256,11 +256,11 @@ def compareMethods(path1,path2):
     #compare means of filtered knowns
     df = mdp.getResults(path1)
     df = df[df.novel==False]
-    mk = mdp.filterExprResults(df,meanreads=200,freq=0.8)
+    #mk = mdp.filterExprResults(df,meanreads=200,freq=0.8)
+    mk=df[:80]
     k,n,i = srb.getResults(path2)
-    sk = k[(k['mean read count']>=10) & (k['freq']>=0.8)]
-    print sk.columns
-    #sk = k[(k['total']>=500)]
+    #sk = srb.filterExprResults(k,meanreads=200,freq=0.8)
+    sk=k[:80]
     x = pd.merge(mk,sk,left_on='#miRNA',right_on='name',how='inner',suffixes=['1','2'])
     diff = x[(abs(x.total1-x.total2)/x.total2>.3)]
     print diff[['#miRNA','total1','total2']]
@@ -280,11 +280,13 @@ def compareMethods(path1,path2):
     plt.show()
     return
 
-def KStest(df):
+def KStest(df, ids):
     """KS test to determine rc freq distributions of replicates
     threshold count is the one which corresponds to the first minimum.
     i.e.  when the distributions of reads amongst replicates begin to be similar
-    see http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2822534/  """
+    see http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2822534/
+    ids are pairs of replicate column ids for mirna results
+    """
 
     def getMin(x):
         r=0
@@ -297,11 +299,8 @@ def KStest(df):
         return r
 
     from scipy.stats import ks_2samp
-    readcuts = np.arange(0,400,10)
+    readcuts = np.arange(0,300,2)
     result=[]
-    ids=[('s11','s22'),('s23','s28'),('s27','s29'),('s26','s03'),('s36','s37'),
-        #,('s53','s54'),('s38','s39'),('s41','s42'),
-        ('s44','s45'),('s46','s47')]
     testdata=[]
     for i in ids:
         stats=[]
@@ -312,7 +311,7 @@ def KStest(df):
             x=d[s1+'(norm)']
             y=d[s2+'(norm)']
             val = ks_2samp(x, y)
-            print len(x),len(y),rc, val
+            #print len(x),len(y),rc, val
             stats.append(val[0])
         result.append(stats)
     result = pd.DataFrame(np.array(result).T)
@@ -326,21 +325,21 @@ def KStest(df):
     plt.axvspan(mean-std/2,mean+std/2,color='g',alpha=0.3)
     plt.xlabel('read count threshold')
     plt.ylabel('KS')
-    plt.savefig('KS_test.png')
+    plt.savefig('KS_test.png',dpi=150)
 
-    '''f,axs=plt.subplots(4,3)
+    '''f,axs=plt.subplots(4,4,figsize=(12,8))
     grid=axs.flat
     i=0
-    for d in testdata[:12]:
+    for d in testdata[:16]:
         ax=grid[i]
         print len(d)
         bins = 10 ** np.linspace(np.log10(10), np.log10(1e6),80)
-        ax.hist(d['s22(norm)'],bins=bins,alpha=0.9)
+        ax.hist(d[s1+'(norm)'],bins=bins,alpha=0.9)
         #ax.hist(d['s11(norm)'],bins=bins,alpha=0.9)
         ax.set_xscale('log')
         ax.set_xticklabels([])
-        i+=1'''
-    plt.show()
+        i+=1
+    plt.show()'''
     return
 
 def mirnaDiscoveryTest(sourcefile):
@@ -358,11 +357,14 @@ def mirnaDiscoveryTest(sourcefile):
     a = mdp.getResults(outpath)
     k1 = a[a.novel==False]
     k1=k1.set_index('#miRNA')
+    k1 = k1[k1.s16>5]
     mp1 = mdp.getFilesMapping(outpath)
+    cols,ncols=mdp.getColumnNames(k1)
     #srnabench
     outpath = 'benchmarking/srnabench'
     k2,n,iso = srb.getResults(outpath)
     k2=k2.set_index('name')
+    k2 = k2[k2.s16>5]
     mp2 = srb.getFileIDs(outpath).sort('filename')
 
     def getFound(k,mapping,rc=5):
@@ -375,8 +377,8 @@ def mirnaDiscoveryTest(sourcefile):
             df = k[k[r.id]>rc]
             n = df[-df.index.isin(f)]
             f.extend(n.index)
-            results.append((i,len(f),len(f)/tot))
-        r = pd.DataFrame(results,columns=['reads','total','frac'])
+            results.append((i,len(f),len(f),n.total.max()))
+        r = pd.DataFrame(results,columns=['reads','total','frac','rcm'])
         print r
         return r
 
@@ -385,20 +387,27 @@ def mirnaDiscoveryTest(sourcefile):
 
     fig=plt.figure(figsize=(8,6))
     ax=fig.add_subplot(111)
-    l1=ax.plot(r1.reads,r1.frac,'xb-',color='blue',lw=2)
-    l2=ax.plot(r2.reads,r2.frac,color='red',lw=2,ls='-')
+    l1=ax.plot(r1.reads,r1.frac,'bo-',color='blue',lw=2)
+    l2=ax.plot(r2.reads,r2.frac,'bo-',color='red',lw=2)
     ax.set_xlabel('reads (million)')
     ax.set_ylabel('total miRNA found')
     ax.legend(l1+l2,['mirdeep2','srnabench'],loc=2)
-
-    '''
-    ax2.set_ylabel('mirna found (srnabench)')
     ax3 = plt.axes([.5, .25, .3, .3])
-    ax3.semilogy(final.reads,final.rcm_x,color='blue',ls='-')
-    ax3.semilogy(final.reads,final.rcm_y,color='green',ls='-')
-    ax3.set_title('mean abundance (new miRNAs)')'''
+    ax3.semilogy(r1.reads,r1.rcm,color='blue',ls='-')
+    ax3.semilogy(r2.reads,r2.rcm,color='red',ls='-')
+    ax3.set_title('mean abundance (new miRNAs)')
     plt.tight_layout()
     fig.savefig('benchmark_discovery.png',dpi=150)
+
+    '''fig,ax=plt.subplots(1,1)
+    x=k1[cols]
+    from matplotlib.colors import LogNorm
+    x=x.replace(0,.1)
+    ax.pcolor(x,cmap='Blues',
+              norm=LogNorm(vmin=x.min().min(), vmax=x.max().max()))
+    plt.yticks(np.arange(0.5, len(x.index), 1), x.index)
+    plt.xticks(np.arange(0.5, len(x.columns), 1), x.columns)'''
+
     plt.show()
     return
 
@@ -682,7 +691,7 @@ def test():
 
     #compareMethods('results_mirdeep_rnafiltered','results_srnabench_rnafiltered')
     infile = '/opt/mirnaseq/data/iconmap_feb15/combined/ncrna_map/sample_1_combined_cut.fastq'
-    mirnaDiscoveryTest(infile)
+    #mirnaDiscoveryTest(infile)
     #novelConservation()
     #getmiFam()
     #DE()

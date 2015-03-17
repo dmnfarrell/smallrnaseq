@@ -128,6 +128,7 @@ def getResults(path):
     n = []
     m = []
     outdirs = [os.path.join(path,i) for i in os.listdir(path)]
+    outdirs.sort()
     cols = []
     fmap = {} #filename mapping
     c=1
@@ -149,6 +150,7 @@ def getResults(path):
         if iso is not None:
             m.append(iso)
     fmap = pd.DataFrame(fmap.items(),columns=['id','filename'])
+
     fmap.to_csv(os.path.join(path,'srnabench_colnames.csv'),index=False)
     #combine known into useful format
     k = pd.concat(k)

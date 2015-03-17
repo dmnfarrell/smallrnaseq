@@ -254,8 +254,8 @@ def analyseResults(path, outpath=None, **kwargs):
     known = df[df.novel==False]
     novel = df[df.novel==True]
     idmap = getFilesMapping(path)
-    k = filterExprResults(known,score=0,freq=.5,meanreads=200)
-    n = filterExprResults(novel,score=4,freq=.8,meanreads=200)
+    k = filterExprResults(known,score=0,freq=.5,meanreads=150)
+    n = filterExprResults(novel,score=4,freq=.8,meanreads=150)
     cols = mirdeepcols
     core = pd.concat([k,n])
     base.dataframe2Fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
