@@ -257,17 +257,17 @@ def compareMethods(path1,path2):
     df = mdp.getResults(path1)
     df = df[df.novel==False]
     #mk = mdp.filterExprResults(df,meanreads=200,freq=0.8)
-    mk=df[:80]
+    mk = df[:80]
     k,n,i = srb.getResults(path2)
     #sk = srb.filterExprResults(k,meanreads=200,freq=0.8)
-    sk=k[:80]
+    sk = k[:80]
     x = pd.merge(mk,sk,left_on='#miRNA',right_on='name',how='inner',suffixes=['1','2'])
-    diff = x[(abs(x.total1-x.total2)/x.total2>.3)]
+    diff = x[(abs(x.total1-x.total2)/x.total2>.2)]
     print diff[['#miRNA','total1','total2']]
     #print np.corrcoef(np.log10(x.total1),np.log10(x.total2))
     fig = plt.figure(figsize=(12,6))
     ax=fig.add_subplot(121)
-    base.venndiagram([mk['#miRNA'], sk['name']],['mirdeep2','srnabench'],ax=ax)
+    base.venndiagram([mk['#miRNA'], sk['name']],['mirdeep2','srnabench'],ax=ax,alpha=0.6)
 
     ax=fig.add_subplot(122)
     x.plot('total1','total2',kind='scatter',ax=ax, logx=True,logy=True,alpha=0.8,s=40)

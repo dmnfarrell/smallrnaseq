@@ -22,6 +22,7 @@ Species.amendSpecies('Ovis aries', 'sheep')
 Species.amendSpecies('Erinaceus europaeus', 'hedgehog')
 Species.amendSpecies('Mustela putorius furo', 'ferret')
 
+
 def getOrthologs(refgenome, ensid=None, symbol=None):
     '''if ensid!=None:
         mygene = cow.getGeneByStableId(StableId=ensid)
@@ -91,7 +92,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
     """Get all possible orthologs/conservation for miRNAs using ensembl"""
 
     if comp == None:
-        comp = Compara(species, account=None, Release='78')
+        comp = Compara(species, account=None, Release='79')
     results=[]
     for i, r in list(df.iterrows()):
         #base.RNAfold(r['consensus precursor sequence'], r['#miRNA']+'_'+ref)
@@ -119,7 +120,8 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
             for g in orthgenes:
                 try:
                     tr = g[0].CanonicalTranscript
-                    l = str(tr.Utr3.complement()).find(seed)
+                    sd = seed.replace('u','t').upper()
+                    l = str(tr.Utr3.complement()).find(sd)
                     targets.append(l)
                 except:
                     targets.append(-1)
@@ -215,7 +217,8 @@ def summarise(df):
                     'ident': np.max,
                     'seedcons': lambda r: len(r[r>-1]),
                     'mirbase': base.first,
-                    'genes': base.first})
+                    'genes': base.first,
+                    'targets': lambda r: len(r[r>-1])})
     x.columns = x.columns.get_level_values(0)
     x = x.merge(df[['#miRNA','read_count','miRDeep2 score','freq','precursor coordinate',
                     'seed','consensus mature sequence']],
@@ -227,7 +230,7 @@ def summarise(df):
         return (x.seq>1) & (x.seedcons>=2)
     #x['conserved'] = x.apply(isconserved,1)
     x = x.sort(['seq'],ascending=False)
-    x=x.fillna('')
+    #x=x.fillna('')
     x.to_csv('novel_conserved.csv',float_format='%2.2f')
     return x
 
