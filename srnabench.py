@@ -289,7 +289,7 @@ def analyseIsomiRs(iso,outpath=None):
     print top[:20]
     print '%s/%s with only 1 isomir' %(len(top[top.domisoperc==1]),len(top))
     print 'different dominant isomir:', len(top[top.variant!='exact'])/float(len(top))
-    print top.domisoperc.mean()
+    print 'mean dom isomir perc:', top.domisoperc.mean()
     print
     #stats
     fig,ax = plt.subplots(1,1)
