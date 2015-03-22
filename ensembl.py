@@ -105,7 +105,7 @@ def getSyntenicAlignment(comp, ref, coords, fname='ensembl.aln.fa'):
         print '%s syntenic regions found' %len(regions)
     return regions, A
 
-def getContainingGenes(df, ref='cow'):
+def getHostGenes(df, ref='cow'):
     """Get all genes containing the given miRNAs using ensembl"""
 
     results=[]
@@ -121,9 +121,11 @@ def getContainingGenes(df, ref='cow'):
                 tu = findinGene(g, start, end)
                 results.append((name,g.Symbol,g.Location,g.BioType,tu,g.StableId))
                 #print name,g.Symbol,tu
-    results = pd.DataFrame(results,columns=['#miRNA','gene','location','biotype',
-                            'tu','ensid'])
-    return results
+    if len(results)>0:
+        results = pd.DataFrame(results,columns=['#miRNA','gene','location','biotype',
+                                'tu','ensid'])
+        return results
+    return
 
 #def getGeneProperty(genes, label):
 #    x = [g[0].Symbol if len(g)>0 else np.nan for g in orthgenes]
@@ -138,32 +140,32 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
     for i, r in list(df.iterrows()):
         #base.RNAfold(r['consensus precursor sequence'], r['#miRNA']+'_'+ref)
         mature = r['consensus mature sequence'].replace('u','t').upper()
-        star = r['consensus star sequence'].replace('u','t').upper()
         seed = r['seed'].replace('u','t').upper()
-        mbmatch = r['mirbase seed match']
         c,locs,strand = r['precursor coordinate'].split(':')
         start,end = locs.split('..')
-        print r['#miRNA'], seed, mature, star, locs, strand
+        print r['#miRNA'], seed, mature, locs, strand
         coords = (c,int(start),int(end),strand)
         regions, aln = getSyntenicAlignment(comp, ref, coords, fname=r['#miRNA']+'.aln.fa')
         if aln == None:
+            x=pd.DataFrame([r])
+            a = getHostGenes(x)
+            if a is not None:
+                results.append(a)
             continue
         region = regions[0]
         a = base.cogentAlignment2DataFrame(aln.degap())
         a['#miRNA'] = r['#miRNA']
-        a['seed'] = seed
         a['ident'] = getIdentities(aln)
         print 'max identity: %s' %a.ident.max()
         a['seedcons'] = getSeqConservation(aln, seed)
-        a['mirbase'] = mbmatch
         orthgenes = getGenesinRegion(region)
 
-        a['genes'] = [g[0].Symbol if len(g)>0 else np.nan for g in orthgenes]
+        a['gene'] = [g[0].Symbol if len(g)>0 else np.nan for g in orthgenes]
         a['gene_loc'] = [g[0].Location if len(g)>0 else np.nan for g in orthgenes]
         locs = getLocations(region)
         a['location'] = [':'.join(str(l).split(':')[2:]) for l in locs]
         a['biotype'] = [g[0].BioType if len(g)>0 else np.nan for g in orthgenes]
-        a['ensid'] = [g[0].g1.StableId if len(g)>0 else np.nan for g in orthgenes]
+        a['ensid'] = [g[0].StableId if len(g)>0 else np.nan for g in orthgenes]
         #find where in gene the miRNA is, usually introns
         trpts = []
         for l,g in zip(locs,orthgenes):
@@ -172,7 +174,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
             else:
                 tr = findinGene(g[0],l.Start,l.End)
                 trpts.append(tr)
-        a['trscpt'] = trpts
+        a['tu'] = trpts
 
         #get RNAfold energy for each sequence
         a['energy'] = a.apply(lambda x : base.RNAfold(x.seq)[1],1)
@@ -254,10 +256,10 @@ def summarise(df):
                     'energy':np.min,
                     'ident': np.max,
                     'seedcons': lambda r: len(r[r>-1]),
-                    'genes': base.first,
+                    'gene': base.first,
                     #'targets': lambda r: len(r[r>-1])
                     'biotype': base.first,
-                    'trscpt': base.first })
+                    'tu': base.first })
     x.columns = x.columns.get_level_values(0)
     x = x.merge(df[['#miRNA','read_count','miRDeep2 score','mirbase seed match',
                     'precursor coordinate','seed','consensus mature sequence','freq']],
