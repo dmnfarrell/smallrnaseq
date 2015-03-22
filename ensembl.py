@@ -43,10 +43,27 @@ def getGenesFromLocation(ref, coords, pad=0):
        pad will add n bases to either side to expand area"""
 
     genome = Genome(Species=ref, Release=release, account=account)
-    print genome
     chrom,start,end,strand = coords
-    genes = list(genome.getFeatures(CoordName=chrom, Start=start-pad, End=end+pad, feature_types='gene'))
+    genes = list(genome.getFeatures(CoordName=chrom, Start=start-pad,
+                    End=end+pad, feature_types='gene'))
     return genes
+
+def findinGene(g, start, end):
+    """Find if coords are inside intron or exon"""
+
+    start=int(start)
+    end=int(end)
+    tr = g.CanonicalTranscript
+    for i in tr.Exons:
+        s,e = i.Location.Start,i.Location.End
+        if start-5>=s and end<=e+5:
+            return 'exon'
+    if tr.Introns is None: return
+    for i in tr.Introns:
+        s,e = i.Location.Start,i.Location.End
+        if start-5>=s and end<=e+5:
+            return 'intron'
+    #return 'both'
 
 def getAlignmentTree(fname):
     """Build a neighbour joining tree"""
@@ -88,6 +105,30 @@ def getSyntenicAlignment(comp, ref, coords, fname='ensembl.aln.fa'):
         print '%s syntenic regions found' %len(regions)
     return regions, A
 
+def getContainingGenes(df, ref='cow'):
+    """Get all genes containing the given miRNAs using ensembl"""
+
+    results=[]
+    comp = Compara(species, account=None, Release='79')
+    for i, r in list(df.iterrows()):
+        name = r['#miRNA']
+        c,locs,strand = r['precursor coordinate'].split(':')
+        start,end = locs.split('..')
+        coords = c,int(start),int(end),strand
+        genes = getGenesFromLocation(ref, coords)
+        for g in genes:
+            if g.BioType != 'miRNA':
+                tu = findinGene(g, start, end)
+                results.append((name,g.Symbol,g.Location,g.BioType,tu,g.StableId))
+                #print name,g.Symbol,tu
+    results = pd.DataFrame(results,columns=['#miRNA','gene','location','biotype',
+                            'tu','ensid'])
+    return results
+
+#def getGeneProperty(genes, label):
+#    x = [g[0].Symbol if len(g)>0 else np.nan for g in orthgenes]
+#    return x
+
 def getmiRNAOrthologs(df, comp=None, ref='cow'):
     """Get all possible orthologs/conservation for miRNAs using ensembl"""
 
@@ -121,6 +162,8 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
         a['gene_loc'] = [g[0].Location if len(g)>0 else np.nan for g in orthgenes]
         locs = getLocations(region)
         a['location'] = [':'.join(str(l).split(':')[2:]) for l in locs]
+        a['biotype'] = [g[0].BioType if len(g)>0 else np.nan for g in orthgenes]
+        a['ensid'] = [g[0].g1.StableId if len(g)>0 else np.nan for g in orthgenes]
         #find where in gene the miRNA is, usually introns
         trpts = []
         for l,g in zip(locs,orthgenes):
@@ -201,20 +244,6 @@ def getESTs(region):
             print est
     return
 
-def findinGene(g, start, end):
-    """Find if coords are inside intron or exon"""
-
-    tr = g.CanonicalTranscript
-    for i in tr.Exons:
-        s,e = i.Location.Start,i.Location.End
-        if start-5>=s and end<=e+5:
-            return 'exon'
-    for i in tr.Introns:
-        s,e = i.Location.Start,i.Location.End
-        if start-5>=s and end<=e+5:
-            return 'intron'
-    #return 'both'
-
 def summarise(df):
     """Summarise candidates from ensembl results"""
 
@@ -227,6 +256,7 @@ def summarise(df):
                     'seedcons': lambda r: len(r[r>-1]),
                     'genes': base.first,
                     #'targets': lambda r: len(r[r>-1])
+                    'biotype': base.first,
                     'trscpt': base.first })
     x.columns = x.columns.get_level_values(0)
     x = x.merge(df[['#miRNA','read_count','miRDeep2 score','mirbase seed match',

@@ -227,7 +227,7 @@ def getColumnNames(df):
     normcols = [i+'(norm)' for i in cols]
     return cols, normcols
 
-def filterExprResults(n, cols=None, score=0, freq=0.5, meanreads=0, totalreads=50):
+def filterExprResults(n, cols=None, score=0, freq=0.5, meanreads=0, totalreads=0):
     """Additional filters for abundances/no. samples"""
 
     if cols is None:
