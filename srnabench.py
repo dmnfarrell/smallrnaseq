@@ -121,6 +121,16 @@ def filterExprResults(df, freq=0.5, meanreads=0, totalreads=50):
     df = df[df['mean_norm']>=meanreads]
     return df
 
+def parseisoinfo(r):
+    '''parse srnabench hierarchical scheme'''
+    s = r['isoClass'].split('|')
+    lv = s[0]
+    if len(s)>1:
+        pos = int(s[-1].split('#')[-1])
+    else:
+        pos = 0
+    return pd.Series(dict(pos=pos,variant=lv))
+
 def getResults(path):
     """Fetch results for all dirs and aggregate read counts"""
 
@@ -180,7 +190,10 @@ def getResults(path):
         m['total'] = m.sum(1)
         m['mean read count'] = m[cols].mean(1)
         m['freq'] = m[cols].apply(lambda r: len(r.nonzero()[0])/samples,1)
+        m['length'] = m.read.str.len()
         m = normaliseCols(m)
+        x = m.apply(parseisoinfo,1)
+        m = m.merge(x,left_index=True,right_index=True)
         m=m.sort(['total'],ascending=False)
     else:
         m = None
@@ -256,20 +269,6 @@ def analyseIsomiRs(iso,outpath=None):
     iso = iso.sort('total', ascending=False)
     #filter low abundance reads same as profiling
     iso = iso[(iso.total>10) & (iso.freq>0.5)]
-    iso['length'] = iso.read.str.len()
-
-    #parse classes info
-    def parseisoinfo(r):
-        '''parse srnabench hierarchical scheme'''
-        s = r['isoClass'].split('|')
-        lv = s[0]
-        if len(s)>1:
-            pos = int(s[-1].split('#')[-1])
-        else:
-            pos = 0
-        return pd.Series(dict(pos=pos,variant=lv))
-    x = iso.apply(parseisoinfo,1)
-    iso = iso.merge(x,left_index=True,right_index=True)
 
     #get top isomir per mirRNA
     g = iso.groupby('name', as_index=False)
@@ -311,9 +310,6 @@ def analyseIsomiRs(iso,outpath=None):
     #base.sns.distplot(iso.length, kde=False)
     fig.suptitle('isomiR length distributions')
     fig.savefig('srnabench_isomir_lengths.png',dpi=150)
-    #l = g.agg({'length':[np.median,np.std]})
-
-    #print iso[subcols]
     plt.close('all')
 
     #diff = ['bta-miR-27a-3p','bta-miR-127','bta-miR-101','bta-miR-23b-3p']
@@ -353,6 +349,7 @@ def analyseIsomiRs(iso,outpath=None):
 def plotReadCountDists(df,h=8):
     """Boxplots of read count distributions per miRNA"""
 
+    base.seabornsetup()
     w=int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
     cols,normcols = getColumnNames(df)
