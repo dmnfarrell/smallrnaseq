@@ -65,7 +65,7 @@ def seabornsetup():
     global sns
     import seaborn as sns
     sns.set_style("ticks", {'axes.grid': False,'legend.frameon':True})
-    sns.set_context("paper", rc={'axes.labelsize':16,'axes.titlesize':16,
+    sns.set_context("paper", rc={'axes.labelsize':16,'axes.titlesize':15,
                     'lines.color':1.0,'xtick.labelsize':12,
                     'ytick.labelsize': 12, 'legend.fontsize':12, 'title.fontsize':14,
                     'figure.figsize': np.array([8, 8])})

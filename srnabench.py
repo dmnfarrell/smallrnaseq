@@ -258,19 +258,8 @@ def analyseResults(k,n,outpath=None):
     print
     return k
 
-def analyseIsomiRs(iso,outpath=None):
-    """Analyse isomiR results in detail"""
-
-    if iso is None:
-        return
-    if outpath != None:
-        os.chdir(outpath)
-    subcols = ['name','read','isoClass','NucVar','total','freq']
-    iso = iso.sort('total', ascending=False)
-    #filter low abundance reads same as profiling
-    iso = iso[(iso.total>10) & (iso.freq>0.5)]
-
-    #get top isomir per mirRNA
+def getTopIsomirs(iso):
+    """Get top isomir per mirRNA"""
     g = iso.groupby('name', as_index=False)
     #first add col for each isomirs percentage in its group
     totals = g.agg({'total':np.sum}).set_index('name')
@@ -283,6 +272,20 @@ def analyseIsomiRs(iso,outpath=None):
         t.append((r['name'],r.read,r.total,s,perc,np.size(x.total),r.variant))
     top = pd.DataFrame(t,columns=['name','read','counts','total','domisoperc','isomirs','variant'])
     top = top.sort('counts',ascending=False)
+    return top
+
+def analyseIsomiRs(iso,outpath=None):
+    """Analyse isomiR results in detail"""
+
+    if iso is None:
+        return
+    if outpath != None:
+        os.chdir(outpath)
+    subcols = ['name','read','isoClass','NucVar','total','freq']
+    iso = iso.sort('total', ascending=False)
+    #filter very low abundance reads
+    iso = iso[(iso.total>10) & (iso.freq>0.5)]
+    top = getTopIsomirs(iso)
     top.to_csv('srnabench_isomirs_dominant.csv',index=False)
     print 'top isomiRs:'
     print top[:20]
@@ -303,39 +306,30 @@ def analyseIsomiRs(iso,outpath=None):
     fig.suptitle('distribution of dominant isomiR share of reads')
     fig.savefig('srnabench_isomir_domperc.png',dpi=150)
 
-    x = iso[iso.name.isin(iso.name[:40])]
+    x = iso[iso.name.isin(iso.name[:30])]
     fig,ax = plt.subplots(1,1)
     bins=range(15,30,1)
-    x.hist('length',bins=bins,ax=ax,by='name',sharex=True,color="gray")
+    x.hist('length',bins=bins,ax=ax,by='name',sharex=True,alpha=0.8)
+
     #base.sns.distplot(iso.length, kde=False)
     fig.suptitle('isomiR length distributions')
     fig.savefig('srnabench_isomir_lengths.png',dpi=150)
     plt.close('all')
 
-    #diff = ['bta-miR-27a-3p','bta-miR-127','bta-miR-101','bta-miR-23b-3p']
-    #d = iso[iso.name.isin(diff)][subcols+['pos','variant']]
-    #for i,df in d.groupby('name'):
-    #    print df
-    #print iso[iso.pos<-5][subcols]
-
-    #lv = iso[-iso.variant.str.contains('exact')]
     c=iso.variant.value_counts()
     #c=c[c>10]
     fig,ax = plt.subplots(1,1)
     c.plot(kind='pie',colormap='Spectral',ax=ax)
-    '''c.plot(kind='bar',ax=ax)
-    ax.set_ylabel('total')
-    ax.set_xticklabels(c.index, minor=False, rotation=45)'''
     ax.set_title('isomiR class distribution')
     plt.tight_layout()
     fig.savefig('srnabench_isomir_classes.png',dpi=150)
-    fig,axs = plt.subplots(2,2)
+    fig,axs = plt.subplots(2,2,figsize=(8,6))
     grid=axs.flat
     bins=np.arange(-6,6,1)
     i=0
     for v in ['lv3p','lv5p','nta#A','nta#T']:
         ax=grid[i]
-        iso[iso.variant==v].hist('pos',ax=ax,bins=bins)
+        iso[iso.variant==v].hist('pos',ax=ax,bins=bins,grid=False)
         ax.set_title(v)
         ax.set_xticks(bins+0.5)
         ax.set_xticklabels(bins)
