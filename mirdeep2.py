@@ -153,6 +153,32 @@ def getChromosome(x):
     except:
         return val
 
+def getScoreStats(path):
+    """Get mirdeep results from the summary file"""
+
+    resfile = glob.glob(os.path.join(path,'result*.csv'))[0]
+    if os.path.splitext(resfile)[1] != '.csv':
+        return
+    df = pd.read_csv(resfile, sep='\t',header=0,nrows=22)
+    df = df.dropna()
+    df['known'] = df['known miRNAs detected by miRDeep2'].apply(lambda r: int(r.split()[0]))
+    df['FDR'] = df['novel miRNAs, estimated false positives'].apply(lambda r: int(r.split()[0]))
+    return df
+
+def plotScoreStats(df):
+    f,axs=plt.subplots(2,2,figsize=(10,8))
+    grid=axs.flat
+    df.plot('miRDeep2 score','known',marker='o',ax=grid[0],legend=False)
+    grid[0].set_title('known miRNAs')
+    df.plot('miRDeep2 score','novel miRNAs reported by miRDeep2',marker='o',ax=grid[1],legend=False)
+    grid[1].set_title('novel miRNAs')
+    df.plot('miRDeep2 score','estimated signal-to-noise',marker='o',ax=grid[2],legend=False)
+    grid[2].set_title('signal-to-noise')
+    df.plot('miRDeep2 score','FDR',marker='o',ax=grid[3],legend=False)
+    grid[3].set_title('FDR')
+    f.savefig('mirdeep_score_stats.png')
+    return
+
 def readResultsFile(infile):
     """Get mirdeep results from the summary file"""
 
@@ -312,6 +338,9 @@ def analyseResults(path, outpath=None, **kwargs):
     x.plot(kind='bar')
     plt.title('miRNA per chromosome')
     fig.savefig('mirdeep_chromosome_dist.png',dpi=150)
+
+    ss = getScoreStats(path)
+    plotScoreStats(ss)
     #plt.show()
     #plt.close()
     return df,k,n

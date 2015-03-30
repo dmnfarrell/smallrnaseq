@@ -212,18 +212,18 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None):
     df.to_csv('ncrna_mapped.csv',float_format='%.3f')
     return
 
-def plotRNAmapped(labels=None):
+def plotRNAmapped(df=None, catlabels=None):
     """Plot RNA map results"""
 
-    df = pd.read_csv('ncrna_mapped.csv',index_col=0)
-    df=df.sort('total')
+    if df is None:
+        df = pd.read_csv('ncrna_mapped.csv',index_col=0)
+    #df=df.sort('total')
     df = df.drop('total',1)
     df['unmapped'] = 1-df.sum(1)
-    #df['name'] = df['name'].apply(lambda r: ' '.join(r.split('_')[2:5]))
     df = df.set_index('name')
     print df
-    if labels != None:
-        df = df.rename(columns=labels)
+    if catlabels != None:
+        df = df.rename(columns=catlabels)
     plt.figure(figsize=(8,8))
     x=df.mean()
     x.sort()
@@ -240,14 +240,6 @@ def plotRNAmapped(labels=None):
     plt.legend(ncol=4)
     plt.tight_layout()
     plt.savefig('ncrna_bysample.png',dpi=150)
-
-    '''plt.figure(figsize=(12,8))
-    ax=base.sns.boxplot(mp,color='Paired')
-    plt.ylabel('percent mapped')
-    plt.title('mean percentage small RNAs mapped by category')
-    plt.tight_layout()
-    plt.savefig('ncrna_dists.png')'''
-    #plt.show()
     return
 
 def compareMethods(path1,path2):
