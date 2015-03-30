@@ -166,7 +166,7 @@ def getScoreStats(path):
     return df
 
 def plotScoreStats(df):
-    f,axs=plt.subplots(2,2,figsize=(10,8))
+    f,axs=plt.subplots(2,2,figsize=(10,6))
     grid=axs.flat
     df.plot('miRDeep2 score','known',marker='o',ax=grid[0],legend=False)
     grid[0].set_title('known miRNAs')

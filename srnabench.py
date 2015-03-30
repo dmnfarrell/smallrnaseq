@@ -15,6 +15,7 @@ import pandas as pd
 import base
 
 srbpath = '/local/sRNAbench'
+srnabenchcols = ['name','mean read count','mean_norm','total','freq','perc']
 srnabenchoptions = {'base': [('input',''),('outpath','srnabench_runs'),
                     ('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
                     ('bowtieindex',''),('ref',''), ('species','bta'), ('predict','false'),
@@ -318,8 +319,9 @@ def analyseIsomiRs(iso,outpath=None):
 
     c=iso.variant.value_counts()
     #c=c[c>10]
-    fig,ax = plt.subplots(1,1)
-    c.plot(kind='pie',colormap='Spectral',ax=ax)
+    fig,ax = plt.subplots(1,1,figsize=(8,8))
+    c.plot(kind='pie',colormap='Spectral',ax=ax, labels=None,legend=True,
+             startangle=0,pctdistance=1.1,autopct='%.1f%%',fontsize=10)
     ax.set_title('isomiR class distribution')
     plt.tight_layout()
     fig.savefig('srnabench_isomir_classes.png',dpi=150)
