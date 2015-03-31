@@ -257,6 +257,7 @@ def analyseResults(k,n,outpath=None):
     k[idcols].sum().plot(kind='bar',ax=ax)
     fig.savefig('srnabench_total_persample.png')
     print
+    k.to_csv('srnabench_known_all.csv',index=False)
     return k
 
 def getTopIsomirs(iso):
