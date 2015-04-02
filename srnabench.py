@@ -14,6 +14,10 @@ import numpy as np
 import pandas as pd
 import base
 
+modulepath = os.path.dirname(__file__)
+mirbase = pd.read_csv(os.path.join(modulepath,'miRBase_all.csv'))
+mirbase = mirbase.drop_duplicates('mature1')
+
 srbpath = '/local/sRNAbench'
 srnabenchcols = ['name','mean read count','mean_norm','total','freq','perc']
 srnabenchoptions = {'base': [('input',''),('outpath','srnabench_runs'),
@@ -88,6 +92,7 @@ def readResultsFile(path, infile='mature_sense.grouped', filter=True):
     df['path'] = os.path.basename(path)
     #take highest value if duplicates (same mature)
     g = df.groupby('name').agg(np.max)
+    print g
     g = g.reset_index()
     return g
 
@@ -233,9 +238,11 @@ def analyseResults(k,n,outpath=None):
 
     if outpath != None:
         os.chdir(outpath)
+    #add mirbase info
+    k = k.merge(mirbase,left_on='name',right_on='mature1')
     ky1 = 'unique reads'
     ky2 =  'read count' #'RC'
-    cols = ['name','freq','mean read count','mean_norm','total','perc']
+    cols = ['name','freq','mean read count','mean_norm','total','perc','mirbase_id']
     print
     print 'found:'
     idcols,normcols = getColumnNames(k)
@@ -383,6 +390,15 @@ def getLabelMap(path, labels):
     condmap['id'] = condmap.filename.apply(lambda x: matchname(x),1)
     condmap = condmap.dropna()
     return condmap
+
+'''def getSec(path, name):
+    """Get sec structure text data"""
+
+    outdirs = [os.path.join(path,i) for i in os.listdir(path)]
+    outdirs = [i for i in outdirs if os.path.isdir(i)]
+    outdir = outdirs[0]
+    sec = open(os.path.join(outdir,'hairpin/%s.sec' %mirna),'r').readlines()
+    return'''
 
 def runDE(inpath, l1, l2, cutoff=1.5):
     """DE via sRNABench"""

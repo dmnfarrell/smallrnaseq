@@ -361,7 +361,7 @@ def RNAfold(seq, name=None):
 
     import RNA
     x = RNA.fold(seq)
-    #print name, seq, x
+    print name, x
     if name != None:
         path='RNAplots'
         RNA.svg_rna_plot(seq,x[0],os.path.join(path,name+'.svg'))
@@ -375,3 +375,37 @@ def cogentAlignment2DataFrame(A):
         res.append((s[0].split(':')[0],str(s[1])))
     df = pd.DataFrame(res,columns=['species','seq'])
     return df
+
+def formatcmarkValues(values, rgb=" 1. 0. .2"):
+    """PS colored marks for rnaplot"""
+
+    minval , maxval = min ( values ) ,max ( values )
+    valtab = [" %s %s cfmark"%(i,rgb) for i in values]
+    #valtab = ["%s cmark " %i for i in values]
+    x = "". join (valtab)
+    macro = "/cfmark {setrgbcolor newpath 1 sub coor exch get aload"
+    macro += " pop fsize 2 div 0 360 arc fill} bind def"+x
+    return macro
+
+def plotRNA(seq, path='', subseqs=[]):
+    """plot miRNA"""
+
+    import cogent.app.vienna_package as vienna
+    colors = [" 1. 0. .2", " 0. .9 .5"]
+    seq,struct,e = vienna.get_secondary_structure(seq)
+    seqname='test'
+    r=vienna.RNAplot()
+    i=0
+    x=''
+    if len(subseqs) > 0:
+        for s in subseqs:
+            ind=seq.find(s)+1
+            e=ind+len(s)
+            x += formatcmarkValues(range(ind,e), rgb=colors[i])
+            i+=1
+        r.Parameters['--pre'].on('"%s"' %x)
+    r(['>'+seqname,seq,struct])
+    filename = os.path.join(path,'test.png')
+    os.system('convert test_ss.ps %s' %filename)
+    return filename
+
