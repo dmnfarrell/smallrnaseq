@@ -279,7 +279,7 @@ def analyseResults(path, outpath=None, **kwargs):
     idcols,normcols = getColumnNames(df)
     known = df[df.novel==False]
     novel = df[df.novel==True]
-    idmap = getFilesMapping(path)
+    idmap = getFileIDs(path)
     k = filterExprResults(known,score=0,freq=.5,meanreads=150)
     n = filterExprResults(novel,score=4,freq=.8,meanreads=150)
     cols = mirdeepcols
@@ -382,12 +382,27 @@ def perSampleDists(df,cols=None,names=None):
     plt.savefig('mirdeep_persample_counts.png')
     return
 
-def getFilesMapping(path):
+def getFileIDs(path):
     """Get file<->mirdeep2 id mapping"""
 
     idmap = pd.read_csv(os.path.join(path, 'combined.txt'),sep=' ',
                 header=None,names=['filename','id'])
     return idmap
+
+def getLabelMap(path, labels):
+    """Get results labels mapped to labels with the filenames"""
+
+    condmap = pd.read_csv(labels)
+    idmap = getFileIDs(path)
+    def matchname(x):
+        r = idmap[idmap['filename'].str.contains(x)]
+        if len(r)>0:
+            return r.id.squeeze()
+        else:
+            return np.nan
+    condmap['id'] = condmap.filename.apply(lambda x: matchname(x),1)
+    condmap = condmap.dropna()
+    return condmap
 
 def testQuantifier(path):
     resfile = glob.glob(os.path.join(path,'result*.csv'))[0]
