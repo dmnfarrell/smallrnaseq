@@ -81,6 +81,7 @@ def doHeatMap(df,fname=None,cmap='seismic',log=False):
     f=plt.figure(figsize=(8,8))
     ax=f.add_subplot(111)
     norm=None
+    df=df.replace(0,.1)
     if log==True:
         norm=LogNorm(vmin=df.min().min(), vmax=df.max().max())
     hm = ax.pcolor(df,cmap=cmap,norm=norm)

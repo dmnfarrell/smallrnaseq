@@ -92,7 +92,7 @@ def readResultsFile(path, infile='mature_sense.grouped', filter=True):
     df['path'] = os.path.basename(path)
     #take highest value if duplicates (same mature)
     g = df.groupby('name').agg(np.max)
-    print g
+    #print g
     g = g.reset_index()
     return g
 
@@ -241,7 +241,7 @@ def analyseResults(k,n,outpath=None):
     #add mirbase info
     k = k.merge(mirbase,left_on='name',right_on='mature1')
     ky1 = 'unique reads'
-    ky2 =  'read count' #'RC'
+    ky2 = 'read count' #'RC'
     cols = ['name','freq','mean read count','mean_norm','total','perc','mirbase_id']
     print
     print 'found:'
@@ -278,8 +278,8 @@ def getTopIsomirs(iso):
         r = base.first(x)
         s = x.total.sum()
         perc = r.total/s
-        t.append((r['name'],r.read,r.total,s,perc,np.size(x.total),r.variant))
-    top = pd.DataFrame(t,columns=['name','read','counts','total','domisoperc','isomirs','variant'])
+        t.append((r['name'],r.read,r.mean_norm,r.total,s,perc,np.size(x.total),r.variant))
+    top = pd.DataFrame(t,columns=['name','read','counts','mean_norm','total','domisoperc','isomirs','variant'])
     top = top.sort('counts',ascending=False)
     return top
 
