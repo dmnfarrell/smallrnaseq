@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import base
 
+plt.rcParams['savefig.dpi'] = 150
 modulepath = os.path.dirname(__file__)
 mirbase = pd.read_csv(os.path.join(modulepath,'miRBase_all.csv'))
 mirbase = mirbase.drop_duplicates('mature1')
@@ -101,7 +102,7 @@ def plotResults(k):
     ax.set_title('sRNAbench top 10')
     k.set_index('name')['read count'][:10].plot(kind='barh',colormap='Set2',ax=ax,log=True)
     plt.tight_layout()
-    fig.savefig('srnabench_summary_known.png',dpi=80)
+    fig.savefig('srnabench_summary_known.png')
     return
 
 def normaliseCols(df):
@@ -278,8 +279,9 @@ def getTopIsomirs(iso):
         r = base.first(x)
         s = x.total.sum()
         perc = r.total/s
-        t.append((r['name'],r.read,r.mean_norm,r.total,s,perc,np.size(x.total),r.variant))
-    top = pd.DataFrame(t,columns=['name','read','counts','mean_norm','total','domisoperc','isomirs','variant'])
+        t.append((r['name'],r.read,r.mean_norm,r.total,s,perc,np.size(x.total),r.variant,r.pos))
+    cols=['name','read','counts','mean_norm','total','domisoperc','isomirs','variant','pos']
+    top = pd.DataFrame(t,columns=cols)
     top = top.sort('counts',ascending=False)
     return top
 
@@ -308,21 +310,19 @@ def analyseIsomiRs(iso,outpath=None):
     ax.set_title('no. isomiRs per miRNA vs total adundance')
     ax.set_xlabel('no. isomiRs')
     ax.set_ylabel('total reads')
-    fig.savefig('srnabench_isomir_counts.png',dpi=150)
+    fig.savefig('srnabench_isomir_counts.png')
     fig,ax = plt.subplots(1,1)
     #top.hist('domisoperc',bins=20,ax=ax)
     base.sns.distplot(top.domisoperc,bins=15,ax=ax,kde_kws={"lw": 2})
     fig.suptitle('distribution of dominant isomiR share of reads')
-    fig.savefig('srnabench_isomir_domperc.png',dpi=150)
+    fig.savefig('srnabench_isomir_domperc.png')
 
-    x = iso[iso.name.isin(iso.name[:30])]
-    fig,ax = plt.subplots(1,1)
+    x = iso[iso.name.isin(iso.name[:28])]
     bins=range(15,30,1)
-    x.hist('length',bins=bins,ax=ax,by='name',sharex=True,alpha=0.8)
-
-    #base.sns.distplot(iso.length, kde=False)
+    ax = x.hist('length',bins=bins,ax=ax,by='name',sharex=True,alpha=0.9)
+    ax[-1,-1].set_xlabel('length')
     fig.suptitle('isomiR length distributions')
-    fig.savefig('srnabench_isomir_lengths.png',dpi=150)
+    fig.savefig('srnabench_isomir_lengths.png')
     plt.close('all')
 
     c=iso.variant.value_counts()
@@ -332,7 +332,7 @@ def analyseIsomiRs(iso,outpath=None):
              startangle=0,pctdistance=1.1,autopct='%.1f%%',fontsize=10)
     ax.set_title('isomiR class distribution')
     plt.tight_layout()
-    fig.savefig('srnabench_isomir_classes.png',dpi=150)
+    fig.savefig('srnabench_isomir_classes.png')
     fig,axs = plt.subplots(2,2,figsize=(8,6))
     grid=axs.flat
     bins=np.arange(-6,6,1)
@@ -344,7 +344,9 @@ def analyseIsomiRs(iso,outpath=None):
         ax.set_xticks(bins+0.5)
         ax.set_xticklabels(bins)
         i+=1
-    fig.suptitle('isomiR variant lengths')
+    ax.set_xlabel('length difference')
+    fig.suptitle('isomiR class length distributions')
+    plt.tight_layout()
     fig.savefig('srnabench_isomir_variantlengths.png')
     #plt.show()
     iso.to_csv('srnabench_isomirs_all.csv',index=False)

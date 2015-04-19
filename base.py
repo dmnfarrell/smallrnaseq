@@ -388,7 +388,7 @@ def formatcmarkValues(values, rgb=" 1. 0. .2"):
     macro += " pop fsize 2 div 0 360 arc fill} bind def"+x
     return macro
 
-def plotRNA(seq, path='', subseqs=[]):
+def plotRNA(seq, path='', subseqs=[], name='test'):
     """plot miRNA"""
 
     import cogent.app.vienna_package as vienna
@@ -406,7 +406,8 @@ def plotRNA(seq, path='', subseqs=[]):
             i+=1
         r.Parameters['--pre'].on('"%s"' %x)
     r(['>'+seqname,seq,struct])
-    filename = os.path.join(path,'test.png')
+    filename = os.path.join(path,'%s.ps' %name)
     os.system('convert test_ss.ps %s' %filename)
+    #os.system('cp test_ss.ps %s' %filename)
     return filename
 

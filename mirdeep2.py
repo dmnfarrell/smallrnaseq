@@ -15,6 +15,8 @@ import pandas as pd
 import HTSeq
 import base
 
+plt.rcParams['savefig.dpi'] = 150
+
 mirdeep2options = {'base': [('input',''),('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
                     ('bowtieindex',''),('refgenome',''),('species','hsa'),
                     ('mature',''), ('hairpin',''), ('other',''),('mirbase',os.getcwd()),
@@ -316,11 +318,11 @@ def analyseResults(path, outpath=None, **kwargs):
     fig.savefig('mirdeep_top_known.png',dpi=150)
     fig, ax = plt.subplots(figsize=(8,8))
     df.plot('freq','mean_norm',kind='scatter',ax=ax,logy=True,alpha=0.8)
-    fig.savefig('mirdeep_freqsvcounts.png',dpi=150)
+    fig.savefig('mirdeep_freqsvcounts.png')
     fig=plt.figure()
 
     fig = plotReadCountDists(n,h=5)
-    fig.savefig('mirdeep_novel_counts.png',dpi=150)
+    fig.savefig('mirdeep_novel_counts.png')
     fig = plotReadCountDists(k)
     fig.savefig('mirdeep_known_counts.png')
 
@@ -337,7 +339,7 @@ def analyseResults(path, outpath=None, **kwargs):
     x = core.sort('chr').groupby('chr').size()
     x.plot(kind='bar')
     plt.title('miRNA per chromosome')
-    fig.savefig('mirdeep_chromosome_dist.png',dpi=150)
+    fig.savefig('mirdeep_chromosome_dist.png')
 
     ss = getScoreStats(path)
     plotScoreStats(ss)

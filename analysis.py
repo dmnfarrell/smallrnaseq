@@ -232,14 +232,14 @@ def plotRNAmapped(df=None, catlabels=None):
                     labels=None,legend=True,pctdistance=1.1,explode=explode,fontsize=16)
     plt.title('mean percentage small RNAs mapped by category')
     plt.tight_layout()
-    plt.savefig('ncrna_means.png',dpi=150)
+    plt.savefig('ncrna_means.png')
 
     df=df.reindex(columns=x.index)
     l = df.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
     plt.ylabel('percent mapped')
     plt.legend(ncol=4)
     plt.tight_layout()
-    plt.savefig('ncrna_bysample.png',dpi=150)
+    plt.savefig('ncrna_bysample.png')
     return
 
 def compareMethods(path1,path2):
@@ -268,7 +268,7 @@ def compareMethods(path1,path2):
     ax.set_ylabel('srnabench')
     ax.set_title('total read count comparison')
     plt.tight_layout()
-    plt.savefig('mirdeep_vs_srnabench.png',dpi=150)
+    plt.savefig('mirdeep_vs_srnabench.png')
     plt.show()
     return
 
@@ -350,7 +350,7 @@ def mirnaDiscoveryTest(sourcefile):
     k1 = a[a.novel==False]
     k1=k1.set_index('#miRNA')
     k1 = k1[k1.s16>5]
-    mp1 = mdp.getFilesMapping(outpath)
+    mp1 = mdp.getFileIDs(outpath)
     cols,ncols=mdp.getColumnNames(k1)
     #srnabench
     outpath = 'benchmarking/srnabench'
@@ -389,7 +389,7 @@ def mirnaDiscoveryTest(sourcefile):
     ax3.semilogy(r2.reads,r2.rcm,color='red',ls='-')
     ax3.set_title('mean abundance (new miRNAs)')
     plt.tight_layout()
-    fig.savefig('benchmark_discovery.png',dpi=150)
+    fig.savefig('benchmark_discovery.png')
 
     '''fig,ax=plt.subplots(1,1)
     x=k1[cols]
