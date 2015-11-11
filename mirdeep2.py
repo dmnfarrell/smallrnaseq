@@ -22,7 +22,7 @@ mirdeep2options = {'base': [('input',''),('adapter','TGGAATTCTCGGGTGCCAAGG'),('f
                     ('mature',''), ('hairpin',''), ('other',''),('mirbase',os.getcwd()),
                     ('randfold',1), ('overwrite',1)]}
 mirdeepcols = ['#miRNA','read_count','mean_norm','miRDeep2 score','chr','seed','precursor',
-                'precursor coordinate','freq','mirbase seed match','star read count','rfam alert',
+                'freq','precursor coordinate','mirbase seed match','star read count','rfam alert',
                 'consensus mature sequence','consensus star sequence',
                 'consensus precursor sequence']
 
@@ -178,6 +178,7 @@ def plotScoreStats(df):
     grid[2].set_title('signal-to-noise')
     df.plot('miRDeep2 score','FDR',marker='o',ax=grid[3],legend=False)
     grid[3].set_title('FDR')
+    plt.tight_layout()
     f.savefig('mirdeep_score_stats.png')
     return
 
@@ -282,8 +283,10 @@ def analyseResults(path, outpath=None, **kwargs):
     known = df[df.novel==False]
     novel = df[df.novel==True]
     idmap = getFileIDs(path)
-    k = filterExprResults(known,score=0,freq=.5,meanreads=150)
-    n = filterExprResults(novel,score=4,freq=.8,meanreads=150)
+
+    #cutoffs and freqs need to be configurable..
+    k = filterExprResults(known,score=0,freq=.5,meanreads=50)
+    n = filterExprResults(novel,score=4,freq=.8,meanreads=50)
     cols = mirdeepcols
     core = pd.concat([k,n])
     base.dataframe2Fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
@@ -293,7 +296,7 @@ def analyseResults(path, outpath=None, **kwargs):
     base.createHtml(n[cols],'novel_mirdeep')
     k['perc'] = k['read_count']/k['read_count'].sum()
 
-    print k[cols[:7]]
+    print k[cols[:8]]
     print
     print n[cols[:9]]
 
@@ -356,7 +359,7 @@ def plotReadCountDists(df,h=8):
     df = df[normcols]
     t=df.T
     t.index = cols
-    base.sns.boxplot(t,linewidth=1.0,color='coolwarm_r',saturation=0.2,)
+    base.sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
     #t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
     base.sns.despine(trim=True)
     ax.set_yscale('log')

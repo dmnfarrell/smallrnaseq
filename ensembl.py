@@ -7,20 +7,21 @@
 
 import numpy as np
 import pandas as pd
-import cogent
-from cogent.db.ensembl import HostAccount, Genome, Compara
 import base
-
-account = None
-release = '78'
-species = ['cow','human','mouse','rat','chimp','gorilla','orangutan',
-           'macaque','dog','pig','cat','olive baboon','sheep']
-#add recent ensembl species
-from cogent.db.ensembl import Species
-Species.amendSpecies('Papio anubis', 'olive baboon')
-Species.amendSpecies('Ovis aries', 'sheep')
-Species.amendSpecies('Erinaceus europaeus', 'hedgehog')
-Species.amendSpecies('Mustela putorius furo', 'ferret')
+try:
+    import cogent
+    from cogent.db.ensembl import HostAccount, Genome, Compara, Species
+    account = None
+    release = '78'
+    #add recent ensembl species
+    species = ['cow','human','mouse','rat','chimp','gorilla','orangutan',
+               'macaque','dog','pig','cat','olive baboon','sheep']
+    Species.amendSpecies('Papio anubis', 'olive baboon')
+    Species.amendSpecies('Ovis aries', 'sheep')
+    Species.amendSpecies('Erinaceus europaeus', 'hedgehog')
+    Species.amendSpecies('Mustela putorius furo', 'ferret')
+except:
+    print 'failed to import cogent'
 
 
 def getOrthologs(refgenome, ensid=None, symbol=None):
@@ -284,4 +285,3 @@ def test():
         getSyntenicAlignment(comp, 'cow', c)
         #getAlignmentTree('ensembl_aln.fa')
     return
-
