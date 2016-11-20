@@ -240,7 +240,7 @@ def getResults(path):
 
     #get mean normalised count
     res['mean_norm'] = res.filter(regex="norm").apply(lambda r: r[r.nonzero()[0]].mean(),1)
-    res = res.sort(['read_count'],ascending=False)
+    res = res.sort_values(by=['read_count'], ascending=False)
     res = res.drop_duplicates('#miRNA')
     #res['std'] = res.filter(regex="norm").std(1)
     #res['cv'] = res['std']/res['mean_norm']
@@ -482,7 +482,7 @@ def main():
         #all other options are stored in config file
         if opts.config == None:
             print ('No config file provided.')
-            base.writeDefaultConfig('mirdeep2.conf',defaults=mirdeep2options)
+            base.writeDefaultConfig('mirdeep2.conf', defaults=mirdeep2options)
             return
         cp = base.parseConfig(opts.config)
         if opts.input != None:
