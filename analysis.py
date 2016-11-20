@@ -27,15 +27,15 @@ def readLengthDist(df):
     bins=np.linspace(1,df.length.max(),df.length.max())
     fig,ax=plt.subplots(1,1,figsize=(10,6))
     #df.hist('length',bins=bins,ax=ax,normed=True)
-    x=np.histogram(df.length,bins=bins)
-    ax.bar(x[1][:-1],x[0], align='center')
-    plt.title('read length distribution')
-    plt.xlabel('length')
-    plt.ylabel('frequency')
-    plt.tight_layout()
-    plt.savefig('readlengths_dist.png',dpi=150)
-    plt.show()
-    return
+    x = np.histogram(df.length,bins=bins)
+    #ax.bar(x[1][:-1],x[0], align='center')
+    #plt.title('read length distribution')
+    #plt.xlabel('length')
+    #plt.ylabel('frequency')
+    #plt.tight_layout()
+    #plt.savefig('readlengths_dist.png',dpi=150)
+    #plt.show()
+    return x
 
 def fastq2fasta(infile, rename=True):
 
@@ -66,22 +66,24 @@ def summariseFastq(f):
 def summariseReads(path):
     """Count reads in all files in path"""
 
-    resultfile = 'read_stats.csv'
+    resultfile = os.path.join(path, 'read_stats.csv')
     files = glob.glob(os.path.join(path,'*.fastq'))
     vals=[]
+    rl=[]
     for f in files:
         label = os.path.splitext(os.path.basename(f))[0]
         s = summariseFastq(f)
-        l=len(s)
+        l = len(s)
         vals.append([label,l])
         print label, l
+
     df = pd.DataFrame(vals,columns=['path','total reads'])
     df.to_csv(resultfile)
-    df.barh('total reads')
-    plt.xlabel('total read count')
-    plt.ylabel('sample')
-    plt.savefig('read_stats.png')
-    return
+    df.plot(x='path',y='total reads',kind='barh')
+    plt.tight_layout()
+    plt.savefig(os.path.join(path,'total_reads.png'))
+    #df = pd.concat()
+    return df
 
 def collapseReads(infile, outfile='collapsed.fa'):
     """Collapse identical reads and retain copy number
@@ -111,7 +113,7 @@ def trimAdapters(infile, adapters=[], outfile='cut.fastq'):
 
     #if os.path.exists(outfile):
     #    return
-    if len(adapters)==0:
+    if len(adapters) == 0:
         print 'no adapters!'
         return
     adptstr = ' -a '.join(adapters)
@@ -142,21 +144,27 @@ def removeKnownRNAs(path, adapters=[], outpath='RNAremoved'):
 
     return
 
-def mapRNAs(files=None, path=None, indexes=[], adapters=None):
+def mapRNAs(files=None, path=None, indexes=[], adapters=None,
+            bowtieparams=None, overwrite=False):
     """Map to various ncRNA annotations and quantify perc of reads mapping.
         The order of indexes will affect results.
         path: input path with read files
         indexes: bowtie indexes of annotated rna classes"""
 
-    params = '-v 1 --best'
+    if bowtieparams == None:
+    	bowtieparams = '-v 1 --best'
     if files == None:
         files = glob.glob(os.path.join(path,'*.fastq'))
-    outpath = 'ncrna_map'
+    else:
+        path = os.path.dirname(os.path.abspath(files[0]))
+    outpath = os.path.join(path, 'ncrna_map')
     if not os.path.exists(outpath):
         os.mkdir(outpath)
-
+    if overwrite == True:
+        samfiles = glob.glob(os.path.join(outpath,'*_mapped.sam'))
+        for s in samfiles:
+            os.remove(s)
     outfiles = []
-    print files
     for f in files:
         print f
         label = os.path.splitext(os.path.basename(f))[0]
@@ -192,7 +200,8 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None):
             samfile = os.path.join(outpath, '%s_%s_mapped.sam' %(label,index))
             if not os.path.exists(samfile):
                 print rem
-                rem = base.bowtieMap(query, index, outfile=samfile, params=params, remaining=rem)
+                rem = base.bowtieMap(query, index, outfile=samfile, params=bowtieparams,
+                                     remaining=rem)
             sam = HTSeq.SAM_Reader(samfile)
             f = [(a.read.seq,a.read.name) for a in sam if a.aligned == True]
             if len(f)>0:
@@ -201,23 +210,26 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None):
                 nr = counts[counts.id.isin(found.name)]
                 fc = nr['descr'].sum()
                 perc = fc/float(total)
-                print index, len(f), fc, total, round(perc,3)
+                print index, len(f), fc, total, round(perc,4)
 
-            else: perc = 0.0
+            else:
+		perc = 0.0
             print '%s: %.4f of total reads aligned' %(index,perc)
             x.append(perc)
         res.append(x)
 
     df = pd.DataFrame(res,columns=colnames)
-    df.to_csv('ncrna_mapped.csv',float_format='%.3f')
-    return
+    outfile = os.path.join(path, 'ncrna_mapped.csv')
+    df.to_csv(outfile,float_format='%.5f')
+    return df
 
-def plotRNAmapped(df=None, catlabels=None):
+def plotRNAmapped(df=None, catlabels=None, path=None):
     """Plot RNA map results"""
 
     if df is None:
         df = pd.read_csv('ncrna_mapped.csv',index_col=0)
     #df=df.sort('total')
+    df = df.loc[:, (df != 0).any(axis=0)] # remove cols with zeroes
     df = df.drop('total',1)
     df['unmapped'] = 1-df.sum(1)
     df = df.set_index('name')
@@ -232,14 +244,15 @@ def plotRNAmapped(df=None, catlabels=None):
                     labels=None,legend=True,pctdistance=1.1,explode=explode,fontsize=16)
     plt.title('mean percentage small RNAs mapped by category')
     plt.tight_layout()
-    plt.savefig('ncrna_means.png')
+    if path == None: path = '.'
+    plt.savefig(os.path.join(path,'ncrna_means.png'))
 
     df=df.reindex(columns=x.index)
     l = df.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
     plt.ylabel('percent mapped')
     plt.legend(ncol=4)
     plt.tight_layout()
-    plt.savefig('ncrna_bysample.png')
+    plt.savefig(os.path.join(path,'ncrna_bysample.png'))
     return
 
 def compareMethods(path1,path2):

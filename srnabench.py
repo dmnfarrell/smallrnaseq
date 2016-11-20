@@ -363,7 +363,7 @@ def plotReadCountDists(df,h=8):
     n = df[normcols]
     t=n.T
     t.index = n.columns
-    base.sns.boxplot(t,linewidth=1.0,color='coolwarm_r',saturation=0.2,)
+    base.sns.boxplot(t,linewidth=1.0,palette='coolwarm_r',saturation=0.2,)
     base.sns.despine(trim=True)
     #t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
     ax.set_yscale('log')
@@ -457,6 +457,8 @@ def main():
         cp = base.parseConfig(opts.config)
         options = cp._sections['base']
         print options
+        if opts.input == None:
+            opts.input = options['input']
         runAll(opts.input, **options)
     elif opts.analyse != None:
         k,n,iso = getResults(opts.analyse)
