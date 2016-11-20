@@ -5,9 +5,11 @@
    Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import numpy as np
 import pandas as pd
-import base
+from . import base
+
 try:
     import cogent
     from cogent.db.ensembl import HostAccount, Genome, Compara, Species
@@ -21,7 +23,7 @@ try:
     Species.amendSpecies('Erinaceus europaeus', 'hedgehog')
     Species.amendSpecies('Mustela putorius furo', 'ferret')
 except:
-    print 'failed to import cogent'
+    print ('failed to import cogent')
 
 
 def getOrthologs(refgenome, ensid=None, symbol=None):
@@ -32,7 +34,7 @@ def getOrthologs(refgenome, ensid=None, symbol=None):
     #print mygene
     orthologs = comp.getRelatedGenes(gene_region=mygene,
                     Relationship='ortholog_one2one')
-    print orthologs.Members
+    print (orthologs.Members)
     #seqs = orthologs.getSeqCollection(feature_types='gene')
     #print seqs.Names
     #syntenicregions = comp.getSyntenicRegions(region=mygene,
@@ -76,7 +78,7 @@ def getAlignmentTree(fname):
     d.run(show_progress=False)
     mytree = nj.nj(d.getPairwiseDistances())
     mytree = mytree.balanced()
-    print mytree.asciiArt()
+    print (mytree.asciiArt())
     print
     '''from cogent.draw import dendrogram
     p = dendrogram.SquareDendrogram(mytree)
@@ -94,7 +96,7 @@ def getSyntenicAlignment(comp, ref, coords, fname='ensembl.aln.fa'):
                                        align_clade="39 eutherian", Strand=strand)
     regions = [r for r in regions]
     if len(regions)==0:
-        print 'no alignments'
+        print ('no alignments')
         return None, None
     #usually only 1 alignment
     A = regions[0].getAlignment()
@@ -103,7 +105,7 @@ def getSyntenicAlignment(comp, ref, coords, fname='ensembl.aln.fa'):
     #if len(A.Seqs)>3:
     #    getAlignmentTree(fname)
     if regions is not None:
-        print '%s syntenic regions found' %len(regions)
+        print ('%s syntenic regions found' %len(regions))
     return regions, A
 
 def getHostGenes(df, ref='cow'):
@@ -144,7 +146,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
         seed = r['seed'].replace('u','t').upper()
         c,locs,strand = r['precursor coordinate'].split(':')
         start,end = locs.split('..')
-        print r['#miRNA'], seed, mature, locs, strand
+        print (r['#miRNA'], seed, mature, locs, strand)
         coords = (c,int(start),int(end),strand)
         regions, aln = getSyntenicAlignment(comp, ref, coords, fname=r['#miRNA']+'.aln.fa')
         if aln == None:
@@ -157,7 +159,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
         a = base.cogentAlignment2DataFrame(aln.degap())
         a['#miRNA'] = r['#miRNA']
         a['ident'] = getIdentities(aln)
-        print 'max identity: %s' %a.ident.max()
+        print ('max identity: %s' %a.ident.max())
         a['seedcons'] = getSeqConservation(aln, seed)
         orthgenes = getGenesinRegion(region)
 
@@ -180,8 +182,8 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
         #get RNAfold energy for each sequence
         a['energy'] = a.apply(lambda x : base.RNAfold(x.seq)[1],1)
         results.append(a)
-        print a
-        print '--------------------------------------------------------'
+        print (a)
+        print ('--------------------------------------------------------')
     results = pd.concat(results).reset_index(drop=True)
     #results.drop(columns='seq')
     results.to_csv('novel_orthologs.csv')
@@ -205,7 +207,7 @@ def getSeqConservation(aln, seq):
 
     vals=[]
     for s in aln.Seqs:
-        print seq, s, str(s).find(seq)
+        print (seq, s, str(s).find(seq))
         vals.append(str(s).find(seq))
     return vals
 
@@ -224,7 +226,7 @@ def getIdentities(aln):
 def getGenesinRegion(region):
     """Get orthologous genes in all species in a syntenic region"""
 
-    print 'checking genes in aligned species'
+    print ('checking genes in aligned species')
     orthologs=[]
     for r in region.Members:
         try:
@@ -244,7 +246,7 @@ def getESTs(region):
         sp = loc.Species
         ests = r.genome.getFeatures(feature_types='est', region=r)
         for est in ests:
-            print est
+            print (est)
     return
 
 def summarise(df):

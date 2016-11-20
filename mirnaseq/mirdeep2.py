@@ -13,7 +13,7 @@ import pylab as plt
 import numpy as np
 import pandas as pd
 import HTSeq
-import base
+from . import base
 
 plt.rcParams['savefig.dpi'] = 150
 
@@ -36,7 +36,7 @@ def createMiRBaseFiles(species,path):
         fname = os.path.splitext(f)[0]+'_'+species+'.fa'
         base.getSubsetFasta(f, labels=[species], outfile=fname)
         names.append(fname)
-    print 'wrote mirbase files for species %s' %species
+    print ('wrote mirbase files for species %s' %species)
     return names
 
 def createSampleMap(path, ext='fastq'):
@@ -45,7 +45,7 @@ def createSampleMap(path, ext='fastq'):
 
     os.chdir(path)
     files = sorted(glob.glob('*.'+ext))
-    print files
+    print (files)
     fname = 'combined.txt'
     i=1
     rows=[]
@@ -54,7 +54,7 @@ def createSampleMap(path, ext='fastq'):
         i+=1
     res=pd.DataFrame(rows)
     res.to_csv(fname, index=False,sep=' ',header=False)
-    return fname
+    return (fname)
 
 def runMultiple(**kwargs):
     """Prepare and run mirdeep2"""
@@ -83,7 +83,7 @@ def run(infile, refgenome, bowtieindex, mature='', hairpin='', other='',
        Uses a config file even if we only have one sample."""
 
     label = os.path.splitext(os.path.basename(infile))[0]
-    print 'running %s' %label
+    print ('running %s' %label)
     os.environ["BOWTIE_INDEXES"] = os.path.dirname(bowtieindex)
     collapsed = 'collapsedreads.fa'
     if filetype=='fasta': mapparams='-c'
@@ -102,16 +102,16 @@ def run(infile, refgenome, bowtieindex, mature='', hairpin='', other='',
             pass
         cmd1 = ('mapper.pl %s -d %s -j -l 18 -m -k %s -s %s'
                 ' -p %s -t mapped.arf -v' %(infile,mapparams,adapter,collapsed,bowtieindex))
-        print cmd1
+        print (cmd1)
         result = subprocess.check_output(cmd1, shell=True, executable='/bin/bash')
     else:
-        print 'arf file found, skipping mapper step'
+        print ('arf file found, skipping mapper step')
 
     #mirdeep core
     cmd2 = ('miRDeep2.pl %s %s mapped.arf'
            ' %s %s %s -z _%s %s'
            ' -d > report.log' %(collapsed,refgenome,mature,other,hairpin,label,params))
-    print cmd2
+    print (cmd2)
     result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
     #remove junk
     if clean == True:
@@ -129,7 +129,7 @@ def quantifier(path, mature, precursor, star=None, collapsed='collapsedreads.fa'
     current = os.getcwd()
     os.chdir(path)
     cmd = 'quantifier.pl -p %s -m %s -r %s -y %s -k -d -g 1 -U' %(precursor,mature,collapsed,time)
-    print cmd
+    print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     os.chdir(current)
     return
@@ -142,11 +142,6 @@ def getpdfPath(path):
 def getresultsHtml(path):
     resfile = glob.glob(os.path.join(path,'result*html'))[0]
     return resfile
-
-def moveResults(dest):
-    """Move results from mirdeep to a clean folder"""
-
-    return
 
 def getChromosome(x):
     val = x.split('_')[0]
@@ -296,9 +291,9 @@ def analyseResults(path, outpath=None, **kwargs):
     base.createHtml(n[cols],'novel_mirdeep')
     k['perc'] = k['read_count']/k['read_count'].sum()
 
-    print k[cols[:8]]
+    print (k[cols[:8]])
     print
-    print n[cols[:9]]
+    print (n[cols[:9]])
 
     print 'mirdeep summary'
     print '-------------------------------'
@@ -378,7 +373,7 @@ def perSampleDists(df,cols=None,names=None):
     df= df.reset_index()
     m = pd.melt(df,id_vars=['#miRNA'],
                    var_name='sample',value_name='read count')
-    print m
+    print (m)
     g = base.sns.factorplot('sample','read count', None, m, col='#miRNA', kind="bar",
                             col_wrap=3,size=3,aspect=1.5,legend_out=True,sharey=False)
     locs, labels = plt.xticks()
@@ -434,7 +429,7 @@ def checkQuantifierResults(path):
     m.sc = m['miRDeep2 score']
     m['err'] = abs(m['read_count']-m['total read count'])
     cols=['#miRNA','total read count','read_count','miRDeep2 score']
-    print m[m.err>400].sort('total read count',ascending=False)[cols]
+    print (m[m.err>400].sort('total read count',ascending=False)[cols])
     m['size'] = np.select([m.sc < 2, m.sc < 3, m.sc < 4], [20,40,50], 80)
     f,ax=plt.subplots(1,1)
     plt.xscale('log')
@@ -459,7 +454,7 @@ def compareRuns(path1,path2):
     return
 
 def test(path):
-    print path
+    print (path)
     checkQuantifierResults(path)
     #testQuantifier(path)
     #df = getResults(path)
@@ -486,7 +481,7 @@ def main():
     if opts.run == True:
         #all other options are stored in config file
         if opts.config == None:
-            print 'No config file provided.'
+            print ('No config file provided.')
             base.writeDefaultConfig('mirdeep2.conf',defaults=mirdeep2options)
             return
         cp = base.parseConfig(opts.config)

@@ -5,6 +5,7 @@
    Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import sys, os, string, time
 import types, re, subprocess
 import pylab as plt
@@ -18,7 +19,7 @@ def writeDefaultConfig(conffile='default.conf', defaults={}):
     if not os.path.exists(conffile):
         cp = createConfigParserfromDict(defaults, ['base'])
         cp.write(open(conffile,'w'))
-        print 'wrote config file %s' %conffile
+        print ('wrote config file %s' %conffile)
     return conffile
 
 def createConfigParserfromDict(data, sections, **kwargs):
@@ -46,8 +47,8 @@ def parseConfig(conffile=None):
     try:
         cp.read(conffile)
     except Exception,e:
-        print 'failed to read config file! check format'
-        print 'Error returned:', e
+        print ('failed to read config file! check format')
+        print ('Error returned:', e)
         return
     return cp
 
@@ -149,7 +150,7 @@ def getSubsetFasta(infile, labels=['bta'], outfile='found.fa'):
         f = df[df.id.str.contains(l) | df.descr.str.contains(l)]
         found.append(f)
     df = pd.concat(found)
-    print 'found %s sequences' %len(df)
+    print ('found %s sequences' %len(df))
     dataframe2Fasta(df,outfile=outfile)
     return
 
@@ -192,7 +193,7 @@ def runBlastN(database, query):
 
     out = os.path.splitext(query)[0]
     cmd = 'blastall -d %s -i %s -p blastn -m 7 -e .1 > %s.xml' %(database,query,out)
-    print cmd
+    print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     gzipfile(out+'.xml', remove=True)
     return
@@ -242,8 +243,8 @@ def blastDB(f, database, ident=100):
     g = g.sort('subj',ascending=False)
     g = g.reset_index()
     #print g[:15]
-    print 'found %s hits in db' %len(df)
-    print
+    print ('found %s hits in db' %len(df))
+    print ()
     #outname = os.path.splitext(f)[0]+'_hits.csv'
     #g.to_csv(outname)
     return g
@@ -276,9 +277,9 @@ def bowtieMap(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best',
     if remaining == None:
         remaining = os.path.join(outpath, label+'_r.fastq')
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
-    print cmd
+    print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    print result
+    print (result)
     return remaining
 
 def createRandomSubset(sourcefile=None, sequences=None, size=1e5,
@@ -293,7 +294,7 @@ def createRandomSubset(sourcefile=None, sequences=None, size=1e5,
     for r in randidx:
         sequences[r].name = str(r)
         sequences[r].write_to_fasta_file(ffile)
-    print 'wrote %s sequences to %s' %(size, outfile)
+    print ('wrote %s sequences to %s' %(size, outfile))
     return
 
 def createRandomFastqFiles(sourcefile, path, sizes=None):
@@ -301,7 +302,7 @@ def createRandomFastqFiles(sourcefile, path, sizes=None):
 
     fastqfile = HTSeq.FastqReader(sourcefile, "solexa")
     sequences = [s for s in fastqfile]
-    print 'source file has %s seqs' %len(sequences)
+    print ('source file has %s seqs' %len(sequences))
     if sizes==None:
         sizes = np.arange(5e5,7.e6,5e5)
     for s in sizes:
@@ -315,7 +316,7 @@ def runEdgeR(countsfile, cutoff=1.5):
 
     cmd = 'Rscript ~/python/sandbox/mirnaseq/DEanalysis.R %s' %countsfile
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    print result
+    print (result)
     #read result back in
     de = pd.read_csv('de_output.csv')
     de.rename(columns={'Unnamed: 0':'name'}, inplace=True)
@@ -326,9 +327,9 @@ def runEdgeRGLM(countsfile, cutoff=1.5):
     """Run edgeR from R script"""
 
     cmd = 'Rscript ~/python/sandbox/mirnaseq/GLMDEanalysis.R %s' %countsfile
-    print cmd
+    print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    print result
+    print (result)
     #read result back in
     #de = pd.read_csv('de_output.csv')
     #de.rename(columns={'Unnamed: 0':'name'}, inplace=True)
@@ -343,9 +344,9 @@ def rpyEdgeR(data, groups, sizes, genes):
     rpy2.robjects.numpy2ri.activate()
     robjects.r('''library(edgeR)''')
     params = {'group' : groups, 'lib.size' : sizes}
-    print params
+    print (params)
     d = robjects.r.DGEList(counts=data, **params)
-    print d
+    print (d)
     robjects.r.calcNormFactors(d)
     robjects.r.estimateCommonDisp(d)
     robjects.r.estimateTagwiseDisp(d)
@@ -362,7 +363,7 @@ def RNAfold(seq, name=None):
 
     import RNA
     x = RNA.fold(seq)
-    print name, x
+    print (name, x)
     if name != None:
         path='RNAplots'
         RNA.svg_rna_plot(seq,x[0],os.path.join(path,name+'.svg'))
@@ -410,4 +411,3 @@ def plotRNA(seq, path='', subseqs=[], name='test'):
     os.system('convert test_ss.ps %s' %filename)
     #os.system('cp test_ss.ps %s' %filename)
     return filename
-

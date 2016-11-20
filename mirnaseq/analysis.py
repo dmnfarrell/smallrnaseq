@@ -5,6 +5,7 @@
    Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import sys, os, string, types, re, csv
 import shutil, glob, collections
 import itertools
@@ -14,9 +15,9 @@ import pylab as plt
 import numpy as np
 import pandas as pd
 import HTSeq
-import base
-import srnabench as srb
-import mirdeep2 as mdp
+from . import srnabench as srb
+from . import mirdeep2 as mdp
+from . import base, ensembl
 
 def first(x):
     return x.iloc[0]
@@ -75,7 +76,7 @@ def summariseReads(path):
         s = summariseFastq(f)
         l = len(s)
         vals.append([label,l])
-        print label, l
+        print (label, l)
 
     df = pd.DataFrame(vals,columns=['path','total reads'])
     df.to_csv(resultfile)
@@ -89,7 +90,7 @@ def collapseReads(infile, outfile='collapsed.fa'):
     """Collapse identical reads and retain copy number
       - may use a lot of memory"""
 
-    print 'collapsing reads %s' %infile
+    print ('collapsing reads %s' %infile)
     fastqfile = HTSeq.FastqReader(infile, "solexa")
     #fastafile = HTSeq.FastaReader(infile)
     sequences = [(s.name, s.seq, s.descr) for s in fastqfile]
@@ -101,7 +102,7 @@ def collapseReads(infile, outfile='collapsed.fa'):
     g['id'] = g.apply(lambda x: 'seq_'+str(x.name),axis=1)
     base.dataframe2Fasta(g,outfile=outfile)
     g.to_csv(os.path.splitext(outfile)[0]+'.csv')
-    print 'collapsed %s reads to %s' %(len(df),len(g))
+    print ('collapsed %s reads to %s' %(len(df),len(g)))
     #bins=np.linspace(1,df.length.max(),df.length.max())
     #x=np.histogram(df.length,bins=bins)
     #x=pd.Series(l[0],index=l[1][1:])
@@ -114,11 +115,11 @@ def trimAdapters(infile, adapters=[], outfile='cut.fastq'):
     #if os.path.exists(outfile):
     #    return
     if len(adapters) == 0:
-        print 'no adapters!'
+        print ('no adapters!')
         return
     adptstr = ' -a '.join(adapters)
     cmd = 'cutadapt -m 18 -O 5 -q 20 --discard-untrimmed -a %s %s -o %s' %(adptstr,infile,outfile)
-    print cmd
+    print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     #print result
     return
@@ -133,7 +134,7 @@ def removeKnownRNAs(path, adapters=[], outpath='RNAremoved'):
     if not os.path.exists(outpath):
         os.mkdir(outpath)
     for f in files:
-        print f
+        print (f)
         label = os.path.splitext(os.path.basename(f))[0]
         trimAdapters(f, adapters)
         fastq2fasta('cut.fastq')
@@ -166,11 +167,11 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None,
             os.remove(s)
     outfiles = []
     for f in files:
-        print f
+        print (f)
         label = os.path.splitext(os.path.basename(f))[0]
         cut = os.path.join(outpath,label+'_cut.fastq')
         cfile = os.path.join(outpath,label+'.fa')
-        print cut,cfile
+        print (cut,cfile)
         if not os.path.exists(cfile):
             if not os.path.exists(cut) and adapters!=None:
                 trimAdapters(f, adapters, cut)
@@ -199,7 +200,7 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None,
             rem = os.path.join(outpath, label+'_r.fastq')
             samfile = os.path.join(outpath, '%s_%s_mapped.sam' %(label,index))
             if not os.path.exists(samfile):
-                print rem
+                print (rem)
                 rem = base.bowtieMap(query, index, outfile=samfile, params=bowtieparams,
                                      remaining=rem)
             sam = HTSeq.SAM_Reader(samfile)
@@ -210,11 +211,11 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None,
                 nr = counts[counts.id.isin(found.name)]
                 fc = nr['descr'].sum()
                 perc = fc/float(total)
-                print index, len(f), fc, total, round(perc,4)
+                print (index, len(f), fc, total, round(perc,4))
 
             else:
 		perc = 0.0
-            print '%s: %.4f of total reads aligned' %(index,perc)
+            print ('%s: %.4f of total reads aligned' %(index,perc))
             x.append(perc)
         res.append(x)
 
@@ -233,7 +234,7 @@ def plotRNAmapped(df=None, catlabels=None, path=None):
     df = df.drop('total',1)
     df['unmapped'] = 1-df.sum(1)
     df = df.set_index('name')
-    print df
+    print (df)
     if catlabels != None:
         df = df.rename(columns=catlabels)
     plt.figure(figsize=(8,8))
@@ -268,7 +269,7 @@ def compareMethods(path1,path2):
     sk = k[:80]
     x = pd.merge(mk,sk,left_on='#miRNA',right_on='name',how='inner',suffixes=['1','2'])
     diff = x[(abs(x.total1-x.total2)/x.total2>.2)]
-    print diff[['#miRNA','total1','total2']]
+    print (diff[['#miRNA','total1','total2']])
     #print np.corrcoef(np.log10(x.total1),np.log10(x.total2))
     fig = plt.figure(figsize=(12,6))
     ax=fig.add_subplot(121)
@@ -323,7 +324,7 @@ def KStest(df, ids):
     result=result.set_index(readcuts)
     result.plot(lw=2,colormap='Set1',legend=False)
     tmins = result.apply(getMin)
-    print tmins
+    print (tmins)
     mean=tmins.mean()
     std=tmins.std()
 
@@ -384,7 +385,6 @@ def mirnaDiscoveryTest(sourcefile):
             f.extend(n.index)
             results.append((i,len(f),len(f),n.total.max()))
         r = pd.DataFrame(results,columns=['reads','total','frac','rcm'])
-        print r
         return r
 
     r1 = getFound(k1, mp1)
@@ -417,14 +417,13 @@ def mirnaDiscoveryTest(sourcefile):
     return
 
 def novelConservation():
-    import ensembl
     df = pd.read_csv('novel_mirdeep.csv')
     #df = pd.read_csv('known_mirdeep.csv')
     ensembl.getmiRNAOrthologs(df)
     ensembl.summarise(df)
     return
 
-def getExpCondMap(path, labels='mapdata_labels.csv'):
+'''def getExpCondMap(path, labels='mapdata_labels.csv'):
     """Get mirdeep results labels mapped to our exp condition table"""
 
     condmap = pd.read_csv(labels)
@@ -618,14 +617,13 @@ def analyseisomirs():
     df = iso.set_index('read')
     t = df.T
     t = t.merge(c,left_index=True,right_on='col')
-    print c.columns
+    print (c.columns)
     tm = pd.melt(t,id_vars=list(c.columns),
                    var_name='read',value_name='total')
-    print tm
     g = base.sns.factorplot('animal','total', data=tm, col='read', kind="bar", hue='pool',
                             col_wrap=4,size=4,aspect=0.9,legend_out=True,sharey=False)
     plt.show()
-    return
+    return'''
 
 def getmiFam():
     """Get miRBase family data"""
@@ -723,7 +721,7 @@ def main():
             summariseReads(opts.summarise)
         else:
             df = summariseFastq(opts.summarise)
-            print '%s reads' %len(df)
+            print ('%s reads' %len(df))
             readLengthDist(df)
     elif opts.test == True:
         test()

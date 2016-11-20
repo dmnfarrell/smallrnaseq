@@ -12,11 +12,13 @@ import subprocess
 import pylab as plt
 import numpy as np
 import pandas as pd
-import base
+from . import base
 
 plt.rcParams['savefig.dpi'] = 150
 modulepath = os.path.dirname(__file__)
-mirbase = pd.read_csv(os.path.join(modulepath,'miRBase_all.csv'))
+path = os.path.dirname(os.path.abspath(__file__)) #path to module
+datadir = os.path.join(path, 'data')
+mirbase = pd.read_csv(os.path.join(datadir,'miRBase_all.csv'))
 mirbase = mirbase.drop_duplicates('mature1')
 
 srbpath = '/local/sRNAbench'
@@ -47,7 +49,7 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter='', species='b
     if not os.path.exists(outpath):
         os.mkdir(outpath)
     outdir = os.path.join(outpath, label)
-    print 'running %s' %infile
+    print ('running %s' %infile)
 
     if os.path.exists(outdir):
         if overwrite == False:
@@ -62,9 +64,9 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter='', species='b
         cmd += ' adapter=%s' %adapter
     #else:
     #    cmd += ' guessAdapter=true'
-    print cmd
+    print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    print result
+    print (result)
     return outdir
 
 def runAll(path, outpath='runs', filetype='fastq', **kwargs):
@@ -74,7 +76,7 @@ def runAll(path, outpath='runs', filetype='fastq', **kwargs):
         files = glob.glob(os.path.join(path,'*.'+filetype))
     else:
         files = [path]
-    print 'running sRNAbench for %s files' %len(files)
+    print ('running sRNAbench for %s files' %len(files))
     for f in files:
         res = run(f, outpath, **kwargs)
         if res == None:
@@ -245,15 +247,15 @@ def analyseResults(k,n,outpath=None):
     ky2 = 'read count' #'RC'
     cols = ['name','freq','mean read count','mean_norm','total','perc','mirbase_id']
     print
-    print 'found:'
+    print ('found:')
     idcols,normcols = getColumnNames(k)
     final = filterExprResults(k,freq=.8,meanreads=200)
     print final[cols]
-    print '-------------------------------'
-    print '%s total' %len(k)
-    print '%s with >=10 mean reads' %len(k[k['mean read count']>=10])
-    print '%s found in 1 sample only' %len(k[k['freq']==1])
-    print 'top 10 account for %2.2f' %k['perc'][:10].sum()
+    print ('-------------------------------')
+    print ('%s total' %len(k))
+    print ('%s with >=10 mean reads' %len(k[k['mean read count']>=10]))
+    print ('%s found in 1 sample only' %len(k[k['freq']==1]))
+    print ('top 10 account for %2.2f' %k['perc'][:10].sum())
 
     fig,ax = plt.subplots(nrows=1, ncols=1, figsize=(8,6))
     k.set_index('name')['total'][:10].plot(kind='barh',colormap='Spectral',ax=ax,log=True)
@@ -298,11 +300,11 @@ def analyseIsomiRs(iso,outpath=None):
     iso = iso[(iso.total>10) & (iso.freq>0.5)]
     top = getTopIsomirs(iso)
     top.to_csv('srnabench_isomirs_dominant.csv',index=False)
-    print 'top isomiRs:'
-    print top[:20]
-    print '%s/%s with only 1 isomir' %(len(top[top.domisoperc==1]),len(top))
-    print 'different dominant isomir:', len(top[top.variant!='exact'])/float(len(top))
-    print 'mean dom isomir perc:', top.domisoperc.mean()
+    print ('top isomiRs:')
+    print (top[:20])
+    print ('%s/%s with only 1 isomir' %(len(top[top.domisoperc==1]),len(top)))
+    print ('different dominant isomir:', len(top[top.variant!='exact'])/float(len(top)))
+    print ('mean dom isomir perc:', top.domisoperc.mean())
     print
     #stats
     fig,ax = plt.subplots(1,1)
@@ -402,7 +404,7 @@ def getLabelMap(path, labels):
     sec = open(os.path.join(outdir,'hairpin/%s.sec' %mirna),'r').readlines()
     return'''
 
-def runDE(inpath, l1, l2, cutoff=1.5):
+'''def runDE(inpath, l1, l2, cutoff=1.5):
     """DE via sRNABench"""
 
     files1 = getFilesfromMapping(inpath, l1)
@@ -429,7 +431,7 @@ def runDE(inpath, l1, l2, cutoff=1.5):
     df = df.rename(columns={'index':'name'})
     df = df.sort('logFC',ascending=False)
     df = df[(df.FDR<0.05) & ((df.logFC>cutoff) | (df.logFC<-cutoff))]
-    return df
+    return df'''
 
 def test():
     runDE('results_srnabench_combined', 'MAP TP0', 'MAP TP END')
@@ -456,7 +458,7 @@ def main():
             base.writeDefaultConfig('srnabench.conf',defaults=srnabenchoptions)
         cp = base.parseConfig(opts.config)
         options = cp._sections['base']
-        print options
+        print (options)
         if opts.input == None:
             opts.input = options['input']
         runAll(opts.input, **options)
