@@ -5,14 +5,13 @@
    Copyright (C) Damien Farrell
 """
 
-import sys, os, string, types, re, StringIO
+import sys, os, string, types, re
 import shutil, glob, collections
 import itertools
 import subprocess
 import pylab as plt
 import numpy as np
 import pandas as pd
-import HTSeq
 from . import base
 
 plt.rcParams['savefig.dpi'] = 150
@@ -295,14 +294,14 @@ def analyseResults(path, outpath=None, **kwargs):
     print
     print (n[cols[:9]])
 
-    print 'mirdeep summary'
-    print '-------------------------------'
-    print '%s (%s novel) identified' %(len(df),len(novel))
-    print 'quantifier results after filtering:'
-    print '%s/%s known' %(len(k),len(known))
-    print '%s/%s novel' %(len(n),len(novel))
-    print 'top 10 known account for %2.2f' %k['perc'][:10].sum()
-    print '%s are 3p strand' %len(k[k['#miRNA'].str.contains('3p')])
+    print ('mirdeep summary')
+    print ('-------------------------------')
+    print (('%s (%s novel) identified' %(len(df),len(novel))))
+    print ('quantifier results after filtering:')
+    print ('%s/%s known' %(len(k),len(known)))
+    print ('%s/%s novel' %(len(n),len(novel)))
+    print ('top 10 known account for %2.2f' %k['perc'][:10].sum())
+    print ('%s are 3p strand' %len(k[k['#miRNA'].str.contains('3p')]))
     #print df[(df.mean_norm>300) & (df.freq<0.5)][cols[:7]]
     print
 
@@ -354,18 +353,21 @@ def plotReadCountDists(df,h=8):
     df = df[normcols]
     t=df.T
     t.index = cols
-    base.sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
-    #t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
-    base.sns.despine(trim=True)
+    try:
+        import seaborn as sns
+        sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
+        sns.despine(trim=True)
+    except:
+        t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
     ax.set_yscale('log')
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
     plt.ylabel('read count')
     plt.tight_layout()
     return fig
 
-def perSampleDists(df,cols=None,names=None):
+'''def perSampleDists(df,cols=None,names=None):
 
-    base.seabornsetup()
+    #base.seabornsetup()
     #df=df[df.index.isin(names)]
     df = df[:2]
     cols,normcols = getColumnNames(df)
@@ -380,7 +382,7 @@ def perSampleDists(df,cols=None,names=None):
     plt.setp(labels, rotation=45)
     plt.tight_layout()
     plt.savefig('mirdeep_persample_counts.png')
-    return
+    return'''
 
 def getFileIDs(path):
     """Get file<->mirdeep2 id mapping"""

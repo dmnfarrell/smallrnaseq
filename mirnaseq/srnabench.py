@@ -80,7 +80,7 @@ def runAll(path, outpath='runs', filetype='fastq', **kwargs):
     for f in files:
         res = run(f, outpath, **kwargs)
         if res == None:
-            print 'skipped %s' %f
+            print ('skipped %s' %f)
     return
 
 def readResultsFile(path, infile='mature_sense.grouped', filter=True):
@@ -250,7 +250,7 @@ def analyseResults(k,n,outpath=None):
     print ('found:')
     idcols,normcols = getColumnNames(k)
     final = filterExprResults(k,freq=.8,meanreads=200)
-    print final[cols]
+    print (final[cols])
     print ('-------------------------------')
     print ('%s total' %len(k))
     print ('%s with >=10 mean reads' %len(k[k['mean read count']>=10]))
@@ -315,7 +315,10 @@ def analyseIsomiRs(iso,outpath=None):
     fig.savefig('srnabench_isomir_counts.png')
     fig,ax = plt.subplots(1,1)
     #top.hist('domisoperc',bins=20,ax=ax)
-    base.sns.distplot(top.domisoperc,bins=15,ax=ax,kde_kws={"lw": 2})
+    try:
+        base.sns.distplot(top.domisoperc,bins=15,ax=ax,kde_kws={"lw": 2})
+    except:
+        print 'no seaborn'
     fig.suptitle('distribution of dominant isomiR share of reads')
     fig.savefig('srnabench_isomir_domperc.png')
 
@@ -357,7 +360,7 @@ def analyseIsomiRs(iso,outpath=None):
 def plotReadCountDists(df,h=8):
     """Boxplots of read count distributions per miRNA"""
 
-    base.seabornsetup()
+
     w=int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
     cols,normcols = getColumnNames(df)
@@ -365,9 +368,12 @@ def plotReadCountDists(df,h=8):
     n = df[normcols]
     t=n.T
     t.index = n.columns
-    base.sns.boxplot(t,linewidth=1.0,palette='coolwarm_r',saturation=0.2,)
-    base.sns.despine(trim=True)
-    #t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
+    try:
+        base.seabornsetup()
+        base.sns.boxplot(t,linewidth=1.0,palette='coolwarm_r',saturation=0.2,)
+        base.sns.despine(trim=True)
+    except:
+        t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
     ax.set_yscale('log')
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
     plt.ylabel('read count')
@@ -439,7 +445,10 @@ def test():
     return
 
 def main():
-    base.seabornsetup()
+    try:
+        base.seabornsetup()
+    except:
+        pass
     from optparse import OptionParser
     parser = OptionParser()
     parser.add_option("-r", "--run", dest="run", action='store_true',

@@ -11,11 +11,15 @@ import types, re, subprocess
 import pylab as plt
 import numpy as np
 import pandas as pd
-import ConfigParser
-import HTSeq
+import configparser
+try:
+    import HTSeq
+except:
+    'HTSeq not present'
 
 def writeDefaultConfig(conffile='default.conf', defaults={}):
     """Write a default config file"""
+
     if not os.path.exists(conffile):
         cp = createConfigParserfromDict(defaults, ['base'])
         cp.write(open(conffile,'w'))
@@ -24,7 +28,8 @@ def writeDefaultConfig(conffile='default.conf', defaults={}):
 
 def createConfigParserfromDict(data, sections, **kwargs):
     """Helper method to create a ConfigParser from a dict and/or keywords"""
-    cp = ConfigParser.ConfigParser()
+
+    cp = configparser.ConfigParser()
     for s in sections:
         cp.add_section(s)
         if not data.has_key(s):
@@ -42,18 +47,21 @@ def createConfigParserfromDict(data, sections, **kwargs):
 
 def parseConfig(conffile=None):
     """Parse a configparser file"""
+
     f = open(conffile,'r')
-    cp = ConfigParser.ConfigParser()
+    cp = configparser.ConfigParser()
     try:
         cp.read(conffile)
-    except Exception,e:
+    except Exception as e:
         print ('failed to read config file! check format')
         print ('Error returned:', e)
         return
+    f.close()    
     return cp
 
 def getOptions(cp):
     """Makes sure boolean opts are parsed"""
+
     options = cp._sections['base']
     for o in options:
         try:
@@ -97,6 +105,7 @@ def doHeatMap(df,fname=None,cmap='seismic',log=False):
 
 def venndiagram(names,labels,ax=None,**kwargs):
     """Plot venn diagrams"""
+
     from matplotlib_venn import venn2,venn3
     f=None
     if ax==None:
@@ -115,6 +124,7 @@ def venndiagram(names,labels,ax=None,**kwargs):
 
 def gzipfile(filename, remove=False):
     """Compress a file with gzip"""
+
     import gzip
     fin = open(filename, 'rb')
     fout = gzip.open(filename+'.gz', 'wb')

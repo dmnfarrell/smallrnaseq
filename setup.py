@@ -10,11 +10,15 @@ setup(
     author = 'Damien Farrell',
     author_email = 'farrell.damien[at]gmail.com',
     packages = ['mirnaseq'],
-    package_data={'mirnaseq': ['data/*.csv']},
+    package_data={'mirnaseq': ['data/*']},
     install_requires=['pandas>=0.17',
                       'biopython>=1.5',
-                      'HTSeq>0.6',
-    entry_points = {},
+                      'HTSeq>0.6'],
+    entry_points = {
+        'console_scripts': [
+            'mirdeep2=mirnaseq.mirdeep2:main',
+            'srnabench=mirnaseq.srnabench:main']
+            },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 3.4',
             'Programming Language :: Python :: 2.7',

@@ -14,7 +14,10 @@ import matplotlib
 import pylab as plt
 import numpy as np
 import pandas as pd
-import HTSeq
+try:
+    import HTSeq
+except:
+    'HTSeq not present'
 from . import srnabench as srb
 from . import mirdeep2 as mdp
 from . import base, ensembl
@@ -214,7 +217,7 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None,
                 print (index, len(f), fc, total, round(perc,4))
 
             else:
-		perc = 0.0
+                perc = 0.0
             print ('%s: %.4f of total reads aligned' %(index,perc))
             x.append(perc)
         res.append(x)
