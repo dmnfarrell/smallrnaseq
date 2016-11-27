@@ -354,9 +354,9 @@ def plotReadCountDists(df,h=8):
     t=df.T
     t.index = cols
     try:
-        import seaborn as sns
-        sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
-        sns.despine(trim=True)
+        base.seabornsetup()
+        base.sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
+        base.sns.despine(trim=True)
     except:
         t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
     ax.set_yscale('log')
@@ -478,7 +478,7 @@ def main():
                            help="testing")
     opts, remainder = parser.parse_args()
     pd.set_option('display.width', 800)
-    base.seabornsetup()
+    #base.seabornsetup()
 
     if opts.run == True:
         #all other options are stored in config file

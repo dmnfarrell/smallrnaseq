@@ -439,11 +439,6 @@ def getLabelMap(path, labels):
     df = df[(df.FDR<0.05) & ((df.logFC>cutoff) | (df.logFC<-cutoff))]
     return df'''
 
-def test():
-    runDE('results_srnabench_combined', 'MAP TP0', 'MAP TP END')
-    runsrnabenchDE('results_srnabench_combined', 'MAP TP0', 'MAP TP END')
-    return
-
 def main():
     try:
         base.seabornsetup()
