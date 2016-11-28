@@ -273,7 +273,7 @@ def bwaMap(infile, ref=None, outfile=None):
     return
 
 def bowtieMap(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best',
-                remaining=None):
+                remaining=None, verbose=True):
     """Map reads using bowtie"""
 
     label = os.path.splitext(os.path.basename(infile))[0]
@@ -287,9 +287,10 @@ def bowtieMap(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best',
     if remaining == None:
         remaining = os.path.join(outpath, label+'_r.fastq')
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
-    print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    print (result)
+    if verbose == True:
+	print (cmd)
+   	print (result)
     return remaining
 
 def createRandomSubset(sourcefile=None, sequences=None, size=1e5,

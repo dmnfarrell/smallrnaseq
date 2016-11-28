@@ -28,8 +28,8 @@ def first(x):
 def readLengthDist(df):
 
     df['length'] = df.seq.str.len()
-    bins=np.linspace(1,df.length.max(),df.length.max())
-    fig,ax=plt.subplots(1,1,figsize=(10,6))
+    bins = np.linspace(1,df.length.max(),df.length.max())
+    fig,ax = plt.subplots(1,1,figsize=(10,6))
     #df.hist('length',bins=bins,ax=ax,normed=True)
     x = np.histogram(df.length,bins=bins)
     #ax.bar(x[1][:-1],x[0], align='center')
@@ -165,9 +165,13 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None,
     if not os.path.exists(outpath):
         os.mkdir(outpath)
     if overwrite == True:
+        print ('removing old temp files')
         samfiles = glob.glob(os.path.join(outpath,'*_mapped.sam'))
         for s in samfiles:
             os.remove(s)
+    remfiles = glob.glob(os.path.join(outpath, '*_r.fastq'))
+    for r in remfiles:
+        os.remove(r)
     outfiles = []
     for f in files:
         print (f)
@@ -205,7 +209,7 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None,
             if not os.path.exists(samfile):
                 print (rem)
                 rem = base.bowtieMap(query, index, outfile=samfile, params=bowtieparams,
-                                     remaining=rem)
+                                     remaining=rem, verbose=False)
             sam = HTSeq.SAM_Reader(samfile)
             f = [(a.read.seq,a.read.name) for a in sam if a.aligned == True]
             if len(f)>0:
