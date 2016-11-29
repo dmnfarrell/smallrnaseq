@@ -29,7 +29,7 @@ def readLengthDist(df):
 
     df['length'] = df.seq.str.len()
     bins = np.linspace(1,df.length.max(),df.length.max())
-    fig,ax = plt.subplots(1,1,figsize=(10,6))
+    #fig,ax = plt.subplots(1,1,figsize=(10,6))
     #df.hist('length',bins=bins,ax=ax,normed=True)
     x = np.histogram(df.length,bins=bins)
     #ax.bar(x[1][:-1],x[0], align='center')
@@ -41,7 +41,7 @@ def readLengthDist(df):
     #plt.show()
     return x
 
-def fastq2fasta(infile, rename=True):
+def fastq_to_fasta(infile, rename=True):
 
     fastqfile = HTSeq.FastqReader(infile, "solexa")
     outfile = open(os.path.splitext(infile)[0]+'.fa','w')
@@ -54,7 +54,7 @@ def fastq2fasta(infile, rename=True):
     outfile.close()
     return
 
-def summariseFastq(f):
+def summarise_fastq(f):
 
     ext = os.path.splitext(f)[1]
     if ext=='.fastq':
@@ -89,7 +89,7 @@ def summariseReads(path):
     #df = pd.concat()
     return df
 
-def collapseReads(infile, outfile='collapsed.fa'):
+def collapse_reads(infile, outfile='collapsed.fa'):
     """Collapse identical reads and retain copy number
       - may use a lot of memory"""
 
@@ -112,7 +112,7 @@ def collapseReads(infile, outfile='collapsed.fa'):
     x=df.length.value_counts()
     return x
 
-def trimAdapters(infile, adapters=[], outfile='cut.fastq'):
+def trim_adapters(infile, adapters=[], outfile='cut.fastq'):
     """Trim adapters using cutadapt"""
 
     #if os.path.exists(outfile):
@@ -127,7 +127,7 @@ def trimAdapters(infile, adapters=[], outfile='cut.fastq'):
     #print result
     return
 
-def removeKnownRNAs(path, adapters=[], outpath='RNAremoved'):
+def remove_known_rnas(path, adapters=[], outpath='RNAremoved'):
     """Map to annotated RNAs and put remaining reads in output dir"""
 
     index = 'bosTau6-tRNAs'
@@ -144,16 +144,20 @@ def removeKnownRNAs(path, adapters=[], outpath='RNAremoved'):
         rem = os.path.join(outpath, label+'.fa')
         #samfile = os.path.join(outpath, '%s_%s_mapped.sam' %(label,index))
         samfile = 'out.sam'
-        base.bowtieMap('cut.fa', index, outfile=samfile, params=params, remaining=rem)
+        base.bowtie_map('cut.fa', index, outfile=samfile, params=params, remaining=rem)
 
     return
 
-def mapRNAs(files=None, path=None, indexes=[], adapters=None,
-            bowtieparams=None, overwrite=False):
-    """Map to various ncRNA annotations and quantify perc of reads mapping.
-        The order of indexes will affect results.
+def map_rnas(files=None, path=None, indexes=[], adapters=None,
+             bowtieparams=None, overwrite=False):
+    """Map to various gene annotations and quantify fraction of reads mapping to
+       each. Order may be important.
         path: input path with read files
-        indexes: bowtie indexes of annotated rna classes"""
+        indexes: bowtie indexes of annotations/genomes
+        adapters: if adapters need to be trimmed
+        bowtieparams: parameters for bowtie
+        overwrite: whether to overwrote temp files
+    """
 
     if bowtieparams == None:
     	bowtieparams = '-v 1 --best'
@@ -181,10 +185,10 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None,
         print (cut,cfile)
         if not os.path.exists(cfile):
             if not os.path.exists(cut) and adapters!=None:
-                trimAdapters(f, adapters, cut)
+                trim_adapters(f, adapters, cut)
             elif adapters==None:
                 cut = f
-            collapseReads(cut, outfile=cfile)
+            collapse_reads(cut, outfile=cfile)
         outfiles.append(cfile)
 
     #cfiles = glob.glob(os.path.join(outpath,'*.fa'))
@@ -207,8 +211,8 @@ def mapRNAs(files=None, path=None, indexes=[], adapters=None,
             rem = os.path.join(outpath, label+'_r.fastq')
             samfile = os.path.join(outpath, '%s_%s_mapped.sam' %(label,index))
             if not os.path.exists(samfile):
-                print (rem)
-                rem = base.bowtieMap(query, index, outfile=samfile, params=bowtieparams,
+                #print (rem)
+                rem = base.bowtie_map(query, index, outfile=samfile, params=bowtieparams,
                                      remaining=rem, verbose=False)
             sam = HTSeq.SAM_Reader(samfile)
             f = [(a.read.seq,a.read.name) for a in sam if a.aligned == True]
@@ -263,7 +267,7 @@ def plotRNAmapped(df=None, catlabels=None, path=None):
     plt.savefig(os.path.join(path,'ncrna_bysample.png'))
     return
 
-def compareMethods(path1,path2):
+def compare_methods(path1,path2):
     """Compare 2 methods for subsets of samples"""
 
     #compare means of filtered knowns

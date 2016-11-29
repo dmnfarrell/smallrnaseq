@@ -56,7 +56,7 @@ def parseConfig(conffile=None):
         print ('failed to read config file! check format')
         print ('Error returned:', e)
         return
-    f.close()    
+    f.close()
     return cp
 
 def getOptions(cp):
@@ -103,7 +103,7 @@ def doHeatMap(df,fname=None,cmap='seismic',log=False):
         f.savefig(fname+'.png')
     return ax
 
-def venndiagram(names,labels,ax=None,**kwargs):
+def venn_diagram(names,labels,ax=None,**kwargs):
     """Plot venn diagrams"""
 
     from matplotlib_venn import venn2,venn3
@@ -135,7 +135,7 @@ def gzipfile(filename, remove=False):
         os.remove(filename)
     return
 
-def createHtml(df,name,path='.'):
+def create_html(df,name,path='.'):
     """Create a basic html page for dataframe results"""
 
     s = ['<script src="sorttable.js"></script>']
@@ -148,7 +148,7 @@ def createHtml(df,name,path='.'):
     f.write(body)
     return
 
-def getSubsetFasta(infile, labels=['bta'], outfile='found.fa'):
+def get_subset_fasta(infile, labels=['bta'], outfile='found.fa'):
     """Get a subset of sequences matching a label"""
 
     fastafile = HTSeq.FastaReader(infile)
@@ -164,7 +164,8 @@ def getSubsetFasta(infile, labels=['bta'], outfile='found.fa'):
     dataframe2Fasta(df,outfile=outfile)
     return
 
-def filterFasta(infile):
+def filter_fasta(infile):
+
     fastafile = HTSeq.FastaReader(infile)
     sequences = [(s.name, s.seq, s.descr) for s in fastafile]
     out = open('filtered.fa', "w")
@@ -175,7 +176,7 @@ def filterFasta(infile):
         myseq.write_to_fasta_file(out)
     return
 
-def fasta2DataFrame(infile,idindex=0):
+def fasta_to_dataFrame(infile,idindex=0):
     """Get fasta proteins into dataframe"""
 
     keys = ['name','sequence','description']
@@ -185,7 +186,7 @@ def fasta2DataFrame(infile,idindex=0):
     df.set_index(['name'],inplace=True)
     return df
 
-def dataframe2Fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
+def dataframe_to_fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
     """Convert dataframe to fasta"""
 
     df = df.reset_index() #in case key is the index
@@ -198,7 +199,7 @@ def dataframe2Fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
         myseq.write_to_fasta_file(fastafile)
     return
 
-def runBlastN(database, query):
+def run_blastn(database, query):
     """Run blast"""
 
     out = os.path.splitext(query)[0]
@@ -208,7 +209,7 @@ def runBlastN(database, query):
     gzipfile(out+'.xml', remove=True)
     return
 
-def parseBlastRec(rec):
+def parse_blast_rec(rec):
     """Parse blast record alignment(s)"""
 
     #if len(rec.alignments) == 0 : print 'no alignments'
@@ -222,7 +223,7 @@ def parseBlastRec(rec):
                     hsp.positives, hsp.align_length])
     return recs
 
-def getBlastResults(handle=None, filename=None, n=80):
+def get_blast_results(handle=None, filename=None, n=80):
     """Get blast results into dataframe"""
 
     from Bio.Blast import NCBIXML
@@ -259,7 +260,7 @@ def blastDB(f, database, ident=100):
     #g.to_csv(outname)
     return g
 
-def bwaMap(infile, ref=None, outfile=None):
+def bwa_map(infile, ref=None, outfile=None):
     """Map with bwa"""
 
     bwaindexes = '/opt/mirnaseq/genomes/bwa_index'
@@ -272,7 +273,7 @@ def bwaMap(infile, ref=None, outfile=None):
     result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
     return
 
-def bowtieMap(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best',
+def bowtie_map(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best',
                 remaining=None, verbose=True):
     """Map reads using bowtie"""
 
@@ -289,8 +290,8 @@ def bowtieMap(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best',
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     if verbose == True:
-	print (cmd)
-   	print (result)
+    	print (cmd)
+    print (result)
     return remaining
 
 def createRandomSubset(sourcefile=None, sequences=None, size=1e5,
@@ -389,7 +390,7 @@ def cogentAlignment2DataFrame(A):
     df = pd.DataFrame(res,columns=['species','seq'])
     return df
 
-def formatcmarkValues(values, rgb=" 1. 0. .2"):
+def format_cmark_values(values, rgb=" 1. 0. .2"):
     """PS colored marks for rnaplot"""
 
     minval , maxval = min ( values ) ,max ( values )
@@ -400,8 +401,8 @@ def formatcmarkValues(values, rgb=" 1. 0. .2"):
     macro += " pop fsize 2 div 0 360 arc fill} bind def"+x
     return macro
 
-def plotRNA(seq, path='', subseqs=[], name='test'):
-    """plot miRNA"""
+def plot_rna(seq, path='', subseqs=[], name='test'):
+    """plot RNA structure using vienna package"""
 
     import cogent.app.vienna_package as vienna
     colors = [" 1. 0. .2", " 0. .9 .5"]
@@ -414,7 +415,7 @@ def plotRNA(seq, path='', subseqs=[], name='test'):
         for s in subseqs:
             ind=seq.find(s)+1
             e=ind+len(s)
-            x += formatcmarkValues(range(ind,e), rgb=colors[i])
+            x += format_cmark_values(range(ind,e), rgb=colors[i])
             i+=1
         r.Parameters['--pre'].on('"%s"' %x)
     r(['>'+seqname,seq,struct])

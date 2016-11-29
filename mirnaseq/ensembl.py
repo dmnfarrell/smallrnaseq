@@ -26,7 +26,7 @@ except:
     print ('cogent not available, ensembl module requires it')
 
 
-def getOrthologs(refgenome, ensid=None, symbol=None):
+def get_orthologs(refgenome, ensid=None, symbol=None):
     '''if ensid!=None:
         mygene = cow.getGeneByStableId(StableId=ensid)
     else:
@@ -41,7 +41,7 @@ def getOrthologs(refgenome, ensid=None, symbol=None):
     #                align_method='EPO', align_clade='eutherian')
     return
 
-def getGenesFromLocation(ref, coords, pad=0):
+def get_genes_from_location(ref, coords, pad=0):
     """Get genes from a set of coords.
        pad will add n bases to either side to expand area"""
 
@@ -51,7 +51,7 @@ def getGenesFromLocation(ref, coords, pad=0):
                     End=end+pad, feature_types='gene'))
     return genes
 
-def findinGene(g, start, end):
+def find_in_gene(g, start, end):
     """Find if coords are inside intron or exon"""
 
     start=int(start)
@@ -68,7 +68,7 @@ def findinGene(g, start, end):
             return 'intron'
     #return 'both'
 
-def getAlignmentTree(fname):
+def get_alignment_tree(fname):
     """Build a neighbour joining tree"""
 
     from cogent.phylo import distance, nj
@@ -86,7 +86,7 @@ def getAlignmentTree(fname):
                 shade_param = 'r', max_value = 1.0,)'''
     return
 
-def getSyntenicAlignment(comp, ref, coords, fname='ensembl.aln.fa'):
+def get_syntenic_alignment(comp, ref, coords, fname='ensembl.aln.fa'):
     """Get ensembl genomic alignment for a location using compara and return seqs"""
 
     print
@@ -108,7 +108,7 @@ def getSyntenicAlignment(comp, ref, coords, fname='ensembl.aln.fa'):
         print ('%s syntenic regions found' %len(regions))
     return regions, A
 
-def getHostGenes(df, ref='cow'):
+def get_host_genes(df, ref='cow'):
     """Get all genes containing the given miRNAs using ensembl"""
 
     results=[]
@@ -134,7 +134,7 @@ def getHostGenes(df, ref='cow'):
 #    x = [g[0].Symbol if len(g)>0 else np.nan for g in orthgenes]
 #    return x
 
-def getmiRNAOrthologs(df, comp=None, ref='cow'):
+def get_mirna_orthologs(df, comp=None, ref='cow'):
     """Get all possible orthologs/conservation for miRNAs using ensembl"""
 
     if comp == None:
@@ -189,7 +189,7 @@ def getmiRNAOrthologs(df, comp=None, ref='cow'):
     results.to_csv('novel_orthologs.csv')
     return
 
-def getLocations(region):
+def get_locations(region):
     """Locations with region alignments"""
 
     l=[]
@@ -201,7 +201,7 @@ def getLocations(region):
             continue
     return l
 
-def getSeqConservation(aln, seq):
+def get_seq_conservation(aln, seq):
     """Get position of a sub sequence and return position if it's
         conserved for each aligned species, -1 if not"""
 
@@ -211,7 +211,7 @@ def getSeqConservation(aln, seq):
         vals.append(str(s).find(seq))
     return vals
 
-def getIdentities(aln):
+def get_identities(aln):
     """Identities for all seqs in a cogent alignment"""
 
     names=aln.Names
@@ -223,7 +223,7 @@ def getIdentities(aln):
         vals.append(ident)
     return vals
 
-def getGenesinRegion(region):
+def get_genes_in_region(region):
     """Get orthologous genes in all species in a syntenic region"""
 
     print ('checking genes in aligned species')
@@ -240,7 +240,8 @@ def getGenesinRegion(region):
         orthologs.append(genes)
     return orthologs
 
-def getESTs(region):
+def get_ests(region):
+
     for r in region.Members:
         loc = r.Location
         sp = loc.Species
