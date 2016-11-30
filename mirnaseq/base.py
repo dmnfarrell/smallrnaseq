@@ -59,7 +59,7 @@ def parseConfig(conffile=None):
     f.close()
     return cp
 
-def getOptions(cp):
+def get_options(cp):
     """Makes sure boolean opts are parsed"""
 
     options = cp._sections['base']
@@ -161,7 +161,7 @@ def get_subset_fasta(infile, labels=['bta'], outfile='found.fa'):
         found.append(f)
     df = pd.concat(found)
     print ('found %s sequences' %len(df))
-    dataframe2Fasta(df,outfile=outfile)
+    dataframe_to_fasta(df,outfile=outfile)
     return
 
 def filter_fasta(infile):
@@ -294,7 +294,7 @@ def bowtie_map(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best'
     print (result)
     return remaining
 
-def createRandomSubset(sourcefile=None, sequences=None, size=1e5,
+def create_random_subset(sourcefile=None, sequences=None, size=1e5,
                         outfile='subset.fa'):
     """Generate random subset of reads"""
 
@@ -309,7 +309,7 @@ def createRandomSubset(sourcefile=None, sequences=None, size=1e5,
     print ('wrote %s sequences to %s' %(size, outfile))
     return
 
-def createRandomFastqFiles(sourcefile, path, sizes=None):
+def create_random_fastq(sourcefile, path, sizes=None):
     """Generate multiple random subsets of reads for testing"""
 
     fastqfile = HTSeq.FastqReader(sourcefile, "solexa")
@@ -320,7 +320,7 @@ def createRandomFastqFiles(sourcefile, path, sizes=None):
     for s in sizes:
         label = str(s/1e6)
         name = os.path.join(path,'test_%s.fa' %label)
-        createRandomSubset(sequences=sequences, size=s, outfile=name)
+        create_random_subset(sequences=sequences, size=s, outfile=name)
     return
 
 def runEdgeR(countsfile, cutoff=1.5):
@@ -370,7 +370,7 @@ def rpyEdgeR(data, groups, sizes, genes):
     pvals = list(tags.r['adj.P.Val'][0])
     return
 
-def RNAfold(seq, name=None):
+def rnafold(seq, name=None):
     """Run RNAfold for precursor"""
 
     import RNA
@@ -381,7 +381,7 @@ def RNAfold(seq, name=None):
         RNA.svg_rna_plot(seq,x[0],os.path.join(path,name+'.svg'))
     return x
 
-def cogentAlignment2DataFrame(A):
+def cogentalignment_to_dataframe(A):
     """Pycogent alignment to dataframe"""
 
     res=[]

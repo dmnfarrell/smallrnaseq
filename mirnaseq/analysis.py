@@ -25,7 +25,7 @@ from . import base, ensembl
 def first(x):
     return x.iloc[0]
 
-def readLengthDist(df):
+def read_length_dist(df):
 
     df['length'] = df.seq.str.len()
     bins = np.linspace(1,df.length.max(),df.length.max())
@@ -54,7 +54,7 @@ def fastq_to_fasta(infile, rename=True):
     outfile.close()
     return
 
-def summarise_fastq(f):
+def fastq_to_dataframe(f):
 
     ext = os.path.splitext(f)[1]
     if ext=='.fastq':
@@ -67,7 +67,7 @@ def summarise_fastq(f):
     df = pd.DataFrame(sequences,columns=['id','seq'])
     return df
 
-def summariseReads(path):
+def summarise_reads(path):
     """Count reads in all files in path"""
 
     resultfile = os.path.join(path, 'read_stats.csv')
@@ -76,7 +76,7 @@ def summariseReads(path):
     rl=[]
     for f in files:
         label = os.path.splitext(os.path.basename(f))[0]
-        s = summariseFastq(f)
+        s = fastq_to_dataframe(f)
         l = len(s)
         vals.append([label,l])
         print (label, l)
@@ -103,7 +103,7 @@ def collapse_reads(infile, outfile='collapsed.fa'):
     g = g.rename(columns={'seq': 'descr'}).reset_index()
     g = g.sort('descr',ascending=False)
     g['id'] = g.apply(lambda x: 'seq_'+str(x.name),axis=1)
-    base.dataframe2Fasta(g,outfile=outfile)
+    base.dataframe_to_fasta(g,outfile=outfile)
     g.to_csv(os.path.splitext(outfile)[0]+'.csv')
     print ('collapsed %s reads to %s' %(len(df),len(g)))
     #bins=np.linspace(1,df.length.max(),df.length.max())
@@ -235,7 +235,7 @@ def map_rnas(files=None, path=None, indexes=[], adapters=None,
     df.to_csv(outfile,float_format='%.5f')
     return df
 
-def plotRNAmapped(df=None, catlabels=None, path=None):
+def plot_mapped(df=None, catlabels=None, path=None):
     """Plot RNA map results"""
 
     if df is None:
@@ -427,7 +427,7 @@ def mirnaDiscoveryTest(sourcefile):
     plt.show()
     return
 
-def novelConservation():
+def novel_conservation():
     df = pd.read_csv('novel_mirdeep.csv')
     #df = pd.read_csv('known_mirdeep.csv')
     ensembl.getmiRNAOrthologs(df)
@@ -636,7 +636,7 @@ def analyseisomirs():
     plt.show()
     return'''
 
-def getmiFam():
+def get_mifam():
     """Get miRBase family data"""
 
     cr=list(csv.reader(open('miFam.csv','r')))
@@ -653,7 +653,7 @@ def getmiFam():
     df = pd.DataFrame(data,columns=['id','name','family'])
     return df
 
-def exprAnalysis(path):
+'''def expr_analysis(path):
     #heatmap across animals
 
     df = mdp.getResults(path)
@@ -680,7 +680,7 @@ def exprAnalysis(path):
     plt.title('clustering by mean counts per animal')
     plt.savefig('expr_clusters.png')
     #plt.show()
-    return
+    return'''
 
 def test():
     base.seabornsetup()
@@ -729,11 +729,11 @@ def main():
     base.seabornsetup()
     if opts.summarise != None:
         if os.path.isdir(opts.summarise):
-            summariseReads(opts.summarise)
+            summarise_reads(opts.summarise)
         else:
-            df = summariseFastq(opts.summarise)
+            df = fastq_to_dataframe(opts.summarise)
             print ('%s reads' %len(df))
-            readLengthDist(df)
+            read_length_dist(df)
     elif opts.test == True:
         test()
 

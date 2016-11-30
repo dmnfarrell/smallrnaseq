@@ -33,7 +33,7 @@ def createMiRBaseFiles(species,path):
     names=[]
     for f in [mature,hairpin]:
         fname = os.path.splitext(f)[0]+'_'+species+'.fa'
-        base.getSubsetFasta(f, labels=[species], outfile=fname)
+        base.get_subset_fasta(f, labels=[species], outfile=fname)
         names.append(fname)
     print ('wrote mirbase files for species %s' %species)
     return names
@@ -213,8 +213,8 @@ def getResults(path):
         novel = df[df.novel==True]
         mkey = 'consensus mature sequence'
         pkey = 'consensus precursor sequence'
-        base.dataframe2Fasta(novel, mkey, 'provisional id', outfile=novelmature)
-        base.dataframe2Fasta(novel, pkey, 'provisional id', outfile=novelprecursor)
+        base.dataframe_to_fasta(novel, mkey, 'provisional id', outfile=novelmature)
+        base.dataframe_to_fasta(novel, pkey, 'provisional id', outfile=novelprecursor)
         quantifier(path, os.path.abspath(novelmature), os.path.abspath(novelprecursor))
 
     #get expression results and filter by score by merging with predictions
@@ -283,11 +283,11 @@ def analyseResults(path, outpath=None, **kwargs):
     n = filterExprResults(novel,score=4,freq=.8,meanreads=50)
     cols = mirdeepcols
     core = pd.concat([k,n])
-    base.dataframe2Fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
+    base.dataframe_to_fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
 
     k[cols].to_csv('known_mirdeep.csv')
     n[cols].to_csv('novel_mirdeep.csv')
-    base.createHtml(n[cols],'novel_mirdeep')
+    base.create_html(n[cols],'novel_mirdeep')
     k['perc'] = k['read_count']/k['read_count'].sum()
 
     print (k[cols[:8]])
