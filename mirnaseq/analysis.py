@@ -89,27 +89,26 @@ def summarise_reads(path):
     #df = pd.concat()
     return df
 
-def collapse_reads(infile, outfile='collapsed.fa'):
+def collapse_reads(infile, outfile=None):
     """Collapse identical reads and retain copy number
       - may use a lot of memory"""
 
+    if outfile == None:
+        outfile = os.path.splitext(infile)[0]+'_collapsed.fa'
     print ('collapsing reads %s' %infile)
-    fastqfile = HTSeq.FastqReader(infile, "solexa")
-    #fastafile = HTSeq.FastaReader(infile)
-    sequences = [(s.name, s.seq, s.descr) for s in fastqfile]
+    fastfile = HTSeq.FastqReader(infile, "solexa")
+    #fastfile = HTSeq.FastaReader(infile)
+    sequences = [(s.name, s.seq, s.descr) for s in fastfile]
     df = pd.DataFrame(sequences, columns=['id','seq','descr'])
     df['length'] = df.seq.str.len()
     g = df.groupby('seq').agg({'seq':np.size})
-    g = g.rename(columns={'seq': 'descr'}).reset_index()
-    g = g.sort('descr',ascending=False)
+    g = g.rename(columns={'seq': 'count'})
+    g = g.sort_values(by='count',ascending=False).reset_index()
     g['id'] = g.apply(lambda x: 'seq_'+str(x.name),axis=1)
-    base.dataframe_to_fasta(g,outfile=outfile)
+    base.dataframe_to_fasta(g, outfile=outfile)
     g.to_csv(os.path.splitext(outfile)[0]+'.csv')
     print ('collapsed %s reads to %s' %(len(df),len(g)))
-    #bins=np.linspace(1,df.length.max(),df.length.max())
-    #x=np.histogram(df.length,bins=bins)
-    #x=pd.Series(l[0],index=l[1][1:])
-    x=df.length.value_counts()
+    x = df.length.value_counts()
     return x
 
 def trim_adapters(infile, adapters=[], outfile='cut.fastq'):
@@ -181,8 +180,8 @@ def map_rnas(files=None, path=None, indexes=[], adapters=None,
         print (f)
         label = os.path.splitext(os.path.basename(f))[0]
         cut = os.path.join(outpath,label+'_cut.fastq')
-        cfile = os.path.join(outpath,label+'.fa')
-        print (cut,cfile)
+        cfile = os.path.join(outpath,label+'_collapsed.fa')
+        #print (cut,cfile)
         if not os.path.exists(cfile):
             if not os.path.exists(cut) and adapters!=None:
                 trim_adapters(f, adapters, cut)
@@ -199,7 +198,7 @@ def map_rnas(files=None, path=None, indexes=[], adapters=None,
         label = os.path.splitext(os.path.basename(cfile))[0]
         #get total reads by using copy no. of each unique seq
         counts = pd.read_csv(os.path.join(outpath, '%s.csv' %label))
-        total = counts['descr'].sum()
+        total = counts['count'].sum()
         x=[label,total]
         rem = None
         i=0
@@ -359,7 +358,7 @@ def KStest(df, ids):
     plt.show()'''
     return
 
-def mirnaDiscoveryTest(sourcefile):
+def mirna_discovery_test(sourcefile):
     """Test miRNAs found per read file size. Assumes runs have been
      done and placed in benchmarking dir"""
 
@@ -687,8 +686,6 @@ def test():
     #path = '/opt/mirnaseq/data/vegh_13'
     path = '/opt/mirnaseq/data/combined'
     files = ['/opt/mirnaseq/analysis/test.fastq']
-    #files = ['/opt/mirnaseq/data/vegh_13/SRR576286.fastq']
-    #bidx =  ['mirbase-mature','Rfam_btau','bosTau6-tRNAs','noncodev4_btau','bos_taurus_alt']
     bidx =  ['mirdeep-hairpin','Rfam_btau','bosTau6-tRNAs','bostau-snRNA','noncodev4_btau',
               'bos_taurus_alt']
     #adapters for our data
@@ -698,21 +695,9 @@ def test():
     labels = {'bosTau6-tRNAs':'tRNA (GtRNAdb)', 'Rfam_btau':'rRNA (RFAM)',
                 'noncodev4_btau':'NONCODE v4', 'bos_taurus_alt':'UMD3.1',
                 'mirdeep_found':'miRNA (miRDeep2)'}
-    #mapRNAs(files=files, indexes=bidx, adapters=adapters)
-    #plotRNAmapped(labels)
-    #summariseReads(path)
+    #map_rnas(files=files, indexes=bidx, adapters=adapters)
+    #summarise_reads(path)
     #removeKnownRNAs(path, adapters)
-
-    #compareMethods('results_mirdeep_rnafiltered','results_srnabench_rnafiltered')
-    infile = '/opt/mirnaseq/data/iconmap_feb15/combined/ncrna_map/sample_1_combined_cut.fastq'
-    #mirnaDiscoveryTest(infile)
-    #novelConservation()
-    #getmiFam()
-    #DE()
-    #plotFactors('results_mirdeep_rnafiltered')
-    #exprAnalysis('results_mirdeep_rnafiltered')
-    #compareIsomirsRef()
-    #analyseisomirs()
     return
 
 def main():
