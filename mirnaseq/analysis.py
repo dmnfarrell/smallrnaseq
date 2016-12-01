@@ -102,8 +102,8 @@ def collapse_reads(infile, outfile=None):
     df = pd.DataFrame(sequences, columns=['id','seq','descr'])
     df['length'] = df.seq.str.len()
     g = df.groupby('seq').agg({'seq':np.size})
-    g = g.rename(columns={'seq': 'count'})
-    g = g.sort_values(by='count',ascending=False).reset_index()
+    g = g.rename(columns={'seq': 'reads'})
+    g = g.sort_values(by='reads',ascending=False).reset_index()
     g['id'] = g.apply(lambda x: 'seq_'+str(x.name),axis=1)
     base.dataframe_to_fasta(g, outfile=outfile)
     g.to_csv(os.path.splitext(outfile)[0]+'.csv')
@@ -197,8 +197,8 @@ def map_rnas(files=None, path=None, indexes=[], adapters=None,
     for cfile in outfiles:
         label = os.path.splitext(os.path.basename(cfile))[0]
         #get total reads by using copy no. of each unique seq
-        counts = pd.read_csv(os.path.join(outpath, '%s.csv' %label))
-        total = counts['count'].sum()
+        collapsed = pd.read_csv(os.path.join(outpath, '%s.csv' %label))
+        total = collapsed['reads'].sum()
         x=[label,total]
         rem = None
         i=0
@@ -218,7 +218,7 @@ def map_rnas(files=None, path=None, indexes=[], adapters=None,
             if len(f)>0:
                 found = pd.DataFrame(f, columns=['seq','name'])
                 #get original counts for mapped reads and sum them
-                nr = counts[counts.id.isin(found.name)]
+                nr = collapsed[collapsed.id.isin(found.name)]
                 fc = nr['descr'].sum()
                 perc = fc/float(total)
                 print (index, len(f), fc, total, round(perc,4))
@@ -296,7 +296,7 @@ def compare_methods(path1,path2):
     plt.show()
     return
 
-def KStest(df, ids):
+def ks_test(df, ids):
     """KS test to determine rc freq distributions of replicates
     threshold count is the one which corresponds to the first minimum.
     i.e.  when the distributions of reads amongst replicates begin to be similar
