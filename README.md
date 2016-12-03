@@ -1,7 +1,7 @@
-smallnaseq
+smallrnaseq
 ========
 
-#### Scripts for analysis of small RNA e.g. microRNA sequencing data
+#### Scripts for analysis of small RNA sequencing data e.g. microRNAs
 
 #### Background
 
@@ -9,13 +9,13 @@ This repository is a collection of Python modules originally designed to be used
 
 #### Installation
 
-Simply clone the git repository and add the folder into your Python path. availalble on pip soon.
+Simply clone the git repository and add the folder into your Python path. available on pip soon.
 
 #### Usage
 
 **mirdeep2.py**: This script allows you to run mirdeep2 and/or analyse the output.
 
-If you are using Python the modules can be used in another script. This assumes he miRDeep folder is in your path. Examples:
+If you are using Python the modules can be used in another script. This assumes the miRDeep folder is in your path. Examples:
 ```
 from mirnaseq import mirdeep2
 #run mirdeep2 on multiple fastq files, stored in inpath

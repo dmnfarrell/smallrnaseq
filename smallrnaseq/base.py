@@ -290,8 +290,8 @@ def bowtie_map(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best'
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     if verbose == True:
-    	print (cmd)
-    print (result)
+        print (cmd)
+        print (result)
     return remaining
 
 def create_random_subset(sourcefile=None, sequences=None, size=1e5,
