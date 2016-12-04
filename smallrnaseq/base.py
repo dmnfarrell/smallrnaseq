@@ -17,6 +17,10 @@ try:
 except:
     'HTSeq not present'
 
+path = os.path.dirname(os.path.abspath(__file__)) #path to module
+datadir = os.path.join(path, 'data')
+mirbasefile = os.path.join(datadir, 'miRBase_all.csv')
+
 def writeDefaultConfig(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
@@ -193,9 +197,11 @@ def dataframe_to_fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
     fastafile = open(outfile, "w")
     for i,row in df.iterrows():
         seq = row[seqkey].upper().replace('U','T')
-        myseq = HTSeq.Sequence(seq, row[idkey])
-        #if 'descr' in df.columns:
-        #    myseq.descr = str(row.descr)
+        if idkey in row:
+            d = row[idkey]
+        else:
+            d = ''
+        myseq = HTSeq.Sequence(seq, d)
         myseq.write_to_fasta_file(fastafile)
     return
 
@@ -284,7 +290,6 @@ def bowtie_map(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best'
     if bowtieindex == None:
         bowtieindex = '/opt/mirnaseq/genomes/bowtie_index'
     os.environ["BOWTIE_INDEXES"] = bowtieindex
-
     if remaining == None:
         remaining = os.path.join(outpath, label+'_r.fastq')
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)

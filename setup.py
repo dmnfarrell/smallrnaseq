@@ -2,7 +2,7 @@ from setuptools import setup
 import sys,os
 
 setup(
-    name = 'smallnaseq',
+    name = 'smallrnaseq',
     version = '0.1.0',
     description = 'Python package for micro rna-seq routines ',
     url='https://github.com/dmnfarrell/smallrnaseq',

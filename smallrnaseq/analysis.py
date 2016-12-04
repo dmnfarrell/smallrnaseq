@@ -89,7 +89,7 @@ def summarise_reads(path):
     #df = pd.concat()
     return df
 
-def collapse_reads(infile, outfile=None):
+def collapse_reads(infile, outfile=None, min_length=15):
     """Collapse identical reads and retain copy number
       - may use a lot of memory"""
 
@@ -101,6 +101,7 @@ def collapse_reads(infile, outfile=None):
     sequences = [(s.name, s.seq, s.descr) for s in fastfile]
     df = pd.DataFrame(sequences, columns=['id','seq','descr'])
     df['length'] = df.seq.str.len()
+    df = df[df.length>=min_length]
     g = df.groupby('seq').agg({'seq':np.size})
     g = g.rename(columns={'seq': 'reads'})
     g = g.sort_values(by='reads',ascending=False).reset_index()
