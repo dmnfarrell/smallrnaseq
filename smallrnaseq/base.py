@@ -19,7 +19,8 @@ except:
 
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
-mirbasefile = os.path.join(datadir, 'miRBase_all.csv')
+MIRBASE = os.path.join(datadir, 'miRBase_all.csv')
+BOWTIE_INDEXES = 'bowtie_indexes'
 
 def writeDefaultConfig(conffile='default.conf', defaults={}):
     """Write a default config file"""
@@ -279,7 +280,7 @@ def bwa_map(infile, ref=None, outfile=None):
     result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
     return
 
-def bowtie_map(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best',
+def bowtie_map(infile, ref, outfile=None, bowtie_index=None, params='-v 0 --best',
                 remaining=None, verbose=True):
     """Map reads using bowtie"""
 
@@ -287,9 +288,10 @@ def bowtie_map(infile, ref, outfile=None, bowtieindex=None, params='-v 0 --best'
     outpath = os.path.dirname(os.path.abspath(infile))
     if outfile == None:
         outfile = label+'_'+ref+'_bowtie.sam'
-    if bowtieindex == None:
-        bowtieindex = '/opt/mirnaseq/genomes/bowtie_index'
-    os.environ["BOWTIE_INDEXES"] = bowtieindex
+    if bowtie_index == None:
+        bowtie_index = BOWTIE_INDEXES
+    #print (bowtieindex)
+    os.environ["BOWTIE_INDEXES"] = bowtie_index
     if remaining == None:
         remaining = os.path.join(outpath, label+'_r.fastq')
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)

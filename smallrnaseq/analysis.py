@@ -91,13 +91,16 @@ def summarise_reads(path):
 
 def collapse_reads(infile, outfile=None, min_length=15):
     """Collapse identical reads and retain copy number
-      - may use a lot of memory"""
+      puts all seqs in memory so needs to be optimized"""
 
     if outfile == None:
         outfile = os.path.splitext(infile)[0]+'_collapsed.fa'
     print ('collapsing reads %s' %infile)
-    fastfile = HTSeq.FastqReader(infile, "solexa")
-    #fastfile = HTSeq.FastaReader(infile)
+    ext = os.path.splitext(infile)[1]
+    if ext == '.fastq':
+        fastfile = HTSeq.FastqReader(infile, "solexa")
+    elif ext == '.fa' or ext == '.fasta':
+        fastfile = HTSeq.FastaReader(infile)
     sequences = [(s.name, s.seq, s.descr) for s in fastfile]
     df = pd.DataFrame(sequences, columns=['id','seq','descr'])
     df['length'] = df.seq.str.len()
