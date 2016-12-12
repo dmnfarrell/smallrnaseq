@@ -14,7 +14,7 @@ try:
     import cogent
     from cogent.db.ensembl import HostAccount, Genome, Compara, Species
     account = None
-    release = '78'
+    release = '87'
     #add recent ensembl species
     species = ['cow','human','mouse','rat','chimp','gorilla','orangutan',
                'macaque','dog','pig','cat','olive baboon','sheep']
