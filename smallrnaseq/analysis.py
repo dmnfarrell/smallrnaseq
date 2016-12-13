@@ -41,32 +41,6 @@ def read_length_dist(df):
     #plt.show()
     return x
 
-def fastq_to_fasta(infile, rename=True):
-
-    fastqfile = HTSeq.FastqReader(infile, "solexa")
-    outfile = open(os.path.splitext(infile)[0]+'.fa','w')
-    i=1
-    for s in fastqfile:
-        if rename==True:
-            s.name=str(i)
-        s.write_to_fasta_file(outfile)
-        i+=1
-    outfile.close()
-    return
-
-def fastq_to_dataframe(f):
-
-    ext = os.path.splitext(f)[1]
-    if ext=='.fastq':
-        ffile = HTSeq.FastqReader(f, "solexa")
-    elif ext == '.fa':
-        ffile = HTSeq.FastaReader(f)
-    else:
-        return
-    sequences = [(s.name,s.seq) for s in ffile]
-    df = pd.DataFrame(sequences,columns=['id','seq'])
-    return df
-
 def summarise_reads(path):
     """Count reads in all files in path"""
 
@@ -76,7 +50,7 @@ def summarise_reads(path):
     rl=[]
     for f in files:
         label = os.path.splitext(os.path.basename(f))[0]
-        s = fastq_to_dataframe(f)
+        s = utils.fastq_to_dataframe(f)
         l = len(s)
         vals.append([label,l])
         print (label, l)
@@ -197,7 +171,7 @@ def map_rnas_old(files=None, path=None, indexes=[], adapters=None,
     df.to_csv(outfile,float_format='%.5f')
     return df
 
-def plot_mapped(df=None, catlabels=None, path=None):
+def plot_mapped_old(df=None, catlabels=None, path=None):
     """Plot RNA map results"""
 
     if df is None:
@@ -396,51 +370,33 @@ def novel_conservation():
     ensembl.summarise(df)
     return
 
-def get_mifam():
-    """Get miRBase family data"""
+def do_pca(X, c=3):
+    """Do PCA"""
 
-    cr=list(csv.reader(open('miFam.csv','r')))
-    data=[]
-    i=0
-    for row in cr:
-        if row[0]=='ID':
-            fam=row[1]
-        elif row[0]=='AC' or row[0]=='//':
-            continue
-        else:
-            data.append((row[1],row[2],fam))
-        i+=1
-    df = pd.DataFrame(data,columns=['id','name','family'])
-    return df
+    from sklearn import preprocessing
+    from sklearn.decomposition.pca import PCA, RandomizedPCA
+    #do PCA
+    #S = standardize_data(X)
+    S = pd.DataFrame(preprocessing.scale(X),columns = X.columns)
+    pca = PCA(n_components=c)
+    pca.fit(S)
+    print (pca.explained_variance_ratio_)
+    #print pca.components_
+    w = pd.DataFrame(pca.components_,columns=S.columns)#,index=['PC1','PC2'])
+    #print w.T.max(1).sort_values()
+    Xt = pca.fit_transform(S)
+    return Xt
 
-'''def expr_analysis(path):
-    #heatmap across animals
+def do_mds(X):
+    """Do MDS"""
 
-    df = mdp.getResults(path)
-    df = mdp.filterExprResults(df,meanreads=200)
-    df = df[df.novel==False]
-    condmap = getExpCondMap(path)
-    df=df.set_index('#miRNA')
-    cols,normcols=mdp.getColumnNames(df)
-    df = df[normcols]
-    df=df.replace(0,.1)
-    t=df.T
-    t.index = cols
-    t = t.merge(condmap,left_index=True,right_on='id',how='inner')
-
-    g = t.groupby('animal').mean()
-    #t=t.set_index('animal').sort()
-    #print t[t.columns[:3]]
-    names = df.index
-    clustering(g)
-    #base.doHeatMap(g[names],cmap='YlGnBu',log=True)
-    from matplotlib.colors import LogNorm
-    #hm = plt.pcolor(t,cmap='seismic',
-    #                norm=LogNorm(vmin=t.min().min(), vmax=t.max().max()))
-    plt.title('clustering by mean counts per animal')
-    plt.savefig('expr_clusters.png')
-    #plt.show()
-    return'''
+    from sklearn import manifold
+    seed = np.random.RandomState(seed=3)
+    mds = manifold.MDS(n_components=3, max_iter=3000, eps=1e-9, random_state=seed,
+                        n_jobs=1)
+    pX = mds.fit(X.values).embedding_
+    pX = pd.DataFrame(pX,index=X.index)
+    return pX
 
 def test():
     base.seabornsetup()
@@ -477,7 +433,7 @@ def main():
         if os.path.isdir(opts.summarise):
             summarise_reads(opts.summarise)
         else:
-            df = fastq_to_dataframe(opts.summarise)
+            df = utils.fastq_to_dataframe(opts.summarise)
             print ('%s reads' %len(df))
             read_length_dist(df)
     elif opts.test == True:

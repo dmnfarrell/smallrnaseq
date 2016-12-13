@@ -12,7 +12,7 @@ import subprocess
 import pylab as plt
 import numpy as np
 import pandas as pd
-from . import base
+from . import base, utils
 
 plt.rcParams['savefig.dpi'] = 150
 
@@ -213,8 +213,8 @@ def getResults(path):
         novel = df[df.novel==True]
         mkey = 'consensus mature sequence'
         pkey = 'consensus precursor sequence'
-        base.dataframe_to_fasta(novel, mkey, 'provisional id', outfile=novelmature)
-        base.dataframe_to_fasta(novel, pkey, 'provisional id', outfile=novelprecursor)
+        utils.dataframe_to_fasta(novel, mkey, 'provisional id', outfile=novelmature)
+        utils.dataframe_to_fasta(novel, pkey, 'provisional id', outfile=novelprecursor)
         quantifier(path, os.path.abspath(novelmature), os.path.abspath(novelprecursor))
 
     #get expression results and filter by score by merging with predictions
@@ -283,11 +283,11 @@ def analyseResults(path, outpath=None, **kwargs):
     n = filterExprResults(novel,score=4,freq=.8,meanreads=50)
     cols = mirdeepcols
     core = pd.concat([k,n])
-    base.dataframe_to_fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
+    utils.dataframe_to_fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
 
     k[cols].to_csv('known_mirdeep.csv')
     n[cols].to_csv('novel_mirdeep.csv')
-    base.create_html(n[cols],'novel_mirdeep')
+    utils.create_html(n[cols],'novel_mirdeep')
     k['perc'] = k['read_count']/k['read_count'].sum()
 
     print (k[cols[:8]])
@@ -354,9 +354,9 @@ def plotReadCountDists(df,h=8):
     t=df.T
     t.index = cols
     try:
-        base.seabornsetup()
-        base.sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
-        base.sns.despine(trim=True)
+        import sns
+        sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
+        sns.despine(trim=True)
     except:
         t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
     ax.set_yscale('log')
@@ -478,7 +478,6 @@ def main():
                            help="testing")
     opts, remainder = parser.parse_args()
     pd.set_option('display.width', 800)
-    #base.seabornsetup()
 
     if opts.run == True:
         #all other options are stored in config file
@@ -489,7 +488,7 @@ def main():
         cp = base.parseConfig(opts.config)
         if opts.input != None:
             conf.input = os.path.abspath(opts.input)
-        options = base.getOptions(cp)
+        options = base.get_options(cp)
         runMultiple(**options)
     elif opts.analyse != None:
         analyseResults(opts.analyse)

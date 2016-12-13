@@ -17,6 +17,7 @@ try:
 except:
     'HTSeq not present'
 
+from . import utils
 import matplotlib as mpl
 import seaborn as sns
 sns.set_style("ticks", {'axes.facecolor': '#F7F7F7',
@@ -343,7 +344,7 @@ def collapse_reads(infile, outfile=None, min_length=15):
     g = g.rename(columns={'seq': 'reads'})
     g = g.sort_values(by='reads',ascending=False).reset_index()
     g['id'] = g.apply(lambda x: 'seq_'+str(x.name),axis=1)
-    dataframe_to_fasta(g, outfile=outfile)
+    utils.dataframe_to_fasta(g, outfile=outfile)
     g.to_csv(os.path.splitext(outfile)[0]+'.csv')
     print ('collapsed %s reads to %s' %(len(df),len(g)))
     x = df.length.value_counts()
@@ -391,7 +392,7 @@ def build_mirbase_index(species, kind='mature'):
     mirs = get_mirbase_sequences(species)
     idxname = 'mirbase-'+species
     outfile = '%s.fa' %idxname
-    dataframe_to_fasta(mirs, seqkey='mature1_seq', idkey='mature1',
+    utils.dataframe_to_fasta(mirs, seqkey='mature1_seq', idkey='mature1',
                             outfile=outfile)
     build_bowtie_index(outfile, 'bowtie_indexes')
     return idxname
@@ -445,7 +446,9 @@ def plot_fractions_mapped(res, label=None, path=None):
     x = x.reindex_axis((x).mean(1).sort_values().index)
     print (x)
     explode = [0.05 for i in range(len(x))]
-    if label != None or len(x.columns)==1:
+    if len(x.columns) == 1:
+        label = x.columns[0]
+    if label != None:
         axs = x.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',startangle=0,figsize=(6,6),
                    labels=None,legend=True,pctdistance=1.1,explode=explode,fontsize=10)
     else:
@@ -497,146 +500,6 @@ def venn_diagram(names,labels,ax=None,**kwargs):
     ax.set_axis_off()
     return v
 
-def gzipfile(filename, remove=False):
-    """Compress a file with gzip"""
-
-    import gzip
-    fin = open(filename, 'rb')
-    fout = gzip.open(filename+'.gz', 'wb')
-    fout.writelines(fin)
-    fout.close()
-    fin.close()
-    if remove == True:
-        os.remove(filename)
-    return
-
-def create_html(df,name,path='.'):
-    """Create a basic html page for dataframe results"""
-
-    s = ['<script src="sorttable.js"></script>']
-    s.append('<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.5.0/pure-min.css">')
-    s.append('<body><h2>'+name+'</h2><div class="pure-div">')
-    table = df.to_html(classes=['sortable','pure-table-striped'])
-    s.append(table)
-    body = '\n'.join(s)
-    f = open(os.path.join(path,name)+'.html','w')
-    f.write(body)
-    return
-
-def get_subset_fasta(infile, labels=['bta'], outfile='found.fa'):
-    """Get a subset of sequences matching a label"""
-
-    fastafile = HTSeq.FastaReader(infile)
-    sequences = [(s.name, s.seq, s.descr) for s in fastafile]
-    #print sequences[0][2]
-    df = pd.DataFrame(sequences, columns=['id','seq','descr'])
-    found=[]
-    for l in labels:
-        f = df[df.id.str.contains(l) | df.descr.str.contains(l)]
-        found.append(f)
-    df = pd.concat(found)
-    print ('found %s sequences' %len(df))
-    dataframe_to_fasta(df,outfile=outfile)
-    return
-
-def filter_fasta(infile):
-
-    fastafile = HTSeq.FastaReader(infile)
-    sequences = [(s.name, s.seq, s.descr) for s in fastafile]
-    out = open('filtered.fa', "w")
-    for s in sequences:
-        if s[1] == 'Sequence unavailable':
-            continue
-        myseq = HTSeq.Sequence(s[1], s[0])
-        myseq.write_to_fasta_file(out)
-    return
-
-def fasta_to_dataFrame(infile,idindex=0):
-    """Get fasta proteins into dataframe"""
-
-    keys = ['name','sequence','description']
-    fastafile = HTSeq.FastaReader(infile)
-    data = [(s.name, s.seq, s.descr) for s in fastafile]
-    df = pd.DataFrame(data,columns=(keys))
-    df.set_index(['name'],inplace=True)
-    return df
-
-def dataframe_to_fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
-    """Convert dataframe to fasta"""
-
-    df = df.reset_index() #in case key is the index
-    fastafile = open(outfile, "w")
-    for i,row in df.iterrows():
-        seq = row[seqkey].upper().replace('U','T')
-        if idkey in row:
-            d = row[idkey]
-        else:
-            d = ''
-        myseq = HTSeq.Sequence(seq, d)
-        myseq.write_to_fasta_file(fastafile)
-    return
-
-def run_blastn(database, query):
-    """Run blast"""
-
-    out = os.path.splitext(query)[0]
-    cmd = 'blastall -d %s -i %s -p blastn -m 7 -e .1 > %s.xml' %(database,query,out)
-    print (cmd)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    gzipfile(out+'.xml', remove=True)
-    return
-
-def parse_blast_rec(rec):
-    """Parse blast record alignment(s)"""
-
-    #if len(rec.alignments) == 0 : print 'no alignments'
-    recs=[]
-    qry = rec.query.split()[0]
-    for align in rec.alignments:
-        hsp = align.hsps[0]
-        subj = align.title.split()[1]
-        if qry == subj: continue
-        recs.append([qry, subj, hsp.score, hsp.expect, hsp.identities,
-                    hsp.positives, hsp.align_length])
-    return recs
-
-def get_blast_results(handle=None, filename=None, n=80):
-    """Get blast results into dataframe"""
-
-    from Bio.Blast import NCBIXML
-    import gzip
-    if filename!=None:
-        #handle = open(filename)
-        handle = gzip.open(filename, 'rb')
-    blastrecs = NCBIXML.parse(handle)
-    rows=[]
-    for rec in blastrecs:
-        r = parseBlastRec(rec)
-        rows.extend(r)
-        #print r
-    df = pd.DataFrame(rows, columns=['query','subj','score','expect','identity',
-                            'positive','align_length'])
-    df['perc_ident'] = df.identity/df.align_length*100
-    return df
-
-def blastDB(f, database, ident=100):
-    """Blast a blastdb and save hits to csv"""
-
-    outname = os.path.splitext(f)[0]
-    runBlastN(database, f)
-    df = getBlastResults(filename=outname+'.xml.gz')
-    df = df[df['perc_ident']>=ident]
-    #print df[:10]
-    g = df.groupby('query').agg({'subj':first})
-    g = g.sort('subj',ascending=False)
-    g = g.reset_index()
-    #print g[:15]
-    print ('found %s hits in db' %len(df))
-    print ()
-    #outname = os.path.splitext(f)[0]+'_hits.csv'
-    #g.to_csv(outname)
-    return g
-
 def bwa_map(infile, ref=None, outfile=None):
     """Map with bwa"""
 
@@ -670,32 +533,3 @@ def bowtie_map(infile, ref, outfile=None, bowtie_index=None, params='-v 0 --best
         print (cmd)
         print (result)
     return remaining
-
-def create_random_subset(sourcefile=None, sequences=None, size=1e5,
-                        outfile='subset.fa'):
-    """Generate random subset of reads"""
-
-    if sequences==None:
-        fastqfile = HTSeq.FastqReader(sourcefile, "solexa")
-        sequences = [s.seq for s in fastqfile]
-    randidx = np.random.randint(1,len(sequences),size)
-    ffile = open(outfile, "w")
-    for r in randidx:
-        sequences[r].name = str(r)
-        sequences[r].write_to_fasta_file(ffile)
-    print ('wrote %s sequences to %s' %(size, outfile))
-    return
-
-def create_random_fastq(sourcefile, path, sizes=None):
-    """Generate multiple random subsets of reads for testing"""
-
-    fastqfile = HTSeq.FastqReader(sourcefile, "solexa")
-    sequences = [s for s in fastqfile]
-    print ('source file has %s seqs' %len(sequences))
-    if sizes==None:
-        sizes = np.arange(5e5,7.e6,5e5)
-    for s in sizes:
-        label = str(s/1e6)
-        name = os.path.join(path,'test_%s.fa' %label)
-        create_random_subset(sequences=sequences, size=s, outfile=name)
-    return
