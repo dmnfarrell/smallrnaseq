@@ -169,13 +169,16 @@ def merge_features(counts, gtf_file):
     #hits = hits.sort_values(by='reads',ascending=False)
     return hits
 
-def pivot_feature_counts(counts, cols=None):
-    """Pivot feature read counts over samples and get mean normalised read counts"""
+def pivot_count_data(df, idxcols=None):
+    """Pivot read counts over samples containing multiple 'read' columns
+       and get mean normalised read counts"""
 
-    idxcols = ['name','gene_name','transcript_name','transcript_id','gene_biotype']
-    x = pd.pivot_table(counts, values=['reads','norm'], index=idxcols, columns=['label'])
+    #print (df[:2])
+    if not 'norm' in df.columns:
+        df['norm'] = df.fraction*1e6
+    x = pd.pivot_table(df, values=['reads','norm'], index=idxcols, columns=['label'])
     x = x.reset_index()
-    #print x[:5]
+
     x['total_reads'] = x.ix[:,'reads'].sum(1)
     x['mean_norm'] = x.ix[:,'norm'].apply(lambda r: r[r.nonzero()[0]].mean(),1)
     #flatten column index and rename normalised columns
@@ -188,7 +191,7 @@ def _count_aligned(samfile, readcounts, by='name'):
        Args:
            samfile: mapped sam file
            readcounts: original read counts if used collapsed reads
-           by: whether to group the conts by name (default) or sequence - 'seq'
+           by: whether to group the counts by name (default) or sequence - 'seq'
     """
 
     sam = HTSeq.SAM_Reader(samfile)
