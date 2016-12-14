@@ -25,7 +25,7 @@ mirdeepcols = ['#miRNA','read_count','mean_norm','miRDeep2 score','chr','seed','
                 'consensus mature sequence','consensus star sequence',
                 'consensus precursor sequence']
 
-def createMiRBaseFiles(species,path):
+def create_mirbase_files(species,path):
     """Generate species specific mature/hairpin files for input to mirdeep"""
 
     mature = os.path.join(path, 'mature.fa')
@@ -38,7 +38,7 @@ def createMiRBaseFiles(species,path):
     print ('wrote mirbase files for species %s' %species)
     return names
 
-def createSampleMap(path, ext='fastq'):
+def create_sample_map(path, ext='fastq'):
     """Create filename mapping to run all samples at once.
        This is required."""
 
@@ -55,7 +55,7 @@ def createSampleMap(path, ext='fastq'):
     res.to_csv(fname, index=False,sep=' ',header=False)
     return (fname)
 
-def runMultiple(**kwargs):
+def run_multiple(**kwargs):
     """Prepare and run mirdeep2"""
 
     if kwargs['filetype'] == 'fasta':
@@ -64,14 +64,14 @@ def runMultiple(**kwargs):
         ext='fastq'
     path = kwargs['input']
     #create filename/id mapping
-    samplemap = createSampleMap(path, ext)
+    samplemap = create_sample_map(path, ext)
     #get mirbase subset for species if provided
     if kwargs['species'] != '':
-        mature, hairpin = createMiRBaseFiles(kwargs['species'], kwargs['mirbase'])
+        mature, hairpin = create_mirbase_files(kwargs['species'], kwargs['mirbase'])
         kwargs['mature'] = mature
         kwargs['hairpin'] = hairpin
     if kwargs['other'] != '':
-        kwargs['other'], h = createMiRBaseFiles(kwargs['other'], kwargs['mirbase'])
+        kwargs['other'], h = create_mirbase_files(kwargs['other'], kwargs['mirbase'])
     run(samplemap, **kwargs)
     return
 
@@ -133,23 +133,19 @@ def quantifier(path, mature, precursor, star=None, collapsed='collapsedreads.fa'
     os.chdir(current)
     return
 
-def getpdfPath(path):
+def get_pdf_path(path):
     """get path to pdfs"""
     ppath = glob.glob(os.path.join(path,'pdf*'))[0]
     return ppath
 
-def getresultsHtml(path):
-    resfile = glob.glob(os.path.join(path,'result*html'))[0]
-    return resfile
-
-def getChromosome(x):
+def get_chromosome(x):
     val = x.split('_')[0]
     try:
         return '%02d' %int(val)
     except:
         return val
 
-def getScoreStats(path):
+def get_score_stats(path):
     """Get mirdeep results from the summary file"""
 
     resfile = glob.glob(os.path.join(path,'result*.csv'))[0]
@@ -161,7 +157,8 @@ def getScoreStats(path):
     df['FDR'] = df['novel miRNAs, estimated false positives'].apply(lambda r: int(r.split()[0]))
     return df
 
-def plotScoreStats(df):
+def plot_score_stats(df):
+
     f,axs=plt.subplots(2,2,figsize=(10,6))
     grid=axs.flat
     df.plot('miRDeep2 score','known',marker='o',ax=grid[0],legend=False)
@@ -176,7 +173,7 @@ def plotScoreStats(df):
     f.savefig('mirdeep_score_stats.png')
     return
 
-def readResultsFile(infile):
+def read_results_file(infile):
     """Get mirdeep results from the summary file"""
 
     if os.path.splitext(infile)[1] != '.csv':
@@ -192,16 +189,16 @@ def readResultsFile(infile):
          'significant randfold p-value': 'randfold'}
     df = df.rename(columns=colstorename)
     df = df.convert_objects(convert_numeric=True)
-    df['chr'] = df['provisional id'].apply(getChromosome)
+    df['chr'] = df['provisional id'].apply(get_chromosome)
     df['seed'] = df['consensus mature sequence'].apply(lambda x: x[1:8])
     return df
 
-def getResults(path):
+def get_results(path):
     """Process known and novel results from mirdeep run.
        Combines with expression data and removes redundant entries"""
 
     resfile = glob.glob(os.path.join(path,'result*.csv'))[0]
-    df = readResultsFile(resfile)
+    df = read_results_file(resfile)
 
     #use quantifier module to get novel expression results from predicted precursors
     #if not done already
@@ -245,12 +242,14 @@ def getResults(path):
     #res['cv'] = res['std']/res['mean_norm']
     return res
 
-def getColumnNames(df):
+def get_column_names(df):
+    """Extract column names for multiple samples"""
+
     cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
     normcols = [i+'(norm)' for i in cols]
     return cols, normcols
 
-def filterExprResults(n, cols=None, score=0, freq=0.5, meanreads=0, totalreads=0):
+def filter_expr_results(n, cols=None, score=0, freq=0.5, meanreads=0, totalreads=0):
     """Additional filters for abundances/no. samples"""
 
     if cols is None:
@@ -265,22 +264,22 @@ def filterExprResults(n, cols=None, score=0, freq=0.5, meanreads=0, totalreads=0
     n = n.reset_index(drop=True)
     return n
 
-def analyseResults(path, outpath=None, **kwargs):
+def analyse_results(path, outpath=None, **kwargs):
     """General analysis of mirdeep results"""
 
     if outpath != None:
         if not os.path.exists(outpath):
             os.mkdir(outpath)
         os.chdir(outpath)
-    df = getResults(path)
-    idcols,normcols = getColumnNames(df)
+    df = get_results(path)
+    idcols,normcols = get_column_names(df)
     known = df[df.novel==False]
     novel = df[df.novel==True]
-    idmap = getFileIDs(path)
+    idmap = get_file_ids(path)
 
     #cutoffs and freqs need to be configurable..
-    k = filterExprResults(known,score=0,freq=.5,meanreads=50)
-    n = filterExprResults(novel,score=4,freq=.8,meanreads=50)
+    k = filter_expr_results(known,score=0,freq=.5,meanreads=50)
+    n = filter_expr_results(novel,score=4,freq=.8,meanreads=50)
     cols = mirdeepcols
     core = pd.concat([k,n])
     utils.dataframe_to_fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')
@@ -318,9 +317,9 @@ def analyseResults(path, outpath=None, **kwargs):
     fig.savefig('mirdeep_freqsvcounts.png')
     fig=plt.figure()
 
-    fig = plotReadCountDists(n,h=5)
+    fig = plot_read_count_dists(n,h=5)
     fig.savefig('mirdeep_novel_counts.png')
-    fig = plotReadCountDists(k)
+    fig = plot_read_count_dists(k)
     fig.savefig('mirdeep_known_counts.png')
 
     #perSampleDists(k)
@@ -338,18 +337,18 @@ def analyseResults(path, outpath=None, **kwargs):
     plt.title('miRNA per chromosome')
     fig.savefig('mirdeep_chromosome_dist.png')
 
-    ss = getScoreStats(path)
-    plotScoreStats(ss)
+    ss = get_score_stats(path)
+    plot_score_stats(ss)
     #plt.show()
     #plt.close()
     return df,k,n
 
-def plotReadCountDists(df,h=8):
+def plot_read_count_dists(df,h=8):
     """Boxplots of read count distributions per miRNA - use seaborn?"""
 
     w=int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
-    cols,normcols = getColumnNames(df)
+    cols,normcols = get_column_names(df)
     df = df[normcols]
     t=df.T
     t.index = cols
@@ -370,7 +369,7 @@ def plotReadCountDists(df,h=8):
     #base.seabornsetup()
     #df=df[df.index.isin(names)]
     df = df[:2]
-    cols,normcols = getColumnNames(df)
+    cols,normcols = get_column_names(df)
     df = df[normcols]
     df= df.reset_index()
     m = pd.melt(df,id_vars=['#miRNA'],
@@ -384,18 +383,18 @@ def plotReadCountDists(df,h=8):
     plt.savefig('mirdeep_persample_counts.png')
     return'''
 
-def getFileIDs(path):
+def get_file_ids(path):
     """Get file<->mirdeep2 id mapping"""
 
     idmap = pd.read_csv(os.path.join(path, 'combined.txt'),sep=' ',
                 header=None,names=['filename','id'])
     return idmap
 
-def getLabelMap(path, labels):
+def get_label_map(path, labels):
     """Get results labels mapped to labels with the filenames"""
 
     condmap = pd.read_csv(labels)
-    idmap = getFileIDs(path)
+    idmap = get_file_ids(path)
     def matchname(x):
         r = idmap[idmap['filename'].str.contains(x)]
         if len(r)>0:
@@ -406,9 +405,9 @@ def getLabelMap(path, labels):
     condmap = condmap.dropna()
     return condmap
 
-def testQuantifier(path):
+def test_quantifier(path):
     resfile = glob.glob(os.path.join(path,'result*.csv'))[0]
-    df = readResultsFile(resfile)
+    df = read_results_file(resfile)
     novelmature = os.path.join(path, 'novel_mature.fa')
     novelstar = os.path.join(path, 'novel_star.fa')
     novelprecursor = os.path.join(path, 'novel_precursor.fa')
@@ -419,11 +418,11 @@ def testQuantifier(path):
                     os.path.abspath(novelstar), reads)
     return
 
-def checkQuantifierResults(path):
+def check_quantifier_results(path):
     """Check quantifier vs results file in case of miscounts"""
 
     resfile = glob.glob(os.path.join(path,'result*.csv'))[0]
-    df = readResultsFile(resfile)
+    df = read_results_file(resfile)
     files = glob.glob(os.path.join(path,'miRNAs_expressed_all_samples*.csv'))
     q = pd.read_csv(files[0],sep='\t')
     key='provisional id'
@@ -441,28 +440,6 @@ def checkQuantifierResults(path):
     plt.show()
     return
 
-def compareRuns(path1,path2):
-    """Compare 2 mirdeep runs"""
-    df = getResults(path1)
-    r1 = filterExprResults(df,meanreads=200)
-    df = getResults(path2)
-    r2 = filterExprResults(df,meanreads=200)
-    x=pd.merge(r1,r2,on='#miRNA',suffixes=['1','2'])
-    fig,ax=plt.subplots(1,1)
-    x.plot('read_count1','read_count2',kind='scatter',logx=True,logy=True,
-            alpha=0.8,s=40,ax=ax)
-    ax.plot(ax.get_xlim(), ax.get_ylim(), ls="--", color='red')
-    plt.show()
-    return
-
-def test(path):
-    print (path)
-    checkQuantifierResults(path)
-    #testQuantifier(path)
-    #df = getResults(path)
-    #df = filterExprResults(df,score=0,freq=30,meanreads=0)
-    return
-
 def main():
     from optparse import OptionParser
     parser = OptionParser()
@@ -474,8 +451,7 @@ def main():
                             help="config file")
     parser.add_option("-a", "--analyse", dest="analyse",
                            help="analyse results of mirdeep2")
-    parser.add_option("-t", "--test", dest="test", action='store_true',
-                           help="testing")
+
     opts, remainder = parser.parse_args()
     pd.set_option('display.width', 800)
 
@@ -483,15 +459,15 @@ def main():
         #all other options are stored in config file
         if opts.config == None:
             print ('No config file provided.')
-            base.writeDefaultConfig('mirdeep2.conf', defaults=mirdeep2options)
+            base.write_default_config('mirdeep2.conf', defaults=mirdeep2options)
             return
-        cp = base.parseConfig(opts.config)
+        cp = base.parse_config(opts.config)
         if opts.input != None:
             conf.input = os.path.abspath(opts.input)
         options = base.get_options(cp)
-        runMultiple(**options)
+        run_multiple(**options)
     elif opts.analyse != None:
-        analyseResults(opts.analyse)
+        analyse_results(opts.analyse)
     elif opts.test == True:
         test(opts.input)
 

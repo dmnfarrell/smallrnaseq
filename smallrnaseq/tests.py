@@ -26,7 +26,7 @@ class BasicTests(unittest.TestCase):
         """mirdeep2 script test"""
 
         config = 'testing/test_mdp.conf'
-        cp = base.parseConfig(config)
+        cp = base.parse_config(config)
         options = base.getOptions(cp)
         #print (options)
         #mirdeep2.runMultiple(**options)

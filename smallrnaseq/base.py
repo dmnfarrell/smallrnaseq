@@ -30,7 +30,7 @@ datadir = os.path.join(path, 'data')
 MIRBASE = os.path.join(datadir, 'miRBase_all.csv')
 BOWTIE_INDEXES = 'bowtie_indexes'
 
-def writeDefaultConfig(conffile='default.conf', defaults={}):
+def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
     if not os.path.exists(conffile):
@@ -58,7 +58,7 @@ def createConfigParserfromDict(data, sections, **kwargs):
                 cp.set(s, k, kwargs[k])
     return cp
 
-def parseConfig(conffile=None):
+def parse_config(conffile=None):
     """Parse a configparser file"""
 
     f = open(conffile,'r')

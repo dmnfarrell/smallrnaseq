@@ -14,6 +14,7 @@ import matplotlib
 import pylab as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 try:
     import HTSeq
 except:
@@ -386,6 +387,26 @@ def do_pca(X, c=3):
     #print w.T.max(1).sort_values()
     Xt = pca.fit_transform(S)
     return Xt
+
+def plot_pca(pX, cats):
+    colors = sns.mpl_palette("Spectral", len(cats))
+    f,ax=plt.subplots(1,1,figsize=(6,6))
+    for c, i in zip(colors, cats):
+        #print i, c #len(pX.ix[i,:])
+        if not i in pX.index: continue
+        if i == 'plasma': c='green'
+        ax.scatter(pX.ix[i,0], pX.ix[i,1], c=c, s=100, lw=1, label=i, alpha=0.8)
+    ax.set_xlabel('PC1')
+    ax.set_ylabel('PC2')
+    done=[]
+    for i, point in pX.iterrows():
+        if i not in done:
+            ax.text(point[0]+.1, point[1]+.3, str(i),fontsize=(9))
+        done.append(i)
+
+    ax.legend(fontsize=10,bbox_to_anchor=(1.6, 1.1))
+    plt.tight_layout()
+    sns.despine()
 
 def do_mds(X):
     """Do MDS"""

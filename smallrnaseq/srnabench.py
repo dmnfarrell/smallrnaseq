@@ -459,8 +459,8 @@ def main():
     pd.set_option('display.width', 600)
     if opts.run == True:
         if opts.config == None:
-            base.writeDefaultConfig('srnabench.conf',defaults=srnabenchoptions)
-        cp = base.parseConfig(opts.config)
+            base.write_default_config('srnabench.conf',defaults=srnabenchoptions)
+        cp = base.parse_config(opts.config)
         options = cp._sections['base']
         print (options)
         if opts.input == None:
