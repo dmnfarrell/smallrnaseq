@@ -81,7 +81,7 @@ def remove_known_rnas(path, adapters=[], outpath='RNAremoved'):
         rem = os.path.join(outpath, label+'.fa')
         #samfile = os.path.join(outpath, '%s_%s_mapped.sam' %(label,index))
         samfile = 'out.sam'
-        base.bowtie_map('cut.fa', index, outfile=samfile, params=params, remaining=rem)
+        base.bowtie_align('cut.fa', index, outfile=samfile, params=params, remaining=rem)
 
     return
 
@@ -149,7 +149,7 @@ def map_rnas_old(files=None, path=None, indexes=[], adapters=None,
             samfile = os.path.join(outpath, '%s_%s_mapped.sam' %(label,index))
             if not os.path.exists(samfile):
                 #print (rem)
-                rem = base.bowtie_map(query, index, outfile=samfile, params=bowtieparams,
+                rem = base.bowtie_align(query, index, outfile=samfile, params=bowtieparams,
                                      remaining=rem, verbose=False)
             sam = HTSeq.SAM_Reader(samfile)
             f = [(a.read.seq,a.read.name) for a in sam if a.aligned == True]

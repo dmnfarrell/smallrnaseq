@@ -29,6 +29,7 @@ path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
 MIRBASE = os.path.join(datadir, 'miRBase_all.csv')
 BOWTIE_INDEXES = 'bowtie_indexes'
+BWA_INDEXES = 'bwa_indexes'
 
 def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
@@ -246,7 +247,7 @@ def map_rnas(files, indexes, outpath, bowtie_index=None, collapse=True, adapters
             samfile = os.path.join(outpath, '%s_%s.sam' %(label,idx))
             rem = os.path.join(outpath, label+'_r.fa')
             #print samfile
-            bowtie_map(query, idx, outfile=samfile, bowtie_index=bowtie_index,
+            bowtie_align(query, idx, outfile=samfile, bowtie_index=bowtie_index,
                             remaining=rem, params=bowtie_params, verbose=verbose)
             counts = _count_aligned(samfile, readcounts)
             counts['label'] = label
@@ -285,7 +286,7 @@ def map_genome_features(files, ref, gtf_file, bowtie_index=None, outpath='',
         label = os.path.splitext(os.path.basename(cfile))[0]
         samfile = os.path.join(outpath, '%s_%s.sam' %(label,ref))
         rem = os.path.join(outpath, label+'_r.fa')
-        bowtie_map(cfile, ref, outfile=samfile, bowtie_index=bowtie_index,
+        bowtie_align(cfile, ref, outfile=samfile, bowtie_index=bowtie_index,
                         remaining=rem, params=bowtie_params)
         #get true read counts for collapsed file
         countfile = os.path.join(outpath, '%s.csv' %label)
@@ -436,18 +437,23 @@ def compare_expression_profiles(df, by='db', key='reads', threshold=1, path=None
         plt.savefig(os.path.join(path, 'expr_scatter.png'))
     return
 
-def plot_fractions_mapped(res, label=None, path=None):
+def get_fractions_mapped(df):
     """Process results of multiple mappings to get fractions
-    of each annotations mapped
-    label: plot this sample only"""
+    of each annotations mapped"""
 
-    x = res.groupby(['db','label']).agg({'fraction':np.sum})
+    x = df.groupby(['db','label']).agg({'fraction':np.sum})
     x = x.unstack(level=0)
     x.columns = x.columns.droplevel(0)
     x['unmapped'] = 1-x.sum(1)
     x = x.T
     x = x.reindex_axis((x).mean(1).sort_values().index)
-    print (x)
+    return x
+
+def plot_fractions(res, label=None, path=None):
+    """Process results of multiple mappings to get fractions
+    of each annotations mapped
+    label: plot this sample only"""
+
     explode = [0.05 for i in range(len(x))]
     if len(x.columns) == 1:
         label = x.columns[0]
@@ -464,7 +470,7 @@ def plot_fractions_mapped(res, label=None, path=None):
     plt.savefig(os.path.join(path,'ncrna_persample.png'))
     return
 
-def doHeatMap(df,fname=None,cmap='seismic',log=False):
+def heatmap(df,fname=None,cmap='seismic',log=False):
     """Plot a heat map"""
 
     from matplotlib.colors import LogNorm
@@ -503,10 +509,11 @@ def venn_diagram(names,labels,ax=None,**kwargs):
     ax.set_axis_off()
     return v
 
-def bwa_map(infile, ref=None, outfile=None):
-    """Map with bwa"""
+def bwa_align(infile, ref=None, bowtie_index=None, outfile=None):
+    """Align reads with bwa"""
 
-    bwaindexes = '/opt/mirnaseq/genomes/bwa_index'
+    if bwa_index == None:
+        bwa_index = BWA_INDEXES
     ref = os.path.join(bwaindexes, ref)
     label = os.path.splitext(os.path.basename(infile))[0]
     outfile = label+'_'+ref+'_bwa.sam'
@@ -516,7 +523,7 @@ def bwa_map(infile, ref=None, outfile=None):
     result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
     return
 
-def bowtie_map(infile, ref, outfile=None, bowtie_index=None, params='-v 0 --best',
+def bowtie_align(infile, ref, outfile=None, bowtie_index=None, params='-v 0 --best',
                 remaining=None, verbose=True):
     """Map reads using bowtie"""
 
