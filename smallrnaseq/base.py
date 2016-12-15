@@ -116,25 +116,25 @@ def gtf_to_dataframe(gtf, index='transcript_id'):
         print ('no exon_id field')
     return df
 
-def _count_aligned_features(samfile, features, readcounts=None):
+def count_aligned_features(samfile, features, truecounts=None):
     """Count reads in features from an alignment, if no truecounts we
        assume a non-collapsed file was used to map
        Args:
            samfile: mapped sam file
            features: annotation from e.g. gtf file
-           readcounts: read counts from original (un-collapsed) file
+           truecounts: read counts from original (un-collapsed) file
        Returns: dataframe of genes with total counts
     """
 
     sam = HTSeq.SAM_Reader(samfile)
-    if type(readcounts) is pd.DataFrame:
-        readcounts = {r.seq: r['reads'] for i,r in readcounts.iterrows()}
+    if type(truecounts) is pd.DataFrame:
+        truecounts = {r.seq: r['reads'] for i,r in readcounts.iterrows()}
     import collections
     counts = collections.Counter()
     for almnt in sam:
         seq = str(almnt.read)
-        if readcounts is not None and seq in readcounts:
-            c = readcounts[seq]
+        if truecounts is not None and seq in truecounts:
+            c = truecounts[seq]
         else:
             c = 1
         if not almnt.aligned:
@@ -187,7 +187,7 @@ def pivot_count_data(df, idxcols=None):
     x = x.sort_values('mean_norm', ascending=False)
     return x
 
-def _count_aligned(samfile, readcounts, by='name'):
+def count_aligned(samfile, readcounts, by='name'):
     """Count short read alignments to any generic fasta index (no features)
        Args:
            samfile: mapped sam file
@@ -249,7 +249,7 @@ def map_rnas(files, indexes, outpath, bowtie_index=None, collapse=True, adapters
             #print samfile
             bowtie_align(query, idx, outfile=samfile, bowtie_index=bowtie_index,
                             remaining=rem, params=bowtie_params, verbose=verbose)
-            counts = _count_aligned(samfile, readcounts)
+            counts = count_aligned(samfile, readcounts)
             counts['label'] = label
             counts['db'] = idx
             counts['fraction'] = counts.reads/total
@@ -292,7 +292,7 @@ def map_genome_features(files, ref, gtf_file, bowtie_index=None, outpath='',
         countfile = os.path.join(outpath, '%s.csv' %label)
         readcounts = pd.read_csv(countfile, index_col=0)
         #count
-        hits = _count_aligned_features(samfile, exons, readcounts)
+        hits = count_aligned_features(samfile, exons, readcounts)
         #print hits[:10]
         hits['label'] = label
         hits['genome'] = ref
@@ -424,6 +424,13 @@ def run_mirnas(files, species='bta', outpath='mirna_results', overwrite=False):
     res.to_csv('mirna_counts.csv')
     return res
 
+def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):
+    c,normcols = getColumnNames(df)
+    df = df[df.freq>freq]
+    df = df[df['total']>=totalreads]
+    df = df[df['mean_norm']>=meanreads]
+    return df
+
 def compare_expression_profiles(df, by='db', key='reads', threshold=1, path=None):
     """Scatter matrix of count values across samples and/or by label"""
 
@@ -543,3 +550,16 @@ def bowtie_align(infile, ref, outfile=None, bowtie_index=None, params='-v 0 --be
         print (cmd)
         print (result)
     return remaining
+
+def featurecounts(samfile, gtffile):
+    """Count aligned features with the featureCounts program.
+        Returns: a dataframe of counts"""
+
+    params = '-T 5 -t exon -g gene_id'
+    cmd = 'featureCounts %s -a %s -o counts.txt %s' %(params, gtffile, samfile)
+    print (cmd)
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    counts =  pd.read_csv('counts.txt', sep='\t', comment='#')
+    counts = counts.rename(columns={samfile:'reads'})
+    counts = counts.sort('reads', ascending=False)
+    return counts

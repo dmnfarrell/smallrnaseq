@@ -36,7 +36,7 @@ isoclasses = {'lv5pT':'5p trimmed',
                 'lv3p':'3p length variant',
                 'mv': 'multiple length variants'}
 
-def getShortlabel(label):
+def get_short_label(label):
     x=label.split('_')
     return x[2]+'_'+x[4]
 
@@ -69,7 +69,7 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter='', species='b
     print (result)
     return outdir
 
-def runAll(path, outpath='runs', filetype='fastq', **kwargs):
+def run_all(path, outpath='runs', filetype='fastq', **kwargs):
     """Run all fastq files in folder"""
 
     if os.path.isdir(path):
@@ -83,7 +83,7 @@ def runAll(path, outpath='runs', filetype='fastq', **kwargs):
             print ('skipped %s' %f)
     return
 
-def readResultsFile(path, infile='mature_sense.grouped', filter=True):
+def read_results_file(path, infile='mature_sense.grouped', filter=True):
     """Parse .grouped file.
        filter True means remove duplicates of same mirna"""
 
@@ -95,11 +95,10 @@ def readResultsFile(path, infile='mature_sense.grouped', filter=True):
     df['path'] = os.path.basename(path)
     #take highest value if duplicates (same mature)
     g = df.groupby('name').agg(np.max)
-    #print g
     g = g.reset_index()
     return g
 
-def plotResults(k):
+def plot_results(k):
     fig,ax=plt.subplots(figsize=(8,6))
     ax.set_title('sRNAbench top 10')
     k.set_index('name')['read count'][:10].plot(kind='barh',colormap='Set2',ax=ax,log=True)
@@ -107,10 +106,11 @@ def plotResults(k):
     fig.savefig('srnabench_summary_known.png')
     return
 
-def normaliseCols(df):
+def normalise_cols(df):
+
     def n(s):
         return s/s.sum()*1e6
-    cols,normcols = getColumnNames(df)
+    cols,normcols = get_column_names(df)
     x = df[cols].apply(n, axis=0)
     x = np.around(x,0)
     x.columns = [i+'_norm' for i in cols]
@@ -118,13 +118,14 @@ def normaliseCols(df):
     df['mean_norm'] = df[normcols].apply(lambda r: r[r.nonzero()[0]].mean(),1)
     return df
 
-def getColumnNames(df):
+def get_column_names(df):
     cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
     normcols = [i+'_norm' for i in cols]
     return cols, normcols
 
-def filterExprResults(df, freq=0.5, meanreads=0, totalreads=50):
-    c,normcols = getColumnNames(df)
+def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):
+
+    c,normcols = get_column_names(df)
     df = df[df.freq>freq]
     df = df[df['total']>=totalreads]
     df = df[df['mean_norm']>=meanreads]
@@ -132,6 +133,7 @@ def filterExprResults(df, freq=0.5, meanreads=0, totalreads=50):
 
 def parseisoinfo(r):
     '''parse srnabench hierarchical scheme'''
+
     s = r['isoClass'].split('|')
     lv = s[0]
     if len(s)>1:
@@ -140,7 +142,7 @@ def parseisoinfo(r):
         pos = 0
     return pd.Series(dict(pos=pos,variant=lv))
 
-def getResults(path):
+def get_results(path):
     """Fetch results for all dirs and aggregate read counts"""
 
     k = []
@@ -154,8 +156,8 @@ def getResults(path):
     for o in outdirs:
         if not os.path.isdir(o):
             continue
-        r = readResultsFile(o, 'mature_sense.grouped')
-        x = getNovel(o)
+        r = read_results_file(o, 'mature_sense.grouped')
+        x = get_novel(o)
         if x is not None:
             #print len(x), o
             n.append(x)
@@ -165,7 +167,7 @@ def getResults(path):
         cols.append(id)
         fmap[id] = os.path.basename(o)
         c+=1
-        iso = getIsomiRs(o)
+        iso = get_isomirs(o)
         if iso is not None:
             m.append(iso)
     fmap = pd.DataFrame(fmap.items(),columns=['id','filename'])
@@ -184,7 +186,7 @@ def getResults(path):
     k = p.merge(g,left_index=True,right_index=True)
     k = k.reset_index()
     k = k.fillna(0)
-    k = normaliseCols(k)
+    k = normalise_cols(k)
     k = k.sort('mean_norm',ascending=False)
     k.to_csv('srnabench_known_all.csv')
 
@@ -200,10 +202,10 @@ def getResults(path):
         m['mean read count'] = m[cols].mean(1)
         m['freq'] = m[cols].apply(lambda r: len(r.nonzero()[0])/samples,1)
         m['length'] = m.read.str.len()
-        m = normaliseCols(m)
+        m = normalise_cols(m)
         x = m.apply(parseisoinfo,1)
         m = m.merge(x,left_index=True,right_index=True)
-        m=m.sort(['total'],ascending=False)
+        m = m.sort(['total'],ascending=False)
     else:
         m = None
     #novel
@@ -212,12 +214,11 @@ def getResults(path):
         #print n[n.columns[:8]].sort(['chrom','5pSeq'])
         n = n.pivot_table(index=['5pSeq','chrom'], columns='path', values='5pRC')
         #print n[n.columns[:3]]
-        #n.columns=cols
     else:
-        n=None
+        n = None
     return k,n,m
 
-def getNovel(path):
+def get_novel(path):
     """Parse novel.txt file if available"""
 
     f = os.path.join(path,'novel.txt')
@@ -227,8 +228,9 @@ def getNovel(path):
     df['path'] = os.path.basename(path)
     return df
 
-def getIsomiRs(path):
+def get_isomirs(path):
     """Get isomiR results"""
+
     f = os.path.join(path,'miRBase_isoAnnotation.txt')
     if not os.path.exists(f):
         return
@@ -236,7 +238,7 @@ def getIsomiRs(path):
     df['path'] = os.path.basename(path)
     return df
 
-def analyseResults(k,n,outpath=None):
+def analyse_results(k,n,outpath=None):
     """Summarise multiple results"""
 
     if outpath != None:
@@ -248,8 +250,8 @@ def analyseResults(k,n,outpath=None):
     cols = ['name','freq','mean read count','mean_norm','total','perc','mirbase_id']
     print
     print ('found:')
-    idcols,normcols = getColumnNames(k)
-    final = filterExprResults(k,freq=.8,meanreads=200)
+    idcols,normcols = get_column_names(k)
+    final = filter_expr_results(k,freq=.8,meanreads=200)
     print (final[cols])
     print ('-------------------------------')
     print ('%s total' %len(k))
@@ -261,7 +263,7 @@ def analyseResults(k,n,outpath=None):
     k.set_index('name')['total'][:10].plot(kind='barh',colormap='Spectral',ax=ax,log=True)
     plt.tight_layout()
     fig.savefig('srnabench_top_known.png')
-    fig = plotReadCountDists(final)
+    fig = plot_read_count_dists(final)
     fig.savefig('srnabench_known_counts.png')
     fig,ax = plt.subplots(figsize=(10,6))
     k[idcols].sum().plot(kind='bar',ax=ax)
@@ -270,8 +272,9 @@ def analyseResults(k,n,outpath=None):
     k.to_csv('srnabench_known_all.csv',index=False)
     return k
 
-def getTopIsomirs(iso):
+def get_top_isomirs(iso):
     """Get top isomir per mirRNA"""
+
     g = iso.groupby('name', as_index=False)
     #first add col for each isomirs percentage in its group
     totals = g.agg({'total':np.sum}).set_index('name')
@@ -287,7 +290,7 @@ def getTopIsomirs(iso):
     top = top.sort('counts',ascending=False)
     return top
 
-def analyseIsomiRs(iso,outpath=None):
+def analyse_isomirs(iso,outpath=None):
     """Analyse isomiR results in detail"""
 
     if iso is None:
@@ -298,7 +301,7 @@ def analyseIsomiRs(iso,outpath=None):
     iso = iso.sort('total', ascending=False)
     #filter very low abundance reads
     iso = iso[(iso.total>10) & (iso.freq>0.5)]
-    top = getTopIsomirs(iso)
+    top = get_top_isomirs(iso)
     top.to_csv('srnabench_isomirs_dominant.csv',index=False)
     print ('top isomiRs:')
     print (top[:20])
@@ -357,13 +360,13 @@ def analyseIsomiRs(iso,outpath=None):
     iso.to_csv('srnabench_isomirs_all.csv',index=False)
     return top
 
-def plotReadCountDists(df,h=8):
+def plot_read_count_dists(df,h=8):
     """Boxplots of read count distributions per miRNA"""
 
 
     w=int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
-    cols,normcols = getColumnNames(df)
+    cols,normcols = get_column_names(df)
     df = df.set_index('name')
     n = df[normcols]
     t=n.T
@@ -380,64 +383,11 @@ def plotReadCountDists(df,h=8):
     plt.tight_layout()
     return fig
 
-def getFileIDs(path):
+def get_file_ids(path):
     """Get file-id mapping"""
 
     idmap = pd.read_csv(os.path.join(path, 'srnabench_colnames.csv'))
     return idmap
-
-def getLabelMap(path, labels):
-    """Get results labels mapped to labels with the filenames"""
-
-    condmap = pd.read_csv(labels)
-    idmap = getFileIDs(path)
-    def matchname(x):
-        r = idmap[idmap['filename'].str.contains(x)]
-        if len(r)>0:
-            return r.id.squeeze()
-        else:
-            return np.nan
-    condmap['id'] = condmap.filename.apply(lambda x: matchname(x),1)
-    condmap = condmap.dropna()
-    return condmap
-
-'''def getSec(path, name):
-    """Get sec structure text data"""
-
-    outdirs = [os.path.join(path,i) for i in os.listdir(path)]
-    outdirs = [i for i in outdirs if os.path.isdir(i)]
-    outdir = outdirs[0]
-    sec = open(os.path.join(outdir,'hairpin/%s.sec' %mirna),'r').readlines()
-    return'''
-
-'''def runDE(inpath, l1, l2, cutoff=1.5):
-    """DE via sRNABench"""
-
-    files1 = getFilesfromMapping(inpath, l1)
-    files2 = getFilesfromMapping(inpath, l2)
-    files1 = [os.path.basename(i) for i in files1]
-    files2 = [os.path.basename(i) for i in files2]
-
-    lbl = 'mature' #'hairpin'
-    output = 'DEoutput_srnabench'
-    if os.path.exists(output):
-        shutil.rmtree(output)
-    grpstr = ':'.join(files1)+'#'+':'.join(files2)
-    cmd = ('java -jar /local/sRNAbench/sRNAbenchDE.jar input=%s '
-           'grpString=%s output=%s diffExpr=true minRC=1 readLevel=true seqStat=true '
-           'diffExprFiles=%s_sense.grouped' %(inpath,grpstr,output,lbl))
-    print l1,l2
-    #print cmd
-    print
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    resfile = glob.glob(os.path.join(output,'*.edgeR'))[0]
-    print lbl
-    df = pd.read_csv(resfile, sep='\t')
-    df = df.reset_index()
-    df = df.rename(columns={'index':'name'})
-    df = df.sort('logFC',ascending=False)
-    df = df[(df.FDR<0.05) & ((df.logFC>cutoff) | (df.logFC<-cutoff))]
-    return df'''
 
 def main():
     try:
@@ -465,11 +415,11 @@ def main():
         print (options)
         if opts.input == None:
             opts.input = options['input']
-        runAll(opts.input, **options)
+        run_all(opts.input, **options)
     elif opts.analyse != None:
-        k,n,iso = getResults(opts.analyse)
-        analyseResults(k,n)
-        analyseIsomiRs(iso)
+        k,n,iso = get_results(opts.analyse)
+        analyse_results(k,n)
+        analyse_isomirs(iso)
     else:
         test()
 
