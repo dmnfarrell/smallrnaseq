@@ -1,7 +1,6 @@
-smallrnaseq
-========
+<img align="right" src=https://raw.githubusercontent.com/dmnfarrell/smallrnaseq/master/img/logo.png width=150px>
 
-#### Scripts for analysis of small RNA sequencing data e.g. microRNAs
+**smallrnaseq -  Scripts for analysis of small RNA sequencing data e.g. microRNAs**
 
 #### Background
 
