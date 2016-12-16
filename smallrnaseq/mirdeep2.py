@@ -1,8 +1,23 @@
 #!/usr/bin/env python
 
-"""Module for miRDeep2 wrappers and utilities
-   Created July 2014
-   Copyright (C) Damien Farrell
+"""
+    Module for miRDeep2 wrappers and utilities
+    Created July 2014
+    Copyright (C) Damien Farrell
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 3
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 import sys, os, string, types, re
@@ -13,8 +28,6 @@ import pylab as plt
 import numpy as np
 import pandas as pd
 from . import base, utils
-
-plt.rcParams['savefig.dpi'] = 150
 
 mirdeep2options = {'base': [('input',''),('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
                     ('bowtieindex',''),('refgenome',''),('species','hsa'),
@@ -249,20 +262,20 @@ def get_column_names(df):
     normcols = [i+'(norm)' for i in cols]
     return cols, normcols
 
-def filter_expr_results(n, cols=None, score=0, freq=0.5, meanreads=0, totalreads=0):
+def filter_expr_results(df, cols=None, score=0, freq=0.5, mean_norm=0, total_reads=0):
     """Additional filters for abundances/no. samples"""
 
     if cols is None:
-        cols = [i for i in n.columns if (i.startswith('s') and len(i)<=3)]
+        cols = [i for i in df.columns if (i.startswith('s') and len(i)<=3)]
     normcols = [i+'(norm)' for i in cols]
-    n = n[(n['miRDeep2 score']>=score)]# | (n['read_count']>10000)]
-    n = n[n.freq>freq]
-    n = n[n['read_count']>=totalreads]
-    n = n[n['mean_norm']>=meanreads]
-    n = n[n['randfold'].isin(['yes','-'])]
+    df = df[(df['miRDeep2 score']>=score)]
+    df = df[df.freq>=freq]
+    df = df[df['read_count']>=total_reads]
+    df = df[df['mean_norm']>=mean_norm]
+    df = df[df['randfold'].isin(['yes','-'])]
     #n = n[n['rfam alert']=='-']
-    n = n.reset_index(drop=True)
-    return n
+    #df = df.reset_index(drop=True)
+    return df
 
 def analyse_results(path, outpath=None, **kwargs):
     """General analysis of mirdeep results"""

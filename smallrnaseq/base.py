@@ -1,8 +1,23 @@
 #!/usr/bin/env python
 
-"""Module for core utilities
-   Created July 2014
-   Copyright (C) Damien Farrell
+"""
+    Module for core smallrnaseq functions
+    Created July 2014
+    Copyright (C) Damien Farrell
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 3
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 from __future__ import absolute_import, print_function
@@ -452,8 +467,9 @@ def get_fractions_mapped(df):
     x = x.unstack(level=0)
     x.columns = x.columns.droplevel(0)
     x['unmapped'] = 1-x.sum(1)
-    x = x.T
-    x = x.reindex_axis((x).mean(1).sort_values().index)
+    #x = x.T
+    #x = x.reindex_axis((x).mean(1).sort_values().index)
+    x = x.reset_index()
     return x
 
 def plot_fractions(res, label=None, path=None):
@@ -555,7 +571,7 @@ def featurecounts(samfile, gtffile):
     """Count aligned features with the featureCounts program.
         Returns: a dataframe of counts"""
 
-    params = '-T 5 -t exon -g gene_id'
+    params = '-T 5 -t exon -g transcript_id'
     cmd = 'featureCounts %s -a %s -o counts.txt %s' %(params, gtffile, samfile)
     print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
