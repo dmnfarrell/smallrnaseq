@@ -43,8 +43,14 @@ mpl.rcParams['savefig.dpi'] = 90
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
 MIRBASE = os.path.join(datadir, 'miRBase_all.csv')
-BOWTIE_INDEXES = 'bowtie_indexes'
-BWA_INDEXES = 'bwa_indexes'
+BOWTIE_INDEXES = None
+SUBREAD_INDEXES = None
+BWA_INDEXES = None
+BOWTIE_PARAMS = '-v 1 --best'
+
+baseoptions = {'base': [('input',''),('adapter',''),('filetype','fastq'),
+                    ('bowtieindex',''),('refgenome',''),('species','hsa'),
+                    ('overwrite',1)]}
 
 def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
@@ -173,7 +179,7 @@ def count_aligned_features(samfile, features, truecounts=None):
     um = ['_no_feature','_unmapped']
     mapped = float(result[-result.name.isin(um)].reads.sum())
     total = result.reads.sum()
-    print ('%s/%s reads mapped, %.2f percent' %(mapped, total, mapped/total*100))
+    print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
     return result
 
 def merge_features(counts, gtf_file):
@@ -185,16 +191,15 @@ def merge_features(counts, gtf_file):
     #hits = hits.sort_values(by='reads',ascending=False)
     return hits
 
-def pivot_count_data(df, idxcols=None):
+def pivot_count_data(df, idxcols=['name']):
     """Pivot read counts over samples containing multiple 'read' columns
        and get mean normalised read counts"""
 
-    #print (df[:2])
     if not 'norm' in df.columns:
         df['norm'] = df.fraction*1e6
     x = pd.pivot_table(df, values=['reads','norm'], index=idxcols, columns=['label'])
     x = x.reset_index()
-
+    #print (x[:3])
     x['total_reads'] = x.ix[:,'reads'].sum(1)
     x['mean_norm'] = x.ix[:,'norm'].apply(lambda r: r[r.nonzero()[0]].mean(),1)
     #flatten column index and rename normalised columns
@@ -202,7 +207,14 @@ def pivot_count_data(df, idxcols=None):
     x = x.sort_values('mean_norm', ascending=False)
     return x
 
-def count_aligned(samfile, readcounts, by='name'):
+def get_column_names(df):
+    """Get sample column names"""
+
+    cols = [i for i in df.columns if (i.startswith('reads'))]
+    ncols = [i for i in df.columns if (i.startswith('norm'))]
+    return cols, ncols
+
+def count_aligned(samfile, readcounts=None, by='name', norm_method='total library'):
     """Count short read alignments to any generic fasta index (no features)
        Args:
            samfile: mapped sam file
@@ -218,16 +230,17 @@ def count_aligned(samfile, readcounts, by='name'):
         #else:
         #    f.append((a.read.seq,a.read.name,'_unmapped'))
 
-    found = pd.DataFrame(f, columns=['seq','read','name'])
-    counts = found.merge(readcounts, on='seq')
+    counts = pd.DataFrame(f, columns=['seq','read','name'])
+    if readcounts is not None:
+        counts = counts.merge(readcounts, on='seq')
     if by == 'name':
         counts = ( counts.groupby('name')
                   .agg({'reads':np.sum,'seq':first})
                   .reset_index().sort_values('reads',ascending=False) )
     return counts
 
-def map_rnas(files, indexes, outpath, bowtie_index=None, collapse=True, adapters=None,
-             use_remaining=False, overwrite=True, verbose=False, bowtie_params=None):
+def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
+             use_remaining=False, overwrite=True, verbose=False):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
         files: input fastq read files
@@ -237,8 +250,6 @@ def map_rnas(files, indexes, outpath, bowtie_index=None, collapse=True, adapters
         overwrite: whether to overwrite temp files
     """
 
-    if bowtie_params == None:
-        bowtie_params = '-v 1 --best'
     if overwrite == True:
         print ('removing old temp files')
         remove_files(outpath,'*_mapped.sam')
@@ -262,8 +273,10 @@ def map_rnas(files, indexes, outpath, bowtie_index=None, collapse=True, adapters
             samfile = os.path.join(outpath, '%s_%s.sam' %(label,idx))
             rem = os.path.join(outpath, label+'_r.fa')
             #print samfile
-            bowtie_align(query, idx, outfile=samfile, bowtie_index=bowtie_index,
-                            remaining=rem, params=bowtie_params, verbose=verbose)
+            if aligner == 'bowtie':
+                bowtie_align(query, idx, outfile=samfile, remaining=rem, verbose=verbose)
+            elif aligner == 'subread':
+                subread_align(query, idx, samfile)
             counts = count_aligned(samfile, readcounts)
             counts['label'] = label
             counts['db'] = idx
@@ -274,9 +287,9 @@ def map_rnas(files, indexes, outpath, bowtie_index=None, collapse=True, adapters
     print ('done')
     return result
 
-def map_genome_features(files, ref, gtf_file, bowtie_index=None, outpath='',
+def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
                         overwrite=True):
-    """Map to a genome with features available and return/process hits.
+    """Map multiple files to a genome with features and return/process hits.
        Can be used for miRNA discovery
        Args:
            ref: genome bowtie index name
@@ -284,7 +297,6 @@ def map_genome_features(files, ref, gtf_file, bowtie_index=None, outpath='',
            bowtie _index: path with bowtie indexes
     """
 
-    bowtie_params = '-v 1 --best'
     if overwrite == True:
         print ('removing old temp files')
         remove_files(outpath,'*_mapped.sam')
@@ -301,8 +313,10 @@ def map_genome_features(files, ref, gtf_file, bowtie_index=None, outpath='',
         label = os.path.splitext(os.path.basename(cfile))[0]
         samfile = os.path.join(outpath, '%s_%s.sam' %(label,ref))
         rem = os.path.join(outpath, label+'_r.fa')
-        bowtie_align(cfile, ref, outfile=samfile, bowtie_index=bowtie_index,
-                        remaining=rem, params=bowtie_params)
+        if aligner == 'bowtie':
+            bowtie_align(cfile, ref, outfile=samfile, remaining=rem)
+        elif aligner == 'subread':
+            subread_align(cfile, ref, samfile)
         #get true read counts for collapsed file
         countfile = os.path.join(outpath, '%s.csv' %label)
         readcounts = pd.read_csv(countfile, index_col=0)
@@ -391,20 +405,6 @@ def get_mirbase_sequences(species='hsa'):
     mirbase = pd.read_csv(MIRBASE)
     return mirbase[mirbase.species==species]
 
-def build_bowtie_index(fastafile, path):
-    """Build a bowtie index"""
-
-    name = os.path.splitext(fastafile)[0]
-    cmd = 'bowtie-build -f %s %s' %(fastafile, name)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    files = glob.glob(name+'*.ebwt')
-    if not os.path.exists(path):
-        os.mkdir(path)
-    for f in files:
-        shutil.move(f, os.path.join(path, f))
-        #shutil.move(f, path)
-    return
-
 def build_mirbase_index(species, kind='mature'):
     """Build species-specific mirbase bowtie index"""
 
@@ -416,9 +416,12 @@ def build_mirbase_index(species, kind='mature'):
     build_bowtie_index(outfile, 'bowtie_indexes')
     return idxname
 
-def run_mirnas(files, species='bta', outpath='mirna_results', overwrite=False):
-    """Map multiple fastq files to mirbase and get count results
-       can be used for counting of known mirnas."""
+def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
+                norm_method=None, **kwargs):
+    """Map multiple fastq files to mirbase and get count results into one file.
+       Used for counting of known miRNAs.
+       Species: three letter name of species using mirbase convention
+    """
 
     if not os.path.exists(outpath):
         os.mkdir(outpath)
@@ -430,10 +433,10 @@ def run_mirnas(files, species='bta', outpath='mirna_results', overwrite=False):
 
     #generate new mirbase bowtie index
     db = build_mirbase_index(species)
-    indexpath = 'bowtie_indexes'
+    global BOWTIE_INDEXES
+    BOWTIE_INDEXES = 'bowtie_indexes'
     #now map to the mirbase index for all files
-    res = map_rnas(files, [db], outpath, bowtie_index=indexpath,
-                   overwrite=overwrite, verbose=False)
+    res = map_rnas(files, [db], outpath, overwrite=overwrite, **kwargs)
     #merge labels with results
     res = res.merge(labels, on='label')
     res.to_csv('mirna_counts.csv')
@@ -493,45 +496,6 @@ def plot_fractions(res, label=None, path=None):
     plt.savefig(os.path.join(path,'ncrna_persample.png'))
     return
 
-def heatmap(df,fname=None,cmap='seismic',log=False):
-    """Plot a heat map"""
-
-    from matplotlib.colors import LogNorm
-    f=plt.figure(figsize=(8,8))
-    ax=f.add_subplot(111)
-    norm=None
-    df=df.replace(0,.1)
-    if log==True:
-        norm=LogNorm(vmin=df.min().min(), vmax=df.max().max())
-    hm = ax.pcolor(df,cmap=cmap,norm=norm)
-    plt.colorbar(hm,ax=ax,shrink=0.6,norm=norm)
-    plt.yticks(np.arange(0.5, len(df.index), 1), df.index)
-    plt.xticks(np.arange(0.5, len(df.columns), 1), df.columns, rotation=90)
-    #ax.axvline(4, color='gray'); ax.axvline(8, color='gray')
-    plt.tight_layout()
-    if fname != None:
-        f.savefig(fname+'.png')
-    return ax
-
-def venn_diagram(names,labels,ax=None,**kwargs):
-    """Plot venn diagrams"""
-
-    from matplotlib_venn import venn2,venn3
-    f=None
-    if ax==None:
-        f=plt.figure(figsize=(4,4))
-        ax=f.add_subplot(111)
-    if len(names)==2:
-        n1,n2=names
-        v = venn2([set(n1), set(n2)], set_labels=labels, **kwargs)
-    elif len(names)==3:
-        n1,n2,n3=names
-        v = venn3([set(n1), set(n2), set(n3)], set_labels=labels, **kwargs)
-    ax.axis('off')
-    #f.patch.set_visible(False)
-    ax.set_axis_off()
-    return v
-
 def bwa_align(infile, ref=None, bowtie_index=None, outfile=None):
     """Align reads with bwa"""
 
@@ -546,26 +510,54 @@ def bwa_align(infile, ref=None, bowtie_index=None, outfile=None):
     result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
     return
 
-def bowtie_align(infile, ref, outfile=None, bowtie_index=None, params='-v 0 --best',
-                remaining=None, verbose=True):
+def build_bowtie_index(fastafile, path):
+    """Build a bowtie index"""
+
+    name = os.path.splitext(fastafile)[0]
+    cmd = 'bowtie-build -f %s %s' %(fastafile, name)
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    files = glob.glob(name+'*.ebwt')
+    if not os.path.exists(path):
+        os.mkdir(path)
+    for f in files:
+        shutil.move(f, os.path.join(path, f))
+        #shutil.move(f, path)
+    return
+
+def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
     """Map reads using bowtie"""
 
     label = os.path.splitext(os.path.basename(infile))[0]
     outpath = os.path.dirname(os.path.abspath(infile))
     if outfile == None:
         outfile = label+'_'+ref+'_bowtie.sam'
-    if bowtie_index == None:
-        bowtie_index = BOWTIE_INDEXES
-    #print (bowtieindex)
-    os.environ["BOWTIE_INDEXES"] = bowtie_index
+
+    if BOWTIE_INDEXES == None:
+        print ('base.BOWTIE_INDEXES variable not set')
+        return
+    os.environ["BOWTIE_INDEXES"] = BOWTIE_INDEXES
+    params = BOWTIE_PARAMS
     if remaining == None:
         remaining = os.path.join(outpath, label+'_r.fastq')
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     if verbose == True:
         print (cmd)
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    if verbose == True:
         print (result)
     return remaining
+
+def subread_align(infile, ref, outfile, cpu=2):
+    """Align reads with subread"""
+
+    if SUBREAD_INDEXES == None:
+        print ('base.SUBREAD_INDEXES variable not set')
+        return
+    ref = os.path.join(SUBREAD_INDEXES, ref)
+    cmd = 'subread-align -T %s -t 0 -i %s -r %s -o %s' %(cpu, ref, infile, outfile)
+    print (cmd)
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    return
 
 def featurecounts(samfile, gtffile):
     """Count aligned features with the featureCounts program.

@@ -3,7 +3,7 @@ import sys,os
 
 setup(
     name = 'smallrnaseq',
-    version = '0.1.0',
+    version = '0.2.0',
     description = 'Python package for micro rna-seq routines ',
     url='https://github.com/dmnfarrell/smallrnaseq',
     license='GPL v3',
@@ -13,9 +13,10 @@ setup(
     package_data={'smallrnaseq': ['data/*']},
     install_requires=['pandas>=0.17',
                       'biopython>=1.5',
-                      'HTSeq>0.6'],
+                      'HTSeq>=0.6'],
     entry_points = {
         'console_scripts': [
+            'smallrnaseq=smallrnaseq.app:main',
             'mirdeep2=smallrnaseq.mirdeep2:main',
             'srnabench=smallrnaseq.srnabench:main']
             },

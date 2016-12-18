@@ -251,6 +251,7 @@ def get_results(path):
     res['mean_norm'] = res.filter(regex="norm").apply(lambda r: r[r.nonzero()[0]].mean(),1)
     res = res.sort_values(by=['read_count'], ascending=False)
     res = res.drop_duplicates('#miRNA')
+    res = res.reset_index(drop=True)
     #res['std'] = res.filter(regex="norm").std(1)
     #res['cv'] = res['std']/res['mean_norm']
     return res
