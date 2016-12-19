@@ -44,9 +44,10 @@ path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
 MIRBASE = os.path.join(datadir, 'miRBase_all.csv')
 BOWTIE_INDEXES = None
-SUBREAD_INDEXES = None
-BWA_INDEXES = None
 BOWTIE_PARAMS = '-v 1 --best'
+SUBREAD_INDEXES = None
+SUBREAD_PARAMS = '-m 2 -M 2'
+BWA_INDEXES = None
 
 baseoptions = {'base': [('input',''),('adapter',''),('filetype','fastq'),
                     ('bowtieindex',''),('refgenome',''),('species','hsa'),
@@ -149,7 +150,7 @@ def count_aligned_features(samfile, features, truecounts=None):
 
     sam = HTSeq.SAM_Reader(samfile)
     if type(truecounts) is pd.DataFrame:
-        truecounts = {r.seq: r['reads'] for i,r in readcounts.iterrows()}
+        truecounts = {r.seq: r['reads'] for i,r in truecounts.iterrows()}
     import collections
     counts = collections.Counter()
     for almnt in sam:
@@ -312,9 +313,8 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
     for cfile in cfiles:
         label = os.path.splitext(os.path.basename(cfile))[0]
         samfile = os.path.join(outpath, '%s_%s.sam' %(label,ref))
-        rem = os.path.join(outpath, label+'_r.fa')
         if aligner == 'bowtie':
-            bowtie_align(cfile, ref, outfile=samfile, remaining=rem)
+            bowtie_align(cfile, ref, outfile=samfile)
         elif aligner == 'subread':
             subread_align(cfile, ref, samfile)
         #get true read counts for collapsed file
@@ -402,24 +402,30 @@ def collapse_files(files, outpath, **kwargs):
 def get_mirbase_sequences(species='hsa'):
     """Extract species specific sequences from mirbase file"""
 
-    mirbase = pd.read_csv(MIRBASE)
-    return mirbase[mirbase.species==species]
+    df = pd.read_csv(MIRBASE)
+    a = df[['mature1','mature1_seq','species']].set_index('mature1').rename(columns={'mature1_seq':'seq'})
+    b = df[['mature2','mature2_seq','species']].set_index('mature2').rename(columns={'mature2_seq':'seq'})
+    df = pd.concat([a,b]).dropna().reset_index()
+    df = df.drop_duplicates('index')
+    return df[df.species==species]
 
 def build_mirbase_index(species, kind='mature'):
     """Build species-specific mirbase bowtie index"""
 
     mirs = get_mirbase_sequences(species)
+    print ('got %s sequences' %len(mirs))
     idxname = 'mirbase-'+species
     outfile = '%s.fa' %idxname
-    utils.dataframe_to_fasta(mirs, seqkey='mature1_seq', idkey='mature1',
+    utils.dataframe_to_fasta(mirs, seqkey='seq', idkey='index',
                             outfile=outfile)
-    build_bowtie_index(outfile, 'bowtie_indexes')
+    build_bowtie_index(outfile, 'indexes')
+    build_subread_index(outfile, 'indexes')
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
-                norm_method=None, **kwargs):
-    """Map multiple fastq files to mirbase and get count results into one file.
-       Used for counting of known miRNAs.
+                norm_method=None, aligner='bowtie', **kwargs):
+    """Map multiple fastq files to mirbase mature sequences and get
+       count results into one file. Used for counting of known miRNAs.
        Species: three letter name of species using mirbase convention
     """
 
@@ -432,15 +438,27 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
     #cut adapters
 
     #generate new mirbase bowtie index
+    if aligner == 'bowtie':
+        global BOWTIE_INDEXES
+        BOWTIE_INDEXES = 'indexes'
+    elif aligner == 'subread':
+        global SUBREAD_INDEXES
+        SUBREAD_INDEXES = 'indexes'
     db = build_mirbase_index(species)
-    global BOWTIE_INDEXES
-    BOWTIE_INDEXES = 'bowtie_indexes'
+
     #now map to the mirbase index for all files
-    res = map_rnas(files, [db], outpath, overwrite=overwrite, **kwargs)
+    res = map_rnas(files, [db], outpath, overwrite=overwrite, aligner=aligner, **kwargs)
     #merge labels with results
     res = res.merge(labels, on='label')
     res.to_csv('mirna_counts.csv')
     return res
+
+def map_mirnas(files, ref, outpath='mirna_results', overwrite=False):
+    """Map reads to detect mirnas in genome. This means optional removal
+       of other rnas first and then alignment to the genome using aligner
+       parameters tuned for reads ~17-25 bp."""
+
+    return
 
 def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):
     c,normcols = getColumnNames(df)
@@ -475,19 +493,19 @@ def get_fractions_mapped(df):
     x = x.reset_index()
     return x
 
-def plot_fractions(res, label=None, path=None):
+def plot_fractions(df, label=None, path=None):
     """Process results of multiple mappings to get fractions
     of each annotations mapped
     label: plot this sample only"""
 
-    explode = [0.05 for i in range(len(x))]
-    if len(x.columns) == 1:
-        label = x.columns[0]
+    if len(df.columns) == 1:
+        label = df.columns[0]
     if label != None:
-        axs = x.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',startangle=0,figsize=(6,6),
+        explode = [0.05 for i in range(len(df))]
+        axs = df.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',startangle=0,figsize=(6,6),
                    labels=None,legend=True,pctdistance=1.1,explode=explode,fontsize=10)
     else:
-        l = x.T.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
+        l = df.T.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
         plt.legend(ncol=4)
 
     plt.tight_layout()
@@ -524,6 +542,20 @@ def build_bowtie_index(fastafile, path):
         #shutil.move(f, path)
     return
 
+def build_subread_index(fastafile, path):
+    """Build an index for subread"""
+
+    name = os.path.splitext(fastafile)[0]
+    cmd = 'subread-buildindex -o %s %s' %(name,fastafile)
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    if not os.path.exists(path):
+        os.mkdir(path)
+    exts = ['.00.b.array','.00.b.tab','.files','.reads']
+    files = [name+i for i in exts]
+    for f in files:
+        shutil.move(f, os.path.join(path, f))
+    return
+
 def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
     """Map reads using bowtie"""
 
@@ -547,14 +579,15 @@ def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
         print (result)
     return remaining
 
-def subread_align(infile, ref, outfile, cpu=2):
+def subread_align(infile, ref, outfile):
     """Align reads with subread"""
 
     if SUBREAD_INDEXES == None:
         print ('base.SUBREAD_INDEXES variable not set')
         return
     ref = os.path.join(SUBREAD_INDEXES, ref)
-    cmd = 'subread-align -T %s -t 0 -i %s -r %s -o %s' %(cpu, ref, infile, outfile)
+    params = '-t 0 --SAMoutput -T 2 %s' %SUBREAD_PARAMS
+    cmd = 'subread-align %s -i %s -r %s -o %s' %(params, ref, infile, outfile)
     print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     return
