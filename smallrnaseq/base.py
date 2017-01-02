@@ -192,30 +192,22 @@ def merge_features(counts, gtf_file):
     #hits = hits.sort_values(by='reads',ascending=False)
     return hits
 
-def pivot_count_data(df, idxcols=['name']):
-    """Pivot read counts over samples containing multiple 'read' columns
-       and get mean normalised read counts"""
+def feature_counts_summary(counts):
+    """Summary of feature counts by gene biotype"""
 
-    if not 'norm' in df.columns:
-        df['norm'] = df.fraction*1e6
-    x = pd.pivot_table(df, values=['reads','norm'], index=idxcols, columns=['label'])
-    x = x.reset_index()
-    #print (x[:3])
-    x['total_reads'] = x.ix[:,'reads'].sum(1)
-    x['mean_norm'] = x.ix[:,'norm'].apply(lambda r: r[r.nonzero()[0]].mean(),1)
-    #flatten column index and rename normalised columns
-    x.columns = [' '.join(col).strip() for col in x.columns.values]
-    x = x.sort_values('mean_norm', ascending=False)
-    return x
+    counts['perc'] = counts.norm/1e6*100
+    s = counts.groupby('gene_biotype').agg({'reads':np.sum,'perc':np.sum})
+    ax = s.plot(y='perc',kind='barh',figsize=(5,3))
+    return s
 
-def get_column_names(df):
-    """Get sample column names"""
+def get_top_genes(counts):
 
-    cols = [i for i in df.columns if (i.startswith('reads'))]
-    ncols = [i for i in df.columns if (i.startswith('norm'))]
-    return cols, ncols
+    df = counts.groupby('gene_name')\
+                .agg({'reads':sum,'transcript_id':np.size})\
+                .sort_values('reads',ascending=False)
+    return df
 
-def count_aligned(samfile, readcounts=None, by='name', norm_method='total library'):
+def count_aligned(samfile, readcounts=None, by='name'):
     """Count short read alignments to any generic fasta index (no features)
        Args:
            samfile: mapped sam file
@@ -240,8 +232,93 @@ def count_aligned(samfile, readcounts=None, by='name', norm_method='total librar
                   .reset_index().sort_values('reads',ascending=False) )
     return counts
 
+def pivot_count_data(counts, idxcols='name', norm_method='library'):
+    """Pivot read counts created by count_aligned over multiple samples
+       and get normalised read counts.
+       Args:
+           idxcols: name of index column
+           norm_method: how to normalize the counts (returned in extra columns),
+                        default is total library counts
+       Returns: dataframe of raw /normalised read counts with column per sample
+    """
+
+    x = pd.pivot_table(counts, values='reads', index=idxcols, columns='label')
+    #print assign_sample_ids(x.columns)
+    if norm_method == 'library':
+        n = total_library_normalize(x)
+    elif norm_method == 'quantile':
+        n = quantile_normalize(x)
+
+    x.columns = [i+'_' for i in x.columns]
+    n.columns = [i+' norm' for i in n.columns]
+    x = x.join(n)
+    scols,ncols = get_column_names(x)
+    x['total_reads'] = x[scols].sum(1)
+    x['mean_norm'] = x[ncols].apply(lambda r: r[r.nonzero()[0]].mean(),1)
+    x = x.reset_index()
+    return x
+
+def normalize_samples(counts, norm_method='quantile'):
+    """Normalize over samples explicitly, this will overwrite the 'norm'
+       columns created previously when pivoting the count data"""
+
+    if norm_method == 'library':
+        n = total_library_normalize(x)
+    elif norm_method == 'quantile':
+        n = quantile_normalize(x)
+    return n
+
+def get_column_names(df):
+    """Get count data sample column names"""
+
+    cols = [i for i in df.columns if (i.endswith('_'))]
+    ncols = [i for i in df.columns if (i.endswith('norm'))]
+    return cols, ncols
+
+def total_library_normalize(df):
+    """Normalise by size of total reads"""
+
+    df = df.copy()
+    for col in df:
+        df[col] = df[col]/df[col].sum()*1e6
+    df = df.round(2)
+    return df
+
+def quantile_normalize(df):
+    """Quantile normlization of counts for multiple samples.
+       see https://github.com/ShawnLYU/Quantile_Normalize
+    """
+
+    df = df.copy()
+    #compute rank
+    dic = {}
+    for col in df:
+        dic.update({col : sorted(df[col])})
+    sorted_df = pd.DataFrame(dic)
+    rank = sorted_df.mean(axis = 1).tolist()
+    #sort
+    for col in df:
+        t = np.searchsorted(np.sort(df[col]), df[col])
+        df[col] = [rank[i] for i in t]
+    df=df.round(2)
+    return df
+
+def upper_quartile_normalize(df):
+    """Upper quartile noralisation"""
+
+    u = x.apply(lambda r: r[r>r.quantile(0.75)])
+    df = df/u.mean()
+    return df*1e6
+
+def deseq_normalize(df):
+    """Compute count/geometric mean per sample"""
+
+    df = df.copy()
+    df = df.apply(lambda r: r/r.mean(),1)
+    return df
+
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
-             use_remaining=False, overwrite=True, verbose=False):
+             norm_method='quantile', use_remaining=False, overwrite=True, verbose=False):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
         files: input fastq read files
@@ -273,7 +350,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             #print query
             samfile = os.path.join(outpath, '%s_%s.sam' %(label,idx))
             rem = os.path.join(outpath, label+'_r.fa')
-            #print samfile
+            #print (samfile)
             if aligner == 'bowtie':
                 bowtie_align(query, idx, outfile=samfile, remaining=rem, verbose=verbose)
             elif aligner == 'subread':
@@ -329,17 +406,20 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
     result = pd.concat(result)
     return result
 
-def assign_sample_ids(files):
-    """Assign ids for each sample and save"""
+def get_base_names(files):
+    names = [os.path.splitext(os.path.basename(f))[0] for f in files]
+    return names
+
+def assign_sample_ids(names):
+    """Assign labels/ids for sample names e.g. files"""
 
     l=[]
     i=1
-    for f in files:
-        label = os.path.splitext(os.path.basename(f))[0]
+    for n in names:
         sid = 's%02d' %i
-        l.append([sid,label,f])
+        l.append([sid,n])
         i+=1
-    l = pd.DataFrame(l,columns=['id','label','filename'])
+    l = pd.DataFrame(l,columns=['id','label'])
     return l
 
 def remove_files(path, wildcard=''):
@@ -423,7 +503,7 @@ def build_mirbase_index(species, kind='mature'):
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
-                norm_method=None, aligner='bowtie', **kwargs):
+                 aligner='bowtie', **kwargs):
     """Map multiple fastq files to mirbase mature sequences and get
        count results into one file. Used for counting of known miRNAs.
        Species: three letter name of species using mirbase convention
@@ -433,7 +513,8 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
         os.mkdir(outpath)
 
     #make sample ids
-    labels = assign_sample_ids(files)
+    names = get_base_names(files)
+    labels = assign_sample_ids(names)
     print (labels)
     #cut adapters
 
@@ -461,6 +542,7 @@ def map_mirnas(files, ref, outpath='mirna_results', overwrite=False):
     return
 
 def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):
+
     c,normcols = getColumnNames(df)
     df = df[df.freq>freq]
     df = df[df['total']>=totalreads]

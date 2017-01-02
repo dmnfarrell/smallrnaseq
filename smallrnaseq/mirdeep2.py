@@ -158,6 +158,12 @@ def get_chromosome(x):
     except:
         return val
 
+def get_coords(x):
+    """Get start/end from precursor coords string"""
+
+    l = re.split("[\:\..]+",x)
+    return pd.Series(l[:4],index=['chr','start','end','strand'])
+
 def get_score_stats(path):
     """Get mirdeep results from the summary file"""
 
@@ -202,8 +208,10 @@ def read_results_file(infile):
          'significant randfold p-value': 'randfold'}
     df = df.rename(columns=colstorename)
     df = df.convert_objects(convert_numeric=True)
-    df['chr'] = df['provisional id'].apply(get_chromosome)
+    #df['chr'] = df['provisional id'].apply(get_chromosome)
     df['seed'] = df['consensus mature sequence'].apply(lambda x: x[1:8])
+    coords = df['precursor coordinate'].apply(get_coords)
+    df = df.join(coords) #pd.concat([df,coords])
     return df
 
 def get_results(path):
@@ -227,7 +235,7 @@ def get_results(path):
         utils.dataframe_to_fasta(novel, pkey, 'provisional id', outfile=novelprecursor)
         quantifier(path, os.path.abspath(novelmature), os.path.abspath(novelprecursor))
 
-    #get expression results and filter by score by merging with predictions
+    #get expression results and merge with prediction results to get other info
     files = glob.glob(os.path.join(path,'miRNAs_expressed_all_samples*.csv'))
     res=[]
 
