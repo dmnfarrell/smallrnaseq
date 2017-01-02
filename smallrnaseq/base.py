@@ -479,24 +479,48 @@ def collapse_files(files, outpath, **kwargs):
         outfiles.append(cfile)
     return outfiles
 
-def get_mirbase_sequences(species='hsa'):
-    """Extract species specific sequences from mirbase file"""
+def get_mature(r, key='mature1', n=2):
+    """get mature sequences from mirbase file, row-based dataframe function"""
+    p = r.precursor
+    name = r[key]
+    m = r[key+'_seq']
+    if pd.isnull(m):
+        s=None
+    else:
+        i = p.find(m)
+        s = p[i-n:i+len(m)+n]
+    return pd.Series([name,s],index=['name','sequence'])
+
+def get_mirbase_sequences(species='hsa', n=2):
+    """Extract species specific sequences from mirbase file.
+       Args:
+           species: 3-letter code for species
+           n: bases to extend around ends of mature sequence
+       Returns:
+            dataframe with mature or hairpin sequences
+    """
 
     df = pd.read_csv(MIRBASE)
-    a = df[['mature1','mature1_seq','species']].set_index('mature1').rename(columns={'mature1_seq':'seq'})
-    b = df[['mature2','mature2_seq','species']].set_index('mature2').rename(columns={'mature2_seq':'seq'})
-    df = pd.concat([a,b]).dropna().reset_index()
-    df = df.drop_duplicates('index')
-    return df[df.species==species]
+    df = df[df.species==species]
+    #get both 5p and 3p seqs for each mirna
+    m1 = df.apply(lambda x: get_mature(x, n=n), 1)
+    m2 = df.apply(lambda x: get_mature(x, 'mature2', n), 1)
+    df = pd.concat([m1,m2]).dropna().reset_index(drop=True)
+    df = df.dropna()
+    df = df.drop_duplicates('name')
+    return df
 
-def build_mirbase_index(species, kind='mature'):
-    """Build species-specific mirbase bowtie index"""
-
-    mirs = get_mirbase_sequences(species)
+def build_mirbase_index(species, n=2):
+    """Build species-specific mirbase bowtie index
+       Args:
+           species: 3-letter code for species
+           n: bases to extend around ends of mature sequence
+    """
+    mirs = get_mirbase_sequences(species, n)
     print ('got %s sequences' %len(mirs))
     idxname = 'mirbase-'+species
     outfile = '%s.fa' %idxname
-    utils.dataframe_to_fasta(mirs, seqkey='seq', idkey='index',
+    utils.dataframe_to_fasta(mirs, seqkey='sequence', idkey='name',
                             outfile=outfile)
     build_bowtie_index(outfile, 'indexes')
     build_subread_index(outfile, 'indexes')
