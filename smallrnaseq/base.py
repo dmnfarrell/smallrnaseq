@@ -174,7 +174,7 @@ def count_aligned_features(samfile, features, truecounts=None):
         else:
             counts[ "_ambiguous" ] += c
     result = pd.DataFrame(counts.items(),columns=['name','reads'])
-    result['norm'] = result.reads/result.reads.sum()*1e6
+    #result['norm'] = result.reads/result.reads.sum()*1e6
     result = result.sort_values(by='reads',ascending=False)
 
     um = ['_no_feature','_unmapped']
@@ -188,7 +188,7 @@ def merge_features(counts, gtf_file):
 
     gtf = HTSeq.GFF_Reader(gtf_file)
     df = gtf_to_dataframe(gtf)
-    hits = counts.merge(df, left_on='name', right_on='transcript_id', how='left')
+    hits = counts.merge(df, left_on='name', right_on='transcript_id', how='inner')
     #hits = hits.sort_values(by='reads',ascending=False)
     return hits
 
@@ -540,7 +540,6 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
     names = get_base_names(files)
     labels = assign_sample_ids(names)
     print (labels)
-    #cut adapters
 
     #generate new mirbase bowtie index
     if aligner == 'bowtie':
