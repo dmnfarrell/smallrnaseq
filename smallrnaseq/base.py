@@ -207,8 +207,46 @@ def get_top_genes(counts):
                 .sort_values('reads',ascending=False)
     return df
 
+def print_read_alignments(samfile, reference, outfile=None):
+    """Print local read alignments from a sam file against the mapped sequence
+       and save the output to a text file or stdout if no filename.
+    """
+
+    refs = utils.fasta_to_dataframe(reference)
+    names = refs.index
+    x = get_aligned(samfile)
+    if outfile != None:
+        f = open(outfile, 'w')
+    else:
+        f = None
+    for n in names:
+        reads = x[x.name==n].seq
+        if len(reads)==0: continue
+        print (n, file=f)
+        print ('----------------------------', file=f)
+        seq = refs.ix[n].sequence
+        print (seq, file=f)
+        for s in reads:
+            #print s
+            c = seq.find(s[:6]) #improve find string
+            i=len(s)+c
+            print ("{:>{w}}".format(s,w=i), file=f)
+        print ('', file=f)
+    return
+
+def get_aligned(samfile):
+
+    sam = HTSeq.SAM_Reader(samfile)
+    f=[]
+    for a in sam:
+        if a.aligned == True:
+            f.append((a.read.seq,a.read.name,a.iv.chrom))
+    counts = pd.DataFrame(f, columns=['seq','read','name'])
+    return counts
+
 def count_aligned(samfile, readcounts=None, by='name'):
-    """Count short read alignments to any generic fasta index (no features)
+    """Count short read alignments from a sam or bam file. Mainly designed to be used with
+       collapsed reads with original read counts passed in as dataframe.
        Args:
            samfile: mapped sam file
            readcounts: original read counts if used collapsed reads
@@ -220,16 +258,25 @@ def count_aligned(samfile, readcounts=None, by='name'):
     for a in sam:
         if a.aligned == True:
             f.append((a.read.seq,a.read.name,a.iv.chrom))
-        #else:
-        #    f.append((a.read.seq,a.read.name,'_unmapped'))
+        else:
+            f.append((a.read.seq,a.read.name,'_unmapped'))
 
     counts = pd.DataFrame(f, columns=['seq','read','name'])
     if readcounts is not None:
+        #assumes we are using collapsed reads
         counts = counts.merge(readcounts, on='seq')
-    if by == 'name':
         counts = ( counts.groupby('name')
-                  .agg({'reads':np.sum,'seq':first})
-                  .reset_index().sort_values('reads',ascending=False) )
+                  .agg({'reads':np.sum, 'seq':first}) )
+    else:
+        counts = ( counts.groupby('name')
+                  .agg({'seq':first,'read':np.size}) )
+        counts = counts.rename(columns={'read':'reads'})
+
+    counts = counts.reset_index().sort_values('reads',ascending=False)
+    mapped = float(counts[counts.name!='_unmapped'].reads.sum())
+    total = counts.reads.sum()
+    print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
+    counts = counts[counts.name!='_unmapped']
     return counts
 
 def pivot_count_data(counts, idxcols='name', norm_method='library'):

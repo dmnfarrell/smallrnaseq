@@ -150,7 +150,7 @@ def dataframe_to_fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
         myseq.write_to_fasta_file(fastafile)
     return
 
-def fasta_to_dataFrame(infile,idindex=0):
+def fasta_to_dataframe(infile,idindex=0):
     """Get fasta proteins into dataframe"""
 
     keys = ['name','sequence','description']
@@ -363,3 +363,16 @@ def plot_rna_structure(seq, path='', subseqs=[], name='test'):
     os.system('convert test_ss.ps %s' %filename)
     #os.system('cp test_ss.ps %s' %filename)
     return filename
+
+def muscle_alignment(filename=None, seqs=None):
+    """Align 2 sequences with muscle"""
+
+    if filename == None:
+        filename = 'temp.faa'
+        SeqIO.write(seqs, filename, "fasta")
+    name = os.path.splitext(filename)[0]
+    from Bio.Align.Applications import MuscleCommandline
+    cline = MuscleCommandline(input=filename, out=name+'.txt')
+    stdout, stderr = cline()
+    align = AlignIO.read(name+'.txt', 'fasta')
+    return align
