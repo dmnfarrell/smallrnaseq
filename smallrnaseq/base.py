@@ -207,13 +207,16 @@ def get_top_genes(counts):
                 .sort_values('reads',ascending=False)
     return df
 
-def print_read_alignments(samfile, reference, outfile=None):
+def print_read_alignments(samfile, reference, outfile=None, name=None):
     """Print local read alignments from a sam file against the mapped sequence
        and save the output to a text file or stdout if no filename.
     """
 
     refs = utils.fasta_to_dataframe(reference)
-    names = refs.index
+    if name != None:
+        names = [name]
+    else:
+        names = refs.index
     x = get_aligned(samfile)
     if outfile != None:
         f = open(outfile, 'w')
