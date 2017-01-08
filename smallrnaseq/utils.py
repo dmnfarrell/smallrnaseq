@@ -310,17 +310,6 @@ def rpyEdgeR(data, groups, sizes, genes):
     pvals = list(tags.r['adj.P.Val'][0])
     return
 
-def rnafold(seq, name=None):
-    """Run RNAfold for precursor"""
-
-    import RNA
-    x = RNA.fold(seq)
-    print (name, x)
-    if name != None:
-        path='RNAplots'
-        RNA.svg_rna_plot(seq,x[0],os.path.join(path,name+'.svg'))
-    return x
-
 def cogentalignment_to_dataframe(A):
     """Pycogent alignment to dataframe"""
 
@@ -329,6 +318,19 @@ def cogentalignment_to_dataframe(A):
         res.append((s[0].split(':')[0],str(s[1])))
     df = pd.DataFrame(res,columns=['species','seq'])
     return df
+
+def rnafold(seq, name=None):
+    """Run RNAfold for precursor"""
+
+    import RNA
+    x = RNA.fold(seq)
+    colors = [" 1. 0. .2", " 0. .9 .5"]
+    if name != None:
+        path=''
+        RNA.svg_rna_plot(seq,x[0],os.path.join(path,name+'.svg'))
+        #macro = format_cmark_values(range(0,10), rgb=colors[0])
+        #RNA.PS_rna_plot_a(seq, x[0], name+'.ps', '', macro)
+    return x
 
 def format_cmark_values(values, rgb=" 1. 0. .2"):
     """PS colored marks for rnaplot"""
@@ -342,26 +344,25 @@ def format_cmark_values(values, rgb=" 1. 0. .2"):
     return macro
 
 def plot_rna_structure(seq, path='', subseqs=[], name='test'):
-    """plot RNA structure using vienna package"""
+    """plot RNA structure using Vienna package"""
 
     import cogent.app.vienna_package as vienna
     colors = [" 1. 0. .2", " 0. .9 .5"]
     seq,struct,e = vienna.get_secondary_structure(seq)
     seqname='test'
-    r=vienna.RNAplot()
+    rp = vienna.RNAplot()
     i=0
     x=''
     if len(subseqs) > 0:
         for s in subseqs:
-            ind=seq.find(s)+1
-            e=ind+len(s)
+            ind = seq.find(s)+1
+            e = ind+len(s)
             x += format_cmark_values(range(ind,e), rgb=colors[i])
             i+=1
-        r.Parameters['--pre'].on('"%s"' %x)
-    r(['>'+seqname,seq,struct])
-    filename = os.path.join(path,'%s.ps' %name)
+        rp.Parameters['--pre'].on('"%s"' %x)
+    rp(['>'+seqname,seq,struct])
+    filename = os.path.join(path,'%s.png' %name)
     os.system('convert test_ss.ps %s' %filename)
-    #os.system('cp test_ss.ps %s' %filename)
     return filename
 
 def muscle_alignment(filename=None, seqs=None):
@@ -376,3 +377,17 @@ def muscle_alignment(filename=None, seqs=None):
     stdout, stderr = cline()
     align = AlignIO.read(name+'.txt', 'fasta')
     return align
+
+def sam_to_bam(filename):
+    """Convert sam to bam"""
+
+    import pysam
+    infile = pysam.AlignmentFile(filename, "r")
+    name = os.path.splitext(filename)[0]+'.bam'
+    bamfile = pysam.AlignmentFile(name, "wb", template=infile)
+    for s in infile:
+        bamfile.write(s)
+    pysam.sort("-o", name, name)
+    pysam.index(name)
+    bamfile = pysam.AlignmentFile(name, "rb")
+    return

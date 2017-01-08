@@ -207,9 +207,16 @@ def get_top_genes(counts):
                 .sort_values('reads',ascending=False)
     return df
 
-def print_read_alignments(samfile, reference, outfile=None, name=None):
+def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=None,
+                     cutoff=0):
     """Print local read alignments from a sam file against the mapped sequence
        and save the output to a text file or stdout if no filename.
+       Args:
+        samfile: sam file with alignments
+        reference: fasta file with references sequences mapped to
+        outfile: file name to write output, else send to stdout
+        readcounts: original read counts if using a collapsed file
+        cutoff: don't display read with <cutoff counts
     """
 
     refs = utils.fasta_to_dataframe(reference)
@@ -218,24 +225,39 @@ def print_read_alignments(samfile, reference, outfile=None, name=None):
     else:
         names = refs.index
     x = get_aligned(samfile)
+    if readcounts is not None:
+        x = x.merge(readcounts, on='seq')
+    else:
+        x['reads'] = 1
     if outfile != None:
         f = open(outfile, 'w')
     else:
         f = None
     for n in names:
-        reads = x[x.name==n].seq
-        if len(reads)==0: continue
-        print (n, file=f)
-        print ('----------------------------', file=f)
+        reads = x[x.name==n]
+        l = len(reads)
+        if l==0: continue
+        print (n, '(%s unique reads)' %l, file=f)
+        print ('-------------------------------------', file=f)
         seq = refs.ix[n].sequence
         print (seq, file=f)
-        for s in reads:
-            #print s
-            c = seq.find(s[:6]) #improve find string
-            i=len(s)+c
-            print ("{:>{w}}".format(s,w=i), file=f)
+        for idx,r in reads.iterrows():
+            s = r.seq
+            count = r.reads
+            if count <= cutoff: continue
+            #pos = seq.find(s[:6]) #improve find string
+            pos = find_subseq(seq, s)
+            if pos == -1: continue
+            i = len(s)+pos
+            print ("{:>{w}} ({c})".format(s,w=i,c=count), file=f)
         print ('', file=f)
     return
+
+def find_subseq(seq, s):
+    for i in range(16,4,-4):
+        c = seq.find(s[:i])
+        if c != -1: return c
+    return -1
 
 def get_aligned(samfile):
 
@@ -299,10 +321,11 @@ def pivot_count_data(counts, idxcols='name', norm_method='library'):
     elif norm_method == 'quantile':
         n = quantile_normalize(x)
 
-    x.columns = [i+'_' for i in x.columns]
-    n.columns = [i+' norm' for i in n.columns]
+    #x.columns = [i+'_' for i in x.columns]
+    scols = x.columns
+    ncols = n.columns = [i+' norm' for i in n.columns]
     x = x.join(n)
-    scols,ncols = get_column_names(x)
+    #scols,ncols = get_column_names(x)
     x['total_reads'] = x[scols].sum(1)
     x['mean_norm'] = x[ncols].apply(lambda r: r[r.nonzero()[0]].mean(),1)
     x = x.reset_index()
@@ -321,8 +344,10 @@ def normalize_samples(counts, norm_method='quantile'):
 def get_column_names(df):
     """Get count data sample column names"""
 
-    cols = [i for i in df.columns if (i.endswith('_'))]
+    ignore = ['total_reads','mean_norm']
     ncols = [i for i in df.columns if (i.endswith('norm'))]
+    ignore = ignore + ncols
+    cols = [i for i in df.columns if i not in ignore]
     return cols, ncols
 
 def total_library_normalize(df):
@@ -383,6 +408,9 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         remove_files(outpath,'*_mapped.sam')
         remove_files(outpath, '*_r.fa')
     cfiles = collapse_files(files, outpath)
+    if len(cfiles)==0:
+        print ('no files to align')
+        return
     print (cfiles)
     result = []
     for cfile in cfiles:
@@ -725,7 +753,7 @@ def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
     os.environ["BOWTIE_INDEXES"] = BOWTIE_INDEXES
     params = BOWTIE_PARAMS
     if remaining == None:
-        remaining = os.path.join(outpath, label+'_r.fastq')
+        remaining = os.path.join(outpath, label+'_r.fa')
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
     if verbose == True:
         print (cmd)
