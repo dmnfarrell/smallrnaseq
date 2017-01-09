@@ -52,10 +52,15 @@ def get_columns_by_label(labels, samplecol, filters=[], querystr=None):
     cols = x[samplecol]
     return list(cols)
 
-def runEdgeR(countsfile, cutoff=1.5):
+def run_edgeR(countsfile=None, data=None, cutoff=1.5):
     """Run edgeR from R script"""
 
-    cmd = 'Rscript ~/python/sandbox/mirnaseq/DEanalysis.R %s' %countsfile
+    if data is not None:
+        countsfile = 'de_counts.csv'
+        data = data.to_csv(countsfile)
+    path = os.path.dirname(os.path.abspath(__file__)) #path to module
+    descript = os.path.join(path, 'DEanalysis.R')
+    cmd = 'Rscript %s %s' %(descript, countsfile)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     print (result)
     #read result back in

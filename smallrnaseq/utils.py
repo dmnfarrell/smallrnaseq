@@ -263,53 +263,6 @@ def trim_adapters(infile, adapters=[], outfile='cut.fastq'):
     #print result
     return
 
-def runEdgeR(countsfile, cutoff=1.5):
-    """Run edgeR from R script"""
-
-    cmd = 'Rscript ~/python/sandbox/mirnaseq/DEanalysis.R %s' %countsfile
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    print (result)
-    #read result back in
-    de = pd.read_csv('de_output.csv')
-    de.rename(columns={'Unnamed: 0':'name'}, inplace=True)
-    de = de[(de.FDR<0.05) & ((de.logFC>cutoff) | (de.logFC<-cutoff))]
-    return de
-
-def runEdgeRGLM(countsfile, cutoff=1.5):
-    """Run edgeR from R script"""
-
-    cmd = 'Rscript ~/python/sandbox/mirnaseq/GLMDEanalysis.R %s' %countsfile
-    print (cmd)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    print (result)
-    #read result back in
-    #de = pd.read_csv('de_output.csv')
-    #de.rename(columns={'Unnamed: 0':'name'}, inplace=True)
-    #de = de[(de.FDR<0.05) & ((de.logFC>cutoff) | (de.logFC<-cutoff))]
-    return
-
-def rpyEdgeR(data, groups, sizes, genes):
-    """Run edgeR analysis - from http://bcbio.wordpress.com/ """
-
-    import rpy2.robjects as robjects
-    import rpy2.robjects.numpy2ri
-    rpy2.robjects.numpy2ri.activate()
-    robjects.r('''library(edgeR)''')
-    params = {'group' : groups, 'lib.size' : sizes}
-    print (params)
-    d = robjects.r.DGEList(counts=data, **params)
-    print (d)
-    robjects.r.calcNormFactors(d)
-    robjects.r.estimateCommonDisp(d)
-    robjects.r.estimateTagwiseDisp(d)
-    robjects.r.exactTest(d)
-
-    #ms = robjects.r.deDGE(dgelist, doPoisson=True)
-    #tags = robjects.r.topTags(ms, pair=groups, n=len(genes))
-    indexes = [int(t) - 1 for t in tags.rownames()]
-    pvals = list(tags.r['adj.P.Val'][0])
-    return
-
 def cogentalignment_to_dataframe(A):
     """Pycogent alignment to dataframe"""
 
