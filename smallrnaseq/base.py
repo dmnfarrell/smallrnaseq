@@ -345,9 +345,8 @@ def get_column_names(df):
     """Get count data sample column names"""
 
     ignore = ['total_reads','mean_norm']
-    ncols = [i for i in df.columns if (i.endswith('norm'))]
-    ignore = ignore + ncols
-    cols = [i for i in df.columns if i not in ignore]
+    ncols = [i for i in df.columns if (i.endswith('norm')) and i not in ignore]
+    cols = [i.split(' ')[0] for i in ncols if i not in ignore]
     return cols, ncols
 
 def total_library_normalize(df):

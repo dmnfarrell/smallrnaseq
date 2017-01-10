@@ -52,6 +52,42 @@ def get_columns_by_label(labels, samplecol, filters=[], querystr=None):
     cols = x[samplecol]
     return list(cols)
 
+def get_samples_by_factor(df, labels, factors, filters=[], samplecol='filename', index=None):
+    """Get subsets of samples according to factor/levels specified in another mapping file
+	Used for doing differential expr with edgeR.
+    Args:
+        labels: dataframe matching sample labels to conditions/factors
+        factors: conditions to compare
+        filters: additional filters for samples e.g. a time point
+        samplecol: name of column holding sample/file names
+    Returns:
+	dataframe of data columns with header labels for edgeR script
+    """
+
+    if index != None:
+        df=df.set_index(index)
+    l=0
+    res = None
+
+    for f in factors:
+        f = filters + [f]
+        cols = get_columns_by_label(labels, samplecol, f)
+        #print cols
+        cols = list(set(cols) & set(df.columns))
+        x = df[cols]
+        print ('%s samples, %s genes' %(len(cols),len(x)))
+        if len(x.columns)==0:
+            print ('no data for %s' %f)
+            continue
+        x.columns = ['s'+str(cols.index(i))+'_'+str(l) for i in x.columns]
+        l+=1
+        if res is None:
+            res = x
+        else:
+            res = res.join(x)
+    res=res.dropna()
+    return res
+
 def run_edgeR(countsfile=None, data=None, cutoff=1.5):
     """Run edgeR from R script"""
 

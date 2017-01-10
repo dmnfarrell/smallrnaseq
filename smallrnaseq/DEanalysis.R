@@ -6,7 +6,7 @@ library(edgeR)
 
 data <- as.matrix(read.csv(args[1],row.names=1))
 data[is.na(data)] <- 0
-head(data,4)
+#head(data,4)
 #lirary size for normalisation
 libSizes <- as.vector(colSums(data))
 #libSizes
