@@ -52,16 +52,16 @@ def get_columns_by_label(labels, samplecol, filters=[], querystr=None):
     cols = x[samplecol]
     return list(cols)
 
-def get_samples_by_factor(df, labels, factors, filters=[], samplecol='filename', index=None):
+def get_factor_samples(df, labels, factors, filters=[], samplecol='filename', index=None):
     """Get subsets of samples according to factor/levels specified in another mapping file
-	Used for doing differential expr with edgeR.
-    Args:
-        labels: dataframe matching sample labels to conditions/factors
-        factors: conditions to compare
-        filters: additional filters for samples e.g. a time point
-        samplecol: name of column holding sample/file names
-    Returns:
-	dataframe of data columns with header labels for edgeR script
+       Used for doing differential expr with edgeR.
+       Args:
+            labels: dataframe matching sample labels to conditions/factors
+            factors: conditions to compare
+            filters: additional filters for samples e.g. a time point
+            samplecol: name of column holding sample/file names
+       Returns:
+            dataframe of data columns with header labels for edgeR script
     """
 
     if index != None:
