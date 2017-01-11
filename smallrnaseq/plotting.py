@@ -27,6 +27,7 @@ import matplotlib
 import pylab as plt
 import numpy as np
 import pandas as pd
+from . import utils, analysis
 
 def venn_diagram(names,labels,ax=None,**kwargs):
     """Plot venn diagrams"""
@@ -65,4 +66,13 @@ def heatmap(df,fname=None,cmap='seismic',log=False):
     plt.tight_layout()
     if fname != None:
         f.savefig(fname+'.png')
+    return ax
+
+def plot_read_lengths(filename, df=None):
+    """View read length distributions"""
+
+    df = utils.fastq_to_dataframe(filename)
+    x = analysis.read_length_dist(df)
+    fig,ax=plt.subplots(1,1,figsize=(10,4))
+    ax.bar(x[1][:-1],x[0], align='center')
     return ax

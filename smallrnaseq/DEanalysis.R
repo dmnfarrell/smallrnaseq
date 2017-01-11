@@ -14,7 +14,7 @@ libSizes <- as.vector(colSums(data))
 split <- (strsplit(colnames(data), "_"))
 g <- (sapply(split,"[", 2))
 #g<-colnames(data)
-g
+#g
 #plotMDS( data , main = "MDS Plot for Count Data")
 
 d <- DGEList(counts=data,group=g,lib.size=libSizes)

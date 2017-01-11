@@ -27,6 +27,7 @@ import itertools
 import subprocess
 import numpy as np
 import pandas as pd
+from . import base, utils
 
 def get_columns_by_label(labels, samplecol, filters=[], querystr=None):
     """Get sample columns according to a condition from a set of labels
@@ -72,7 +73,7 @@ def get_factor_samples(df, labels, factors, filters=[], samplecol='filename', in
     for f in factors:
         f = filters + [f]
         cols = get_columns_by_label(labels, samplecol, f)
-        #print cols
+        #print (cols)
         cols = list(set(cols) & set(df.columns))
         x = df[cols]
         print ('%s samples, %s genes' %(len(cols),len(x)))
@@ -139,3 +140,16 @@ def rpyEdgeR(data, groups, sizes, genes):
     indexes = [int(t) - 1 for t in tags.rownames()]
     pvals = list(tags.r['adj.P.Val'][0])
     return
+
+def melt_samples(df, labels, names):
+    """Melt sample data by factor labels so we can plot with seaborn"""
+
+    df=df.set_index('name')
+    scols,ncols = base.get_column_names(df)
+    df = df.ix[names][ncols]
+    t=df.T
+    t.index = scols
+    t = t.merge(labels,left_index=True,right_on='filename')
+    m = pd.melt(t,id_vars=list(labels.columns),
+                 var_name='name',value_name='read count')
+    return m
