@@ -10,7 +10,7 @@ setup(
     author = 'Damien Farrell',
     author_email = 'farrell.damien[at]gmail.com',
     packages = ['smallrnaseq'],
-    package_data={'smallrnaseq': ['data/*']},
+    package_data={'smallrnaseq': ['data/*','*.R']},
     install_requires=['pandas>=0.17',
                       'biopython>=1.5',
                       'HTSeq>=0.6'],

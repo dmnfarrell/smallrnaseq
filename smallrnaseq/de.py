@@ -141,7 +141,7 @@ def rpyEdgeR(data, groups, sizes, genes):
     pvals = list(tags.r['adj.P.Val'][0])
     return
 
-def melt_samples(df, labels, names):
+def melt_samples(df, labels, names, samplecol='filename'):
     """Melt sample data by factor labels so we can plot with seaborn"""
 
     df=df.set_index('name')
@@ -149,7 +149,7 @@ def melt_samples(df, labels, names):
     df = df.ix[names][ncols]
     t=df.T
     t.index = scols
-    t = t.merge(labels,left_index=True,right_on='filename')
+    t = t.merge(labels,left_index=True,right_on=samplecol)
     m = pd.melt(t,id_vars=list(labels.columns),
                  var_name='name',value_name='read count')
     return m

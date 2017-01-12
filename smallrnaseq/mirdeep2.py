@@ -46,7 +46,7 @@ def create_mirbase_files(species,path):
     names=[]
     for f in [mature,hairpin]:
         fname = os.path.splitext(f)[0]+'_'+species+'.fa'
-        base.get_subset_fasta(f, labels=[species], outfile=fname)
+        utils.get_subset_fasta(f, labels=[species], outfile=fname)
         names.append(fname)
     print ('wrote mirbase files for species %s' %species)
     return names
