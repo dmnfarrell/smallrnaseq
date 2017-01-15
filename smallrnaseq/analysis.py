@@ -45,16 +45,7 @@ def read_length_dist(df):
 
     df['length'] = df.seq.str.len()
     bins = np.linspace(1,df.length.max(),df.length.max())
-    #fig,ax = plt.subplots(1,1,figsize=(10,6))
-    #df.hist('length',bins=bins,ax=ax,normed=True)
     x = np.histogram(df.length,bins=bins)
-    #ax.bar(x[1][:-1],x[0], align='center')
-    #plt.title('read length distribution')
-    #plt.xlabel('length')
-    #plt.ylabel('frequency')
-    #plt.tight_layout()
-    #plt.savefig('readlengths_dist.png',dpi=150)
-    #plt.show()
     return x
 
 def summarise_reads(path):
@@ -186,38 +177,6 @@ def map_rnas_old(files=None, path=None, indexes=[], adapters=None,
     outfile = os.path.join(path, 'ncrna_mapped.csv')
     df.to_csv(outfile,float_format='%.5f')
     return df
-
-def plot_mapped_old(df=None, catlabels=None, path=None):
-    """Plot RNA map results"""
-
-    if df is None:
-        df = pd.read_csv('ncrna_mapped.csv',index_col=0)
-    #df=df.sort('total')
-    df = df.loc[:, (df != 0).any(axis=0)] # remove cols with zeroes
-    df = df.drop('total',1)
-    df['unmapped'] = 1-df.sum(1)
-    df = df.set_index('name')
-    print (df)
-    if catlabels != None:
-        df = df.rename(columns=catlabels)
-    plt.figure(figsize=(8,8))
-    x=df.mean()
-    x.sort()
-    explode = [0.00 for i in range(len(x))]
-    x.plot(kind='pie',colormap='Spectral',autopct='%.1f%%',startangle=0,
-                    labels=None,legend=True,pctdistance=1.1,explode=explode,fontsize=16)
-    plt.title('mean percentage small RNAs mapped by category')
-    plt.tight_layout()
-    if path == None: path = '.'
-    plt.savefig(os.path.join(path,'ncrna_means.png'))
-
-    df=df.reindex(columns=x.index)
-    l = df.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
-    plt.ylabel('percent mapped')
-    plt.legend(ncol=4)
-    plt.tight_layout()
-    plt.savefig(os.path.join(path,'ncrna_bysample.png'))
-    return
 
 def compare_methods(path1,path2):
     """Compare 2 methods for subsets of samples"""

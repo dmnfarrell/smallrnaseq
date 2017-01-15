@@ -402,6 +402,8 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         overwrite: whether to overwrite temp files
     """
 
+    if not os.path.exists(outpath):
+        os.mkdir(outpath)
     if overwrite == True:
         print ('removing old temp files')
         remove_files(outpath,'*_mapped.sam')
@@ -438,6 +440,10 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             counts['fraction'] = counts.reads/total
             #print counts[:2]
             result.append(counts)
+            #output read stack file
+            #print_read_stack(samfile, fastaref, readcounts=readcounts,
+            #                 outfile='%s_%s_reads.txt' %(label,idx), cutoff=1)
+
     result = pd.concat(result)
     print ('done')
     return result
