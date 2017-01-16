@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    small RNA analysis routines
+    smallrnaseq additional analysis routines
     Created June 2014
     Copyright (C) Damien Farrell
 
@@ -36,10 +36,7 @@ except:
     'HTSeq not present'
 from . import srnabench as srb
 from . import mirdeep2 as mdp
-from . import base, ensembl
-
-def first(x):
-    return x.iloc[0]
+from . import base
 
 def read_length_dist(df):
 
@@ -91,123 +88,6 @@ def remove_known_rnas(path, adapters=[], outpath='RNAremoved'):
 
     return
 
-def map_rnas_old(files=None, path=None, indexes=[], adapters=None,
-             bowtieparams=None, overwrite=False):
-    """Map to various gene annotations and quantify fraction of reads mapping to
-       each. Order may be important.
-        path: input path with read files
-        indexes: bowtie indexes of annotations/genomes
-        adapters: if adapters need to be trimmed
-        bowtieparams: parameters for bowtie
-        overwrite: whether to overwrote temp files
-    """
-
-    if bowtieparams == None:
-    	bowtieparams = '-v 1 --best'
-    if files == None:
-        files = glob.glob(os.path.join(path,'*.fastq'))
-    else:
-        path = os.path.dirname(os.path.abspath(files[0]))
-    outpath = os.path.join(path, 'ncrna_map')
-    if not os.path.exists(outpath):
-        os.mkdir(outpath)
-    if overwrite == True:
-        print ('removing old temp files')
-        samfiles = glob.glob(os.path.join(outpath,'*_mapped.sam'))
-        for s in samfiles:
-            os.remove(s)
-    remfiles = glob.glob(os.path.join(outpath, '*_r.fastq'))
-    for r in remfiles:
-        os.remove(r)
-    outfiles = []
-    for f in files:
-        print (f)
-        label = os.path.splitext(os.path.basename(f))[0]
-        cut = os.path.join(outpath,label+'_cut.fastq')
-        cfile = os.path.join(outpath,label+'_collapsed.fa')
-        #print (cut,cfile)
-        if not os.path.exists(cfile):
-            if not os.path.exists(cut) and adapters!=None:
-                trim_adapters(f, adapters, cut)
-            elif adapters==None:
-                cut = f
-            collapse_reads(cut, outfile=cfile)
-        outfiles.append(cfile)
-
-    #cfiles = glob.glob(os.path.join(outpath,'*.fa'))
-    res=[]
-    colnames = ['name','total']+indexes
-    readsleft = []
-    for cfile in outfiles:
-        label = os.path.splitext(os.path.basename(cfile))[0]
-        #get total reads by using copy no. of each unique seq
-        collapsed = pd.read_csv(os.path.join(outpath, '%s.csv' %label))
-        total = collapsed['reads'].sum()
-        x=[label,total]
-        rem = None
-        i=0
-        for index in indexes:
-            if rem != None:
-                query = rem
-            else:
-                query = cfile
-            rem = os.path.join(outpath, label+'_r.fastq')
-            samfile = os.path.join(outpath, '%s_%s_mapped.sam' %(label,index))
-            if not os.path.exists(samfile):
-                #print (rem)
-                rem = base.bowtie_align(query, index, outfile=samfile, params=bowtieparams,
-                                     remaining=rem, verbose=False)
-            sam = HTSeq.SAM_Reader(samfile)
-            f = [(a.read.seq,a.read.name) for a in sam if a.aligned == True]
-            if len(f)>0:
-                found = pd.DataFrame(f, columns=['seq','name'])
-                #get original counts for mapped reads and sum them
-                nr = collapsed[collapsed.id.isin(found.name)]
-                fc = nr['descr'].sum()
-                perc = fc/float(total)
-                print (index, len(f), fc, total, round(perc,4))
-
-            else:
-                perc = 0.0
-            print ('%s: %.4f of total reads aligned' %(index,perc))
-            x.append(perc)
-        res.append(x)
-
-    df = pd.DataFrame(res,columns=colnames)
-    outfile = os.path.join(path, 'ncrna_mapped.csv')
-    df.to_csv(outfile,float_format='%.5f')
-    return df
-
-def compare_methods(path1,path2):
-    """Compare 2 methods for subsets of samples"""
-
-    #compare means of filtered knowns
-    df = mdp.getResults(path1)
-    df = df[df.novel==False]
-    #mk = mdp.filterExprResults(df,meanreads=200,freq=0.8)
-    mk = df[:80]
-    k,n,i = srb.getResults(path2)
-    #sk = srb.filterExprResults(k,meanreads=200,freq=0.8)
-    sk = k[:80]
-    x = pd.merge(mk,sk,left_on='#miRNA',right_on='name',how='inner',suffixes=['1','2'])
-    diff = x[(abs(x.total1-x.total2)/x.total2>.2)]
-    print (diff[['#miRNA','total1','total2']])
-    #print np.corrcoef(np.log10(x.total1),np.log10(x.total2))
-    fig = plt.figure(figsize=(12,6))
-    ax=fig.add_subplot(121)
-    base.venndiagram([mk['#miRNA'], sk['name']],['mirdeep2','srnabench'],ax=ax,alpha=0.6)
-
-    ax=fig.add_subplot(122)
-    x.plot('total1','total2',kind='scatter',ax=ax, logx=True,logy=True,alpha=0.8,s=40)
-    ax.plot([0, 1], [0, 1], transform=ax.transAxes,color='red',alpha=0.7)
-    ax.set_xlabel('mirdeep2')
-    ax.set_ylabel('srnabench')
-    ax.set_title('total read count comparison')
-    plt.tight_layout()
-    plt.savefig('mirdeep_vs_srnabench.png')
-    plt.show()
-    return
-
 def ks_test(df, ids):
     """KS test to determine rc freq distributions of replicates
     threshold count is the one which corresponds to the first minimum.
@@ -255,19 +135,6 @@ def ks_test(df, ids):
     plt.ylabel('KS')
     plt.savefig('KS_test.png',dpi=150)
 
-    '''f,axs=plt.subplots(4,4,figsize=(12,8))
-    grid=axs.flat
-    i=0
-    for d in testdata[:16]:
-        ax=grid[i]
-        print len(d)
-        bins = 10 ** np.linspace(np.log10(10), np.log10(1e6),80)
-        ax.hist(d[s1+'(norm)'],bins=bins,alpha=0.9)
-        #ax.hist(d['s11(norm)'],bins=bins,alpha=0.9)
-        ax.set_xscale('log')
-        ax.set_xticklabels([])
-        i+=1
-    plt.show()'''
     return
 
 def mirna_discovery_test(sourcefile):
@@ -286,11 +153,11 @@ def mirna_discovery_test(sourcefile):
     k1 = a[a.novel==False]
     k1=k1.set_index('#miRNA')
     k1 = k1[k1.s16>5]
-    mp1 = mdp.getFileIDs(outpath)
-    cols,ncols=mdp.getColumnNames(k1)
+    mp1 = mdp.get_file_ids(outpath)
+    cols,ncols=mdp.get_column_names(k1)
     #srnabench
     outpath = 'benchmarking/srnabench'
-    k2,n,iso = srb.getResults(outpath)
+    k2,n,iso = srb.get_results(outpath)
     k2=k2.set_index('name')
     k2 = k2[k2.s16>5]
     mp2 = srb.getFileIDs(outpath).sort('filename')
@@ -336,13 +203,6 @@ def mirna_discovery_test(sourcefile):
     plt.xticks(np.arange(0.5, len(x.columns), 1), x.columns)'''
 
     plt.show()
-    return
-
-def novel_conservation():
-    df = pd.read_csv('novel_mirdeep.csv')
-    #df = pd.read_csv('known_mirdeep.csv')
-    ensembl.getmiRNAOrthologs(df)
-    ensembl.summarise(df)
     return
 
 def do_pca(X, c=3):
@@ -393,46 +253,52 @@ def do_mds(X):
     pX = pd.DataFrame(pX,index=X.index)
     return pX
 
-def test():
-    base.seabornsetup()
-    #path = '/opt/mirnaseq/data/vegh_13'
-    path = '/opt/mirnaseq/data/combined'
-    files = ['/opt/mirnaseq/analysis/test.fastq']
-    bidx =  ['mirdeep-hairpin','Rfam_btau','bosTau6-tRNAs','bostau-snRNA','noncodev4_btau',
-              'bos_taurus_alt']
-    #adapters for our data
-    adapters = ['TGGAATTCTCGGGTGCCAAGG','GCATTGTGGTTCAGTGGTAGAATTCTCGC']
-    #adapters for Vegh data
-    #adapters = ['TAGCTTATCAGACTGATGTTGA','AGATCGGAAGAGCACACGTCTGAACTCC']
-    labels = {'bosTau6-tRNAs':'tRNA (GtRNAdb)', 'Rfam_btau':'rRNA (RFAM)',
-                'noncodev4_btau':'NONCODE v4', 'bos_taurus_alt':'UMD3.1',
-                'mirdeep_found':'miRNA (miRDeep2)'}
-    #map_rnas(files=files, indexes=bidx, adapters=adapters)
-    #summarise_reads(path)
-    #removeKnownRNAs(path, adapters)
-    return
+def get_aligned_reads_lengths(path, label, refs):
+    """Get read length distributions mapped to sam files representing
+      different ref annotations. Returns dataframe of read length freqs
+      with column label for db mapped to"""
 
-def main():
-    from optparse import OptionParser
-    parser = OptionParser()
-    parser.add_option("-s", "--summarise", dest="summarise",
-                           help="summarise fastq reads")
-    parser.add_option("-i", "--input", dest="input",
-                           help="input path or file")
-    parser.add_option("-t", "--test", dest="test", action='store_true',
-                           help="testing")
-    opts, remainder = parser.parse_args()
-    pd.set_option('display.width', 800)
-    base.seabornsetup()
-    if opts.summarise != None:
-        if os.path.isdir(opts.summarise):
-            summarise_reads(opts.summarise)
-        else:
-            df = utils.fastq_to_dataframe(opts.summarise)
-            print ('%s reads' %len(df))
-            read_length_dist(df)
-    elif opts.test == True:
-        test()
+    cols=[]
+    for ref in refs:
+        f = os.path.join(path,'%s_%s.sam' %(label,ref))
+        reads = base.get_aligned(f)
+        x = read_length_dist(reads)
+        x = pd.Series(x[0],index=x[1][:-1],name=ref)
+        x = x/x.sum()
+        #print x
+        cols.append(x)
+    x = pd.DataFrame(cols).T
+    x.index = x.index.astype(int)
+    x.index.name = 'length'
+    return x
+
+def read_length_distributions(path, refs):
+    """Get read lengths for all aligned files in path mapped
+       to ref db names, assumes the fasta files and sam files are present in the
+       target folder
+    """
+
+    files = glob.glob(path+'/*.fa')
+    fnames = [os.path.splitext(os.path.basename(f))[0] for f in files]
+    fnames = [i for i in fnames if not i.endswith('_r')]
+    print (fnames)
+
+    res = []
+    for n in fnames:
+        x = get_aligned_reads_lengths(path, n, refs)
+        x = x.ix[10:40]
+        x['file'] = n
+        res.append(x)
+    res = pd.concat(res)
+    res = res.reset_index()
+    #print res[:60]
+    #plot histograms
+    m = pd.melt(res, id_vars=['file','length'], value_vars=refs,
+                var_name='ref', value_name='freq')
+    g = sns.factorplot(y='freq',x='length', data=m, row='ref', kind="bar",
+                        size=2,aspect=4,sharex=False,palette='Blues_d')
+    plt.savefig(os.path.join(path,'read_lengths.png'))
+    return res
 
 if __name__ == '__main__':
     main()
