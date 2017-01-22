@@ -143,7 +143,7 @@ def count_aligned_features(samfile, features, truecounts=None):
        assume a non-collapsed file was used to map
        Args:
            samfile: mapped sam file
-           features: annotation from e.g. gtf file
+           features: annotations read from bed or gtf file
            truecounts: read counts from original (un-collapsed) file
        Returns: dataframe of genes with total counts
     """
@@ -454,7 +454,7 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
        Can be used for miRNA discovery
        Args:
            ref: genome bowtie index name
-           gtf_file: gtf file with features
+           gtf_file: gtf or bed file with features
            bowtie _index: path with bowtie indexes
     """
 
@@ -463,9 +463,13 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
         remove_files(outpath,'*_mapped.sam')
         remove_files(outpath, '*_r.fa')
 
-    gtf = HTSeq.GFF_Reader(gtf_file)
+    ext = os.path.splitext(gtf_file)[1]
+    if ext == '.gtf' or ext == '.gff':
+        features = HTSeq.GFF_Reader(gtf_file)
+    elif ext == '.bed':
+        features = HTSeq.BED_Reader(gtf_file)
     #use exons for rna-seq
-    exons = get_exons(gtf)
+    exons = get_exons(features)
 
     cfiles = collapse_files(files, outpath)
     print (cfiles)
