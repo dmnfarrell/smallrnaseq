@@ -219,28 +219,30 @@ def do_pca(X, c=3):
     #print pca.components_
     w = pd.DataFrame(pca.components_,columns=S.columns)#,index=['PC1','PC2'])
     #print w.T.max(1).sort_values()
-    Xt = pca.fit_transform(S)
-    return Xt
+    pX = pca.fit_transform(S)
+    pX = pd.DataFrame(pX,index=X.index)
+    return pX
 
-def plot_pca(pX, cats):
-    colors = sns.mpl_palette("Spectral", len(cats))
-    f,ax=plt.subplots(1,1,figsize=(6,6))
+def plot_pca(pX, palette='Set1'):
+    """Plot PCA result, input should be a dataframe"""
+
+    fig,ax=plt.subplots(1,1,figsize=(6,6))
+    cats = pX.index.unique()
+    colors = sns.mpl_palette(palette, len(cats))
     for c, i in zip(colors, cats):
-        #print i, c #len(pX.ix[i,:])
-        if not i in pX.index: continue
-        if i == 'plasma': c='green'
-        ax.scatter(pX.ix[i,0], pX.ix[i,1], c=c, s=100, lw=1, label=i, alpha=0.8)
+        #print (i, len(pX.ix[i]))
+        #if not i in pX.index: continue
+        ax.scatter(pX.ix[i, 0], pX.ix[i, 1], color=c, s=150, label=i,
+                   lw=1, edgecolor='black')
     ax.set_xlabel('PC1')
     ax.set_ylabel('PC2')
-    done=[]
     for i, point in pX.iterrows():
-        if i not in done:
-            ax.text(point[0]+.1, point[1]+.3, str(i),fontsize=(9))
-        done.append(i)
-
-    ax.legend(fontsize=10,bbox_to_anchor=(1.6, 1.1))
-    plt.tight_layout()
+        ax.text(point[0]+.3, point[1]+.3, str(i),fontsize=(9))
+        #done.append(i)
+    ax.legend(fontsize=10)
     sns.despine()
+    plt.tight_layout()
+    return
 
 def do_mds(X):
     """Do MDS"""
@@ -271,6 +273,27 @@ def get_aligned_reads_lengths(path, label, refs):
     x.index = x.index.astype(int)
     x.index.name = 'length'
     return x
+
+def classify(X, y, cl, name=''):
+    """Classification using gene features"""
+
+    from sklearn.metrics import classification_report, accuracy_score
+    np.random.seed()
+    ind = np.random.permutation(len(X))
+
+    from sklearn.cross_validation import train_test_split
+    Xtrain, Xtest, ytrain, ytest  = train_test_split(X, y, test_size=0.4)
+    #print X
+    cl.fit(Xtrain, ytrain)
+    ypred = cl.predict(Xtest)
+
+    print (classification_report(ytest, ypred))
+    #print accuracy_score(ytest, ypred)
+    from sklearn import cross_validation
+    yl = pd.Categorical(y).labels
+    sc = cross_validation.cross_val_score(cl, X, yl, scoring='roc_auc', cv=5)
+    print("AUC: %0.2f (+/- %0.2f)" % (sc.mean(), sc.std() * 2))
+    return cl
 
 def read_length_distributions(path, refs):
     """Get read lengths for all aligned files in path mapped

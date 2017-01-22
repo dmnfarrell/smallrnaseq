@@ -29,7 +29,6 @@ import numpy as np
 import pandas as pd
 from . import base
 
-plt.rcParams['savefig.dpi'] = 150
 modulepath = os.path.dirname(__file__)
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
@@ -185,10 +184,11 @@ def get_results(path):
         iso = get_isomirs(o)
         if iso is not None:
             m.append(iso)
-    fmap = pd.DataFrame(fmap.items(),columns=['id','filename'])
 
+    fmap = pd.DataFrame(fmap.items(),columns=['id','filename'])
     fmap.to_csv(os.path.join(path,'srnabench_colnames.csv'),index=False)
-    #combine known into useful format
+
+    #combine known mirnas into one file
     k = pd.concat(k)
     p = k.pivot_table(index='name', columns='path', values='read count')
     #cols = p.columns
@@ -378,7 +378,6 @@ def analyse_isomirs(iso,outpath=None):
 def plot_read_count_dists(df,h=8):
     """Boxplots of read count distributions per miRNA"""
 
-
     w=int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
     cols,normcols = get_column_names(df)
@@ -403,6 +402,15 @@ def get_file_ids(path):
 
     idmap = pd.read_csv(os.path.join(path, 'srnabench_colnames.csv'))
     return idmap
+
+def combine_labels(labels, filename):
+    """Combine sample labels with col names file so we can match sample ids"""
+
+    comb = pd.read_csv(filename)
+    comb['name'] = comb.filename.apply (lambda x: x.split('.')[0])
+    labels = labels.merge(comb,on='name')
+    labels['id'] = labels.id+'_norm'
+    return labels
 
 def main():
     try:

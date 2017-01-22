@@ -68,6 +68,15 @@ def create_sample_map(path, ext='fastq'):
     res.to_csv(fname, index=False,sep=' ',header=False)
     return (fname)
 
+def combine_labels(labels, filename):
+    """Combine sample labels with mirdeep combined.txt file so we can match sample ids"""
+
+    comb = pd.read_csv(filename,sep=' ',names=['filename','id'])
+    comb['name'] = comb.filename.apply (lambda x: x.split('.')[0])
+    labels = labels.merge(comb,on='name')
+    labels['id'] = labels.id+'(norm)'
+    return labels
+
 def run_multiple(**kwargs):
     """Prepare and run mirdeep2"""
 
@@ -300,8 +309,8 @@ def analyse_results(path, outpath=None, **kwargs):
     idmap = get_file_ids(path)
 
     #cutoffs and freqs need to be configurable..
-    k = filter_expr_results(known,score=0,freq=.5,meanreads=50)
-    n = filter_expr_results(novel,score=4,freq=.8,meanreads=50)
+    k = filter_expr_results(known,score=0,freq=.5,total_reads=50)
+    n = filter_expr_results(novel,score=4,freq=.8,total_reads=50)
     cols = mirdeepcols
     core = pd.concat([k,n])
     utils.dataframe_to_fasta(core, 'consensus mature sequence', '#miRNA', 'mirdeep_core.fa')

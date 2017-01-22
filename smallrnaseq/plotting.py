@@ -76,3 +76,31 @@ def plot_read_lengths(filename, df=None):
     fig,ax=plt.subplots(1,1,figsize=(10,4))
     ax.bar(x[1][:-1],x[0], align='center')
     return ax
+
+def plot_sample_variation(df):
+    fig,axs=plt.subplots(2,1,figsize=(6,6))
+    axs=axs.flat
+    cols,ncols = mirdeep2.get_column_names(m)
+    x = m.ix[2][cols]
+    x.plot(kind='bar',ax=axs[0])
+    x2 = m.ix[2][ncols]
+    x2.plot(kind='bar',ax=axs[1])
+    sns.despine()
+    plt.tight_layout()
+    return
+
+def plot_by_label(X, palette='Set1'):
+    """Color scatter plot by dataframe index label"""
+
+    import seaborn as sns
+    cats = X.index.unique()
+    colors = sns.mpl_palette(palette, len(cats))
+    #sns.palplot(colors)
+    f,ax = plt.subplots(figsize=(6,6))
+    for c, i in zip(colors, cats):
+        #print X.ix[i,0]
+        ax.scatter(X.ix[i, 0], X.ix[i, 1], color=c, s=100, label=i,
+                   lw=1, edgecolor='black')
+    ax.legend(fontsize=10)
+    sns.despine()
+    return
