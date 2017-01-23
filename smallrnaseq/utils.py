@@ -351,7 +351,8 @@ def bed_to_dataframe(bedfile):
     header=['chrom','chromStart','chromEnd','name','score','strand','thickStart',
             'thickEnd','itemRgb','blockCount','blockSizes','blockStarts']
     feats = pd.read_csv(bedfile, sep='\t', names=header)
-    feats['chr'] = feats.chrom.str.extract('(\d+)')#.astype(int)
+    #feats['chr'] = feats.chrom.str.extract('(\d+)')
+    feats['chr'] = feats.chrom.str[3:]
     return feats
 
 def features_to_gtf(df, filename):
@@ -384,3 +385,23 @@ def features_to_gtf(df, filename):
         s = '\t'.join([s1,s2,s3])
         f.write(s); f.write('\n')
     return gtf
+
+def sequence_from_coords(fastafile, features, bedfile=None, pad5=0, pad3=0):
+    """Fasta sequences from genome feature coords"""
+
+    from pybedtools import BedTool
+    from Bio.Seq import Seq
+    if bedfile != None:
+        features = utils.bed_to_dataframe(bedfile)
+    new = []
+    for n,r in features.iterrows():
+        if r.strand == '+':
+            coords = (r.chr,r.chromStart-pad5+1,r.chromEnd+pad3+1)
+            seq = str(BedTool.seq(coords, fastafile))
+        else: #reverse strand
+            coords = (r.chr,r.chromStart-pad3+1,r.chromEnd+pad5+1)
+            seq = str(BedTool.seq(coords, fastafile))
+            seq = Seq(seq).reverse_complement()
+        #print n, coords, r['name']
+        new.append([r['name'],str(seq),coords])
+    return new
