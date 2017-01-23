@@ -344,3 +344,43 @@ def sam_to_bam(filename):
     pysam.index(name)
     bamfile = pysam.AlignmentFile(name, "rb")
     return
+
+def bed_to_dataframe(bedfile):
+    """Bed file to dataframe"""
+
+    header=['chrom','chromStart','chromEnd','name','score','strand','thickStart',
+            'thickEnd','itemRgb','blockCount','blockSizes','blockStarts']
+    feats = pd.read_csv(bedfile, sep='\t', names=header)
+    feats['chr'] = feats.chrom.str.extract('(\d+)')#.astype(int)
+    return feats
+
+def features_to_gtf(df, filename):
+    """Take generic dataframe of features and create ensembl gtf file. Note some fields
+       will be redundnant as they require ensembl specific information"""
+
+    #ensembl gtf header format
+    gtfheader=['chrom', 'start', 'end', 'exon_id', 'exon_number', 'exon_version', 'gene_biotype', 'gene_id',
+           'gene_name', u'gene_source', u'gene_version', 'id', 'protein_id', 'protein_version',
+           'strand', 'transcript_biotype', 'transcript_id', 'transcript_name',
+           'transcript_source', 'transcript_version']
+    rows=[]
+    for i,r in df.iterrows():
+        #print r
+        row = [r.chr,r.chromStart+1,r.chromEnd,r['name'],1,1,'tRNA',r['name'],r['name'],
+               'gtrnadb',1,'','','',r.strand,'tRNA',r['name'],'','gtrnadb',1]
+        rows.append(row)
+    gtf = pd.DataFrame(rows,columns=gtfheader)
+
+    f=open(filename,'w')
+    #f.write('#custom gtf file\n')
+    for idx,r in gtf.iterrows():
+        c1 = ['chrom', 'start', 'end']
+        s1 = '\t'.join([str(r.chrom), 'gtrnadb','exon', str(r.start), str(r.end)])
+        s2 = '\t'.join(['.',r.strand,'.'])
+        c2 = ['gene_id','gene_version','transcript_id','transcript_version','exon_number',
+              'gene_source','gene_biotype','transcript_source','transcript_biotype',
+              'exon_id','exon_version']
+        s3 = '; '.join(i[0]+' '+'"%s"' %str(i[1]) for i in zip(c2,r[c2]))
+        s = '\t'.join([s1,s2,s3])
+        f.write(s); f.write('\n')
+    return gtf
