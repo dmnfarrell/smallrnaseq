@@ -387,7 +387,14 @@ def features_to_gtf(df, filename):
     return gtf
 
 def sequence_from_coords(fastafile, features, bedfile=None, pad5=0, pad3=0):
-    """Fasta sequences from genome feature coords"""
+    """Fasta sequences from genome feature coords.
+        Args:
+            fastafile: fasta file with genomic sequence
+            features: dataframe of features/coords with bed file col names
+            bedfile: optionally provide a bed file
+            pad5,pad3: flanking sequence at 5' or 3' ends
+        Returns:
+            a pandas dataframe with name, sequence and coord columns"""
 
     from pybedtools import BedTool
     from Bio.Seq import Seq
@@ -396,12 +403,13 @@ def sequence_from_coords(fastafile, features, bedfile=None, pad5=0, pad3=0):
     new = []
     for n,r in features.iterrows():
         if r.strand == '+':
-            coords = (r.chr,r.chromStart-pad5+1,r.chromEnd+pad3+1)
+            coords = (r.chr,r.chromStart-pad5+1,r.chromEnd+pad3)
             seq = str(BedTool.seq(coords, fastafile))
         else: #reverse strand
-            coords = (r.chr,r.chromStart-pad3+1,r.chromEnd+pad5+1)
+            coords = (r.chr,r.chromStart-pad3,r.chromEnd+pad5+1)
             seq = str(BedTool.seq(coords, fastafile))
             seq = Seq(seq).reverse_complement()
         #print n, coords, r['name']
         new.append([r['name'],str(seq),coords])
+    new = pd.DataFrame(new, columns=['name','seq','coords'])
     return new
