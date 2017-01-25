@@ -265,34 +265,15 @@ def get_ests(region):
             print (est)
     return
 
-def summarise(df):
-    """Summarise candidates from ensembl results"""
+def get_sequence_from_location(species, coords):
+    """Get sequence from a genomic location in an ensembl species genome."""
 
-    n = pd.read_csv('novel_orthologs.csv')
-    n = n[n.ident!=0]
-    x = n.groupby('#miRNA').agg({
-                    'seq':np.size,
-                    'energy':np.min,
-                    'ident': np.max,
-                    'seedcons': lambda r: len(r[r>-1]),
-                    'gene': base.first,
-                    #'targets': lambda r: len(r[r>-1])
-                    'biotype': base.first,
-                    'tu': base.first })
-    x.columns = x.columns.get_level_values(0)
-    x = x.merge(df[['#miRNA','read_count','miRDeep2 score','mirbase seed match',
-                    'precursor coordinate','seed','consensus mature sequence','freq']],
-                left_index=True,right_on='#miRNA',how='outer')
-    #print x
-    x=x.set_index('#miRNA')
-    #entries with at least 1 alignment and conserved seed are best candidates
-    def isconserved(x):
-        return (x.seq>1) & (x.seedcons>=2)
-    #x['conserved'] = x.apply(isconserved,1)
-    x = x.sort(['seq'],ascending=False)
-    #x=x.fillna('')
-    x.to_csv('novel_conserved.csv',float_format='%2.2f')
-    return x
+    from cogent.db.ensembl import HostAccount, Genome, Compara, Species
+    genome = Genome(Species=species, Release='87', account=None)
+    chrom,start,end,strand = coords
+    #print coords
+    r = genome.getRegion(CoordName=str(chrom), Start=start,End=end,Strand=strand)
+    return r.Seq
 
 def test():
 

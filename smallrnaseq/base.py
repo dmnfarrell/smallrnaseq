@@ -208,7 +208,7 @@ def get_top_genes(counts):
     return df
 
 def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=None,
-                     cutoff=0):
+                     cutoff=0, by='position'):
     """Print local read alignments from a sam file against the mapped sequence
        and save the output to a text file or stdout if no filename.
        Args:
@@ -220,11 +220,11 @@ def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=Non
     """
 
     refs = utils.fasta_to_dataframe(reference)
+    x = get_aligned(samfile)
     if name != None:
         names = [name]
     else:
-        names = refs.index
-    x = get_aligned(samfile)
+        names = x.name.unique()
     if readcounts is not None:
         x = x.merge(readcounts, on='seq')
     else:
@@ -233,20 +233,32 @@ def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=Non
         f = open(outfile, 'w')
     else:
         f = None
+
+    def get_pos(x, refs):
+        n = x['name']
+        seq = refs.ix[n].sequence
+        return find_subseq(seq, x.seq)
+    x['position'] = x.apply(lambda x: get_pos(x, refs), 1)
+    if by == 'position':
+        x = x.sort_values('position')
+
     for n in names:
         reads = x[x.name==n]
+        seq = refs.ix[n].sequence
+        if by == 'position':
+            reads = reads.sort_values('position')
         l = len(reads)
         if l==0: continue
         print (n, '(%s unique reads)' %l, file=f)
         print ('-------------------------------------', file=f)
-        seq = refs.ix[n].sequence
         print (seq, file=f)
         for idx,r in reads.iterrows():
             s = r.seq
             count = r.reads
             if count <= cutoff: continue
             #pos = seq.find(s[:6]) #improve find string
-            pos = find_subseq(seq, s)
+            #pos = find_subseq(seq, s)
+            pos = r.position
             if pos == -1: continue
             i = len(s)+pos
             print ("{:>{w}} ({c})".format(s,w=i,c=count), file=f)

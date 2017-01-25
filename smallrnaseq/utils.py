@@ -406,7 +406,7 @@ def sequence_from_coords(fastafile, features, bedfile=None, pad5=0, pad3=0):
             coords = (r.chr,r.chromStart-pad5+1,r.chromEnd+pad3)
             seq = str(BedTool.seq(coords, fastafile))
         else: #reverse strand
-            coords = (r.chr,r.chromStart-pad3,r.chromEnd+pad5+1)
+            coords = (r.chr,r.chromStart-pad3,r.chromEnd+pad5-1)
             seq = str(BedTool.seq(coords, fastafile))
             seq = Seq(seq).reverse_complement()
         #print n, coords, r['name']
