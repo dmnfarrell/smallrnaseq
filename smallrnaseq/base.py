@@ -271,7 +271,8 @@ def find_subseq(seq, s):
         if c != -1: return c
     return -1
 
-def get_aligned(samfile):
+def get_aligned_reads(samfile):
+    """Get all aligned reads from a sam file into a pandas dataframe"""
 
     sam = HTSeq.SAM_Reader(samfile)
     f=[]

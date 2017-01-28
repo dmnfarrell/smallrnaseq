@@ -223,7 +223,7 @@ def do_pca(X, c=3):
     pX = pd.DataFrame(pX,index=X.index)
     return pX
 
-def plot_pca(pX, palette='Set1'):
+def plot_pca(pX, palette='Set1', labels=False):
     """Plot PCA result, input should be a dataframe"""
 
     fig,ax=plt.subplots(1,1,figsize=(6,6))
@@ -232,13 +232,13 @@ def plot_pca(pX, palette='Set1'):
     for c, i in zip(colors, cats):
         #print (i, len(pX.ix[i]))
         #if not i in pX.index: continue
-        ax.scatter(pX.ix[i, 0], pX.ix[i, 1], color=c, s=150, label=i,
+        ax.scatter(pX.ix[i, 0], pX.ix[i, 1], color=c, s=120, label=i,
                    lw=1, edgecolor='black')
     ax.set_xlabel('PC1')
     ax.set_ylabel('PC2')
-    for i, point in pX.iterrows():
-        ax.text(point[0]+.3, point[1]+.3, str(i),fontsize=(9))
-        #done.append(i)
+    if labels == True:
+        for i, point in pX.iterrows():
+            ax.text(point[0]+.3, point[1]+.3, str(i),fontsize=(9))
     ax.legend(fontsize=10)
     sns.despine()
     plt.tight_layout()
@@ -322,6 +322,54 @@ def read_length_distributions(path, refs):
                         size=2,aspect=4,sharex=False,palette='Blues_d')
     plt.savefig(os.path.join(path,'read_lengths.png'))
     return res
+
+def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
+    """Get trf5/3/i fragments from a set reads aligned to a trna sequences.
+    This finds the locations of all reads inside the aligned parent and
+    classifies the fragments using a scheme similar to Telonis at al."""
+
+    refs = utils.fasta_to_dataframe(fastafile)
+    #get rna structure for reference seqs?
+    #refs['structure'] = refs.apply(lambda r: utils.rnafold(r.sequence)[0],1)
+    a = base.get_aligned_reads(samfile)
+    a = a.merge(truecounts, on='seq')
+    print ('%s total reads' %len(a))
+
+    a['anticodon'] = a.apply(lambda x: x['name'].split('-')[1],1)
+
+    def get_pos(x, refs):
+        #position in reference sequence
+        n = x['name']
+        seq = refs.ix[n].sequence
+        return base.find_subseq(seq, x.seq)
+
+    def get_type(x, refs):
+        #classify by position in parent seqs
+        n = x['name']
+        seq = refs.ix[n].sequence
+        if x.start==1:
+            return 'trf5'
+        elif len(seq)-x.end == -1 and x.seq.endswith('CCA'):
+            return 'trf3'
+        else:
+            return 'itrf'
+
+    #remove sequence redundancy by grouping into unique fragments then get classes
+    #first sort reads by sequence and name so we get consistent ids for different samples..
+    a = a.sort_values(['seq','name'])
+    #print a.columns
+    f = a.groupby('seq').agg({'name':base.first,'anticodon':lambda x: len(x.unique()),
+                              'reads':np.max})
+    f = f.reset_index()
+    f['perc'] = (f.reads/f.reads.sum()*100).round(2)
+    f['start'] = f.apply(lambda x: get_pos(x, refs)+1, 1)
+    f['length'] = f.seq.str.len()
+    f['end'] = f.start+f.length
+    f['trf'] = f.apply(lambda x: get_type(x, refs), 1)
+    f['id'] = f.apply(lambda x:'%s_%s.%s.%s' % (x['name'],x.length,x.start,x.end),1)
+
+    print ('%s unique fragments' %len(f))
+    return f
 
 if __name__ == '__main__':
     main()
