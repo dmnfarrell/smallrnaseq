@@ -413,3 +413,22 @@ def sequence_from_coords(fastafile, features, bedfile=None, pad5=0, pad3=0):
         new.append([r['name'],str(seq),coords])
     new = pd.DataFrame(new, columns=['name','seq','coords'])
     return new
+
+def get_csv_files(path, filename, names, **kwargs):
+    """Get multiple csv files in set of sub folders, used for re-loading previously
+       created results for different datasets into one pandas dataframe"""
+
+    res = []
+    for n in names:
+        p = os.path.join(path, n)
+        f = os.path.join(p,filename)
+        if not os.path.exists(f):
+            continue
+        #print f
+        data = pd.read_csv(f,**kwargs)
+        data['study'] = n
+        #r = studies[studies.label==n].iloc[0]
+        #data['source'] = r['source']
+        #data['type'] = r['type']
+        res.append(data)
+    return pd.concat(res)

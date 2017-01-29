@@ -223,23 +223,25 @@ def do_pca(X, c=3):
     pX = pd.DataFrame(pX,index=X.index)
     return pX
 
-def plot_pca(pX, palette='Set1', labels=False):
+def plot_pca(pX, palette='Spectral', labels=False, ax=None, colors=None):
     """Plot PCA result, input should be a dataframe"""
 
-    fig,ax=plt.subplots(1,1,figsize=(6,6))
+    if ax==None:
+        fig,ax=plt.subplots(1,1,figsize=(6,6))
     cats = pX.index.unique()
-    colors = sns.mpl_palette(palette, len(cats))
+    colors = sns.mpl_palette(palette, len(cats)+1)
+    print (len(cats), len(colors))
     for c, i in zip(colors, cats):
         #print (i, len(pX.ix[i]))
         #if not i in pX.index: continue
-        ax.scatter(pX.ix[i, 0], pX.ix[i, 1], color=c, s=120, label=i,
-                   lw=1, edgecolor='black')
+        ax.scatter(pX.ix[i, 0], pX.ix[i, 1], color=c, s=90, label=i,
+                   lw=.8, edgecolor='black', alpha=0.8)
     ax.set_xlabel('PC1')
     ax.set_ylabel('PC2')
     if labels == True:
         for i, point in pX.iterrows():
             ax.text(point[0]+.3, point[1]+.3, str(i),fontsize=(9))
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=10,bbox_to_anchor=(1.4, 1.05))
     sns.despine()
     plt.tight_layout()
     return
