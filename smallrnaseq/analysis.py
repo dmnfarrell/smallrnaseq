@@ -36,7 +36,7 @@ except:
     'HTSeq not present'
 from . import srnabench as srb
 from . import mirdeep2 as mdp
-from . import base
+from . import base, utils
 
 def read_length_dist(df):
 

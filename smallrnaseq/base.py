@@ -122,9 +122,11 @@ def get_exons(gtf):
                 pass
     return exons
 
-def gtf_to_dataframe(gtf, index='transcript_id'):
+def gtf_to_dataframe(gtf=None, gtf_file=None, index='transcript_id'):
     """Convert gtf/gff features to a pandas dataframe"""
 
+    if gtf_file != None:
+        gtf = HTSeq.GFF_Reader(gtf_file)
     recs=[]
     for f in gtf:
         r = {'id':f.name, 'chrom':f.iv.chrom, 'start':f.iv.start,
@@ -220,7 +222,7 @@ def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=Non
     """
 
     refs = utils.fasta_to_dataframe(reference)
-    x = get_aligned(samfile)
+    x = get_aligned_reads(samfile)
     if name != None:
         names = [name]
     else:

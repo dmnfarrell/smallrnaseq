@@ -386,12 +386,25 @@ def features_to_gtf(df, filename):
         f.write(s); f.write('\n')
     return gtf
 
-def sequence_from_coords(fastafile, features, bedfile=None, pad5=0, pad3=0):
-    """Fasta sequences from genome feature coords.
+def sequence_from_coords(fastafile, coords):
+    """Fasta sequence from genome feature coords"""
+
+    from pybedtools import BedTool
+    from Bio.Seq import Seq
+    chrom,start,end,strand = coords
+    if strand == '+':
+        seq = str(BedTool.seq(coords, fastafile))
+    else: #reverse strand
+        seq = str(BedTool.seq(coords, fastafile))
+        seq = Seq(seq).reverse_complement()
+    return seq
+
+def sequence_from_bedfile(fastafile, features=None, bedfile=None, pad5=0, pad3=0):
+    """Fasta sequences from set of genomic features in a bed file
         Args:
             fastafile: fasta file with genomic sequence
             features: dataframe of features/coords with bed file col names
-            bedfile: optionally provide a bed file
+            bedfile: optionally provide a bed file instead
             pad5,pad3: flanking sequence at 5' or 3' ends
         Returns:
             a pandas dataframe with name, sequence and coord columns"""
