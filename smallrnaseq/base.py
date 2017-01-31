@@ -209,70 +209,6 @@ def get_top_genes(counts):
                 .sort_values('reads',ascending=False)
     return df
 
-def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=None,
-                     cutoff=0, by='position'):
-    """Print local read alignments from a sam file against the mapped sequence
-       and save the output to a text file or stdout if no filename.
-       Args:
-        samfile: sam file with alignments
-        reference: fasta file with references sequences mapped to
-        outfile: file name to write output, else send to stdout
-        readcounts: original read counts if using a collapsed file
-        cutoff: don't display read with <cutoff counts
-    """
-
-    refs = utils.fasta_to_dataframe(reference)
-    x = get_aligned_reads(samfile)
-    if name != None:
-        names = [name]
-    else:
-        names = x.name.unique()
-    if readcounts is not None:
-        x = x.merge(readcounts, on='seq')
-    else:
-        x['reads'] = 1
-    if outfile != None:
-        f = open(outfile, 'w')
-    else:
-        f = None
-
-    def get_pos(x, refs):
-        n = x['name']
-        seq = refs.ix[n].sequence
-        return find_subseq(seq, x.seq)
-    x['position'] = x.apply(lambda x: get_pos(x, refs), 1)
-    if by == 'position':
-        x = x.sort_values('position')
-
-    for n in names:
-        reads = x[x.name==n]
-        seq = refs.ix[n].sequence
-        if by == 'position':
-            reads = reads.sort_values('position')
-        l = len(reads)
-        if l==0: continue
-        print (n, '(%s unique reads)' %l, file=f)
-        print ('-------------------------------------', file=f)
-        print (seq, file=f)
-        for idx,r in reads.iterrows():
-            s = r.seq
-            count = r.reads
-            if count <= cutoff: continue
-            #pos = seq.find(s[:6]) #improve find string
-            #pos = find_subseq(seq, s)
-            pos = r.position
-            if pos == -1: continue
-            i = len(s)+pos
-            print ("{:>{w}} ({c})".format(s,w=i,c=count), file=f)
-        print ('', file=f)
-    return
-
-def find_subseq(seq, s):
-    for i in range(16,4,-4):
-        c = seq.find(s[:i])
-        if c != -1: return c
-    return -1
-
 def get_aligned_reads(samfile):
     """Get all aligned reads from a sam file into a pandas dataframe"""
 
@@ -323,6 +259,7 @@ def pivot_count_data(counts, idxcols='name', norm_method='library'):
     """Pivot read counts created by count_aligned over multiple samples
        and get normalised read counts.
        Args:
+           counts: dataframe of raw count data with samples per column
            idxcols: name of index column
            norm_method: how to normalize the counts (returned in extra columns),
                         default is total library counts
@@ -346,15 +283,27 @@ def pivot_count_data(counts, idxcols='name', norm_method='library'):
     x = x.reset_index()
     return x
 
-def normalize_samples(counts, norm_method='quantile'):
-    """Normalize over samples explicitly, this will overwrite the 'norm'
-       columns created previously when pivoting the count data"""
+def normalize_samples(counts, norm_method='library', rename=True):
+    """Normalize over a matrix of samples explicitly, this will overwrite any 'norm'
+       columns created previously when pivoting the count data
+       Args:
+            counts: dataframe of raw count data with samples per column
+            rename: rename columns with 'norm' label and add to existing ones
+       Returns: dataframe of raw /normalised read counts
+    """
 
+    x = counts
     if norm_method == 'library':
         n = total_library_normalize(x)
     elif norm_method == 'quantile':
         n = quantile_normalize(x)
-    return n
+    if rename == True:
+        scols = x.columns
+        ncols = n.columns = [i+' norm' for i in n.columns]
+        x = x.join(n)
+    else:
+        x = n
+    return x
 
 def get_column_names(df):
     """Get count data sample column names"""

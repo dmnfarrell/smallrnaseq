@@ -335,7 +335,7 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     #refs['structure'] = refs.apply(lambda r: utils.rnafold(r.sequence)[0],1)
     a = base.get_aligned_reads(samfile)
     a = a.merge(truecounts, on='seq')
-    print ('%s total reads' %len(a))
+    print ('%s total sequences with %s counts' %(len(a),a.reads.sum()))
 
     a['anticodon'] = a.apply(lambda x: x['name'].split('-')[1],1)
 
@@ -359,11 +359,11 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     #remove sequence redundancy by grouping into unique fragments then get classes
     #first sort reads by sequence and name so we get consistent ids for different samples..
     a = a.sort_values(['seq','name'])
-    #print a.columns
-    f = a.groupby('seq').agg({'name':base.first,'anticodon':lambda x: len(x.unique()),
+    f = a.groupby('seq').agg({'name':base.first, 'anticodon': base.first,
                               'reads':np.max})
     f = f.reset_index()
-    f['perc'] = (f.reads/f.reads.sum()*100).round(2)
+    f['aa'] = f.anticodon.str[:3]
+    f['perc'] = (f.reads/f.reads.sum()*100).round(3)
     f['start'] = f.apply(lambda x: get_pos(x, refs)+1, 1)
     f['length'] = f.seq.str.len()
     f['end'] = f.start+f.length
@@ -371,6 +371,7 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     f['id'] = f.apply(lambda x:'%s_%s.%s.%s' % (x['name'],x.length,x.start,x.end),1)
 
     print ('%s unique fragments' %len(f))
+    print ('%s total counts in fragments' %f.reads.sum())
     return f
 
 if __name__ == '__main__':

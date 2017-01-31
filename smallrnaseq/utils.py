@@ -33,6 +33,7 @@ try:
     import HTSeq
 except:
     'HTSeq not present'
+from . import base
 
 def gzipfile(filename, remove=False):
     """Compress a file with gzip"""
@@ -445,3 +446,67 @@ def get_csv_files(path, filename, names, **kwargs):
         #data['type'] = r['type']
         res.append(data)
     return pd.concat(res)
+
+def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=None,
+                     cutoff=0, by='position'):
+    """Print local read alignments from a sam file against the mapped sequence
+       and save the output to a text file or stdout if no filename.
+       Args:
+        samfile: sam file with alignments
+        reference: fasta file with references sequences mapped to
+        outfile: file name to write output, else send to stdout
+        readcounts: original read counts if using a collapsed file
+        cutoff: don't display read with <cutoff counts
+    """
+
+    refs = fasta_to_dataframe(reference)
+    x = base.get_aligned_reads(samfile)
+    if name != None:
+        names = [name]
+    else:
+        names = x.name.unique()
+    if readcounts is not None:
+        x = x.merge(readcounts, on='seq')
+    else:
+        x['reads'] = 1
+    if outfile != None:
+        f = open(outfile, 'w')
+    else:
+        f = None
+
+    def get_pos(x, refs):
+        n = x['name']
+        seq = refs.ix[n].sequence
+        return find_subseq(seq, x.seq)
+    x['position'] = x.apply(lambda x: get_pos(x, refs), 1)
+    if by == 'position':
+        x = x.sort_values('position')
+
+    for n in names:
+        reads = x[x.name==n]
+        seq = refs.ix[n].sequence
+        if by == 'position':
+            reads = reads.sort_values('position')
+        l = len(reads)
+        if l==0: continue
+        print (n, '(%s unique reads)' %l, file=f)
+        print ('-------------------------------------', file=f)
+        print (seq, file=f)
+        for idx,r in reads.iterrows():
+            s = r.seq
+            count = r.reads
+            if count <= cutoff: continue
+            #pos = seq.find(s[:6]) #improve find string
+            #pos = find_subseq(seq, s)
+            pos = r.position
+            if pos == -1: continue
+            i = len(s)+pos
+            print ("{:>{w}} ({c})".format(s,w=i,c=count), file=f)
+        print ('', file=f)
+    return
+
+def find_subseq(seq, s):
+    for i in range(16,4,-4):
+        c = seq.find(s[:i])
+        if c != -1: return c
+    return -1
