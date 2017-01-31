@@ -333,7 +333,7 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     refs = utils.fasta_to_dataframe(fastafile)
     #get rna structure for reference seqs?
     #refs['structure'] = refs.apply(lambda r: utils.rnafold(r.sequence)[0],1)
-    a = base.get_aligned_reads(samfile)
+    a = utils.get_aligned_reads(samfile)
     a = a.merge(truecounts, on='seq')
     print ('%s total sequences with %s counts' %(len(a),a.reads.sum()))
 
@@ -343,7 +343,7 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
         #position in reference sequence
         n = x['name']
         seq = refs.ix[n].sequence
-        return base.find_subseq(seq, x.seq)
+        return utils.find_subseq(seq, x.seq)
 
     def get_type(x, refs):
         #classify by position in parent seqs

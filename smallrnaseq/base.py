@@ -209,17 +209,6 @@ def get_top_genes(counts):
                 .sort_values('reads',ascending=False)
     return df
 
-def get_aligned_reads(samfile):
-    """Get all aligned reads from a sam file into a pandas dataframe"""
-
-    sam = HTSeq.SAM_Reader(samfile)
-    f=[]
-    for a in sam:
-        if a.aligned == True:
-            f.append((a.read.seq,a.read.name,a.iv.chrom))
-    counts = pd.DataFrame(f, columns=['seq','read','name'])
-    return counts
-
 def count_aligned(samfile, readcounts=None, by='name'):
     """Count short read alignments from a sam or bam file. Mainly designed to be used with
        collapsed reads with original read counts passed in as dataframe.

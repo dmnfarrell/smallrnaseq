@@ -33,7 +33,6 @@ try:
     import HTSeq
 except:
     'HTSeq not present'
-from . import base
 
 def gzipfile(filename, remove=False):
     """Compress a file with gzip"""
@@ -446,6 +445,18 @@ def get_csv_files(path, filename, names, **kwargs):
         #data['type'] = r['type']
         res.append(data)
     return pd.concat(res)
+
+def get_aligned_reads(samfile):
+    """Get all aligned reads from a sam file into a pandas dataframe"""
+
+    import HTSeq
+    sam = HTSeq.SAM_Reader(samfile)
+    f=[]
+    for a in sam:
+        if a.aligned == True:
+            f.append((a.read.seq,a.read.name,a.iv.chrom))
+    counts = pd.DataFrame(f, columns=['seq','read','name'])
+    return counts
 
 def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=None,
                      cutoff=0, by='position'):
