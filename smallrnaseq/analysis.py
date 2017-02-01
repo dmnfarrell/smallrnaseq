@@ -337,7 +337,7 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     a = a.merge(truecounts, on='seq')
     print ('%s total sequences with %s counts' %(len(a),a.reads.sum()))
 
-    a['anticodon'] = a.apply(lambda x: x['name'].split('-')[1],1)
+    #a['anticodon'] = a.apply(lambda x: x['name'].split('-')[1],1)
 
     def get_pos(x, refs):
         #position in reference sequence
@@ -359,9 +359,10 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     #remove sequence redundancy by grouping into unique fragments then get classes
     #first sort reads by sequence and name so we get consistent ids for different samples..
     a = a.sort_values(['seq','name'])
-    f = a.groupby('seq').agg({'name':base.first, 'anticodon': base.first,
-                              'reads':np.max})
+    f = a.groupby('seq').agg({'name':base.first, 'reads':np.max, 'read':np.size})
+    f=f.rename(columns={'read':'loci'})
     f = f.reset_index()
+    f['anticodon'] = f.apply(lambda x: x['name'].split('-')[1],1)
     f['aa'] = f.anticodon.str[:3]
     f['perc'] = (f.reads/f.reads.sum()*100).round(3)
     f['start'] = f.apply(lambda x: get_pos(x, refs)+1, 1)
