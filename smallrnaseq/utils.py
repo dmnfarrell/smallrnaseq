@@ -257,7 +257,7 @@ def trim_adapters(infile, adapters=[], outfile='cut.fastq'):
         print ('no adapters!')
         return
     adptstr = ' -a '.join(adapters)
-    cmd = 'cutadapt -m 18 -O 5 -q 20 --discard-untrimmed -a %s %s -o %s' %(adptstr,infile,outfile)
+    cmd = 'cutadapt -m 18 -O 5 -q 20 -a %s %s -o %s' %(adptstr,infile,outfile)
     print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     #print result
@@ -471,7 +471,7 @@ def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=Non
     """
 
     refs = fasta_to_dataframe(reference)
-    x = base.get_aligned_reads(samfile)
+    x = get_aligned_reads(samfile)
     if name != None:
         names = [name]
     else:

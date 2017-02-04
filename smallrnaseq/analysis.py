@@ -336,8 +336,8 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     a = utils.get_aligned_reads(samfile)
     a = a.merge(truecounts, on='seq')
     print ('%s total sequences with %s counts' %(len(a),a.reads.sum()))
-
-    #a['anticodon'] = a.apply(lambda x: x['name'].split('-')[1],1)
+    if len(a) == 0:
+        return
 
     def get_pos(x, refs):
         #position in reference sequence
