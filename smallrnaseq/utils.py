@@ -446,7 +446,7 @@ def get_csv_files(path, filename, names, **kwargs):
         res.append(data)
     return pd.concat(res)
 
-def get_aligned_reads(samfile):
+def get_aligned_reads(samfile, truecounts=None):
     """Get all aligned reads from a sam file into a pandas dataframe"""
 
     import HTSeq
@@ -454,50 +454,45 @@ def get_aligned_reads(samfile):
     f=[]
     for a in sam:
         if a.aligned == True:
-            f.append((a.read.seq,a.read.name,a.iv.chrom))
-    counts = pd.DataFrame(f, columns=['seq','read','name'])
+            f.append((a.read.seq,a.read.name,a.iv.chrom,a.iv.start+1,a.iv.end))
+    counts = pd.DataFrame(f, columns=['seq','read','name','start','end'])
+    counts['length'] = counts.seq.str.len()
+    if truecounts is not None:
+        counts = counts.merge(truecounts, on='seq')
     return counts
 
-def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=None,
-                     cutoff=0, by='position'):
+def print_read_stack(reads, fastafile=None, outfile=None, name=None,
+                     cutoff=0, by=None):
     """Print local read alignments from a sam file against the mapped sequence
        and save the output to a text file or stdout if no filename.
        Args:
-        samfile: sam file with alignments
-        reference: fasta file with references sequences mapped to
+        reads: dataframe of read counts with position info
+        fastafile: optional fasta file with references sequences mapped to
         outfile: file name to write output, else send to stdout
         readcounts: original read counts if using a collapsed file
         cutoff: don't display read with <cutoff counts
     """
 
-    refs = fasta_to_dataframe(reference)
-    x = get_aligned_reads(samfile)
+    if fastafile != None:
+        refs = fasta_to_dataframe(fastafile)
+    x = reads
     if name != None:
         names = [name]
     else:
         names = x.name.unique()
-    if readcounts is not None:
-        x = x.merge(readcounts, on='seq')
-    else:
-        x['reads'] = 1
     if outfile != None:
         f = open(outfile, 'w')
     else:
         f = None
-
-    def get_pos(x, refs):
-        n = x['name']
-        seq = refs.ix[n].sequence
-        return find_subseq(seq, x.seq)
-    x['position'] = x.apply(lambda x: get_pos(x, refs), 1)
-    if by == 'position':
-        x = x.sort_values('position')
+    if by is not None:
+        x = x.sort_values(by)
 
     for n in names:
         reads = x[x.name==n]
+        #if refs:
         seq = refs.ix[n].sequence
-        if by == 'position':
-            reads = reads.sort_values('position')
+        if by == 'start':
+            reads = reads.sort_values('start')
         l = len(reads)
         if l==0: continue
         print (n, '(%s unique reads)' %l, file=f)
@@ -509,12 +504,48 @@ def print_read_stack(samfile, reference, outfile=None, name=None, readcounts=Non
             if count <= cutoff: continue
             #pos = seq.find(s[:6]) #improve find string
             #pos = find_subseq(seq, s)
-            pos = r.position
+            pos = r.start-1
             if pos == -1: continue
             i = len(s)+pos
             print ("{:>{w}} ({c})".format(s,w=i,c=count), file=f)
         print ('', file=f)
     return
+
+def plot_read_stack(reads, by=None, cutoff=0, ax=None):
+    """Plot read stack using coverage at each position"""
+
+    if by != None:
+        reads = reads.sort_values(by)
+    seqlen = reads.end.max()
+    reads = reads[reads.reads>=cutoff]
+    if len(reads)==0:
+        return
+    def pos_coverage(r, p):
+        x = [r.reads if (i>=r.start and i<=r.end) else 0 for i in p]
+        return pd.Series(x,index=p)
+
+    reads = reads.set_index('reads',drop=False)
+    p = range(1,seqlen+1)
+    m = reads.apply( lambda x: pos_coverage(x,p), 1 )
+
+    #m = (c>0).astype(int)[:50]
+    m = m.replace(0,1)[:100]
+    from matplotlib.colors import LogNorm
+
+    if ax == None:
+        h = 12*len(m)/80+1
+        fig,ax = plt.subplots(1,1,figsize=(12,h))
+    ax = sns.heatmap(m,ax=ax,norm=LogNorm(vmin=m.min(), vmax=m.max()),
+                cmap='Blues',cbar=False)
+    plt.gca().xaxis.grid(True)
+    start, end = ax.get_xlim()
+    xlbls = np.arange(start, end, 5).astype(int)
+    ax.xaxis.set_ticks(xlbls)
+    ax.set_xticklabels(xlbls)
+    ax.tick_params(axis='y', which='major', labelsize=9)
+    for xmin in ax.xaxis.get_majorticklocs():
+        ax.axvline(x=xmin,ls='--',lw=0.5,color='gray')
+    return ax
 
 def find_subseq(seq, s):
     for i in range(16,4,-4):

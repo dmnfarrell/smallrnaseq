@@ -241,7 +241,7 @@ def plot_pca(pX, palette='Spectral', labels=False, ax=None, colors=None):
     if labels == True:
         for i, point in pX.iterrows():
             ax.text(point[0]+.3, point[1]+.3, str(i),fontsize=(9))
-    ax.legend(fontsize=10,bbox_to_anchor=(1.4, 1.05))
+    ax.legend(fontsize=10,bbox_to_anchor=(1.5, 1.05))
     sns.despine()
     plt.tight_layout()
     return
@@ -356,6 +356,12 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
         else:
             return 'itrf'
 
+    def get_loop(x):
+        if x.start>11 & x.start<17:
+            return 'D'
+        elif x.start>30 & x.start<40:
+            return 'A'
+
     #remove sequence redundancy by grouping into unique fragments then get classes
     #first sort reads by sequence and name so we get consistent ids for different samples..
     a = a.sort_values(['seq','name'])
@@ -369,6 +375,7 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     f['length'] = f.seq.str.len()
     f['end'] = f.start+f.length
     f['trf'] = f.apply(lambda x: get_type(x, refs), 1)
+    f['loop'] = f.apply(lambda x: get_loop(x), 1)
     f['id'] = f.apply(lambda x:'%s_%s.%s.%s' % (x['name'],x.length,x.start,x.end),1)
 
     print ('%s unique fragments' %len(f))
