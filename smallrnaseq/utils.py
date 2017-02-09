@@ -29,6 +29,7 @@ import matplotlib
 import pylab as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 try:
     import HTSeq
 except:
@@ -516,6 +517,8 @@ def plot_read_stack(reads, by=None, cutoff=0, ax=None):
 
     if by != None:
         reads = reads.sort_values(by)
+    else:
+        reads = reads.sort_values(by=['start','reads'],ascending=[1,0])
     seqlen = reads.end.max()
     reads = reads[reads.reads>=cutoff]
     if len(reads)==0:
@@ -545,6 +548,7 @@ def plot_read_stack(reads, by=None, cutoff=0, ax=None):
     ax.tick_params(axis='y', which='major', labelsize=9)
     for xmin in ax.xaxis.get_majorticklocs():
         ax.axvline(x=xmin,ls='--',lw=0.5,color='gray')
+    #m.plot(kind='bar',width=.8,figsize=(12,2))
     return ax
 
 def find_subseq(seq, s):

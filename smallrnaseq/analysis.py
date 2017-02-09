@@ -339,41 +339,35 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     if len(a) == 0:
         return
 
-    def get_pos(x, refs):
-        #position in reference sequence
-        n = x['name']
-        seq = refs.ix[n].sequence
-        return utils.find_subseq(seq, x.seq)
-
     def get_type(x, refs):
         #classify by position in parent seqs
         n = x['name']
         seq = refs.ix[n].sequence
-        if x.start==1:
+        if x.start<=2:
             return 'trf5'
-        elif len(seq)-x.end == -1 and x.seq.endswith('CCA'):
+        elif len(seq)-x.end == 0 and x.seq.endswith('CCA'):
             return 'trf3'
         else:
             return 'itrf'
 
     def get_loop(x):
-        if x.start>11 & x.start<17:
+        if x.start>11 and x.start<17:
             return 'D'
-        elif x.start>30 & x.start<40:
+        elif x.start>30 and x.start<40:
             return 'A'
 
     #remove sequence redundancy by grouping into unique fragments then get classes
     #first sort reads by sequence and name so we get consistent ids for different samples..
     a = a.sort_values(['seq','name'])
-    f = a.groupby('seq').agg({'name':base.first, 'reads':np.max, 'read':np.size})
+    f = a.groupby('seq').agg({'name':base.first, 'reads':np.max, 'read':np.size,
+                                 'start':base.first,'end':base.first})
     f=f.rename(columns={'read':'loci'})
     f = f.reset_index()
     f['anticodon'] = f.apply(lambda x: x['name'].split('-')[1],1)
     f['aa'] = f.anticodon.str[:3]
     f['perc'] = (f.reads/f.reads.sum()*100).round(3)
-    f['start'] = f.apply(lambda x: get_pos(x, refs)+1, 1)
     f['length'] = f.seq.str.len()
-    f['end'] = f.start+f.length
+
     f['trf'] = f.apply(lambda x: get_type(x, refs), 1)
     f['loop'] = f.apply(lambda x: get_loop(x), 1)
     f['id'] = f.apply(lambda x:'%s_%s.%s.%s' % (x['name'],x.length,x.start,x.end),1)
