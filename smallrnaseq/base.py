@@ -140,7 +140,7 @@ def gtf_to_dataframe(gtf=None, gtf_file=None, index='transcript_id'):
         print ('no exon_id field')
     return df
 
-def count_features(samfile, features=None, gtffile=None, truecounts=None):
+def count_features(samfile, features=None, gtffile=None, truecounts=None, merge=False):
     """Count reads in features from an alignment, if no truecounts we
        assume a non-collapsed file was used to map
        Args:
@@ -148,6 +148,7 @@ def count_features(samfile, features=None, gtffile=None, truecounts=None):
            gtffile: feature file
            features: annotations read from bed or gtf file
            truecounts: read counts from original (un-collapsed) file
+           merge: whether to merge the gtf fields with the results
        Returns: dataframe of genes with total counts
     """
 
@@ -187,6 +188,8 @@ def count_features(samfile, features=None, gtffile=None, truecounts=None):
     mapped = float(result[-result.name.isin(um)].reads.sum())
     total = result.reads.sum()
     print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
+    if merge == True and gtffile != None:
+        result = merge_features(result, gtffile)
     return result
 
 def merge_features(counts, gtffile):
@@ -554,20 +557,24 @@ def get_mirbase_sequences(species='hsa', n=2):
     df = df.drop_duplicates('name')
     return df
 
-def build_mirbase_index(species, n=2):
+def build_mirbase_index(species, aligner='bowtie', n=2):
     """Build species-specific mirbase bowtie index
        Args:
            species: 3-letter code for species
+           aligner: which aligner to build for
            n: bases to extend around ends of mature sequence
     """
+
     mirs = get_mirbase_sequences(species, n)
     print ('got %s sequences' %len(mirs))
     idxname = 'mirbase-'+species
     outfile = '%s.fa' %idxname
     utils.dataframe_to_fasta(mirs, seqkey='sequence', idkey='name',
                             outfile=outfile)
-    build_bowtie_index(outfile, 'indexes')
-    build_subread_index(outfile, 'indexes')
+    if aligner == 'bowtie':
+        build_bowtie_index(outfile, 'indexes')
+    elif aligner == 'subread':
+        build_subread_index(outfile, 'indexes')
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
@@ -592,7 +599,7 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
     elif aligner == 'subread':
         global SUBREAD_INDEXES
         SUBREAD_INDEXES = 'indexes'
-    db = build_mirbase_index(species)
+    db = build_mirbase_index(species, aligner)
 
     #now map to the mirbase index for all files
     res = map_rnas(files, [db], outpath, overwrite=overwrite, aligner=aligner, **kwargs)
@@ -677,17 +684,20 @@ def bwa_align(infile, ref=None, bowtie_index=None, outfile=None):
     result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
     return
 
-def build_bowtie_index(fastafile, path):
+def build_bowtie_index(fastafile, path=None):
     """Build a bowtie index"""
 
     name = os.path.splitext(fastafile)[0]
     cmd = 'bowtie-build -f %s %s' %(fastafile, name)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     files = glob.glob(name+'*.ebwt')
+    if path == None:
+        path = BOWTIE_INDEXES
     if not os.path.exists(path):
         os.mkdir(path)
     for f in files:
-        shutil.move(f, os.path.join(path, f))
+        shutil.move(f, os.path.join(path,os.path.basename(f)))
+
         #shutil.move(f, path)
     return
 
