@@ -333,8 +333,8 @@ def get_trna_fragments(samfile, fastafile, truecounts, bedfile=None):
     refs = utils.fasta_to_dataframe(fastafile)
     #get rna structure for reference seqs?
     #refs['structure'] = refs.apply(lambda r: utils.rnafold(r.sequence)[0],1)
-    a = utils.get_aligned_reads(samfile)
-    a = a.merge(truecounts, on='seq')
+    a = utils.get_aligned_reads(samfile, truecounts)
+    #a = a.merge(truecounts, on='seq')
     print ('%s total sequences with %s counts' %(len(a),a.reads.sum()))
     if len(a) == 0:
         return

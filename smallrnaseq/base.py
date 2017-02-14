@@ -140,16 +140,20 @@ def gtf_to_dataframe(gtf=None, gtf_file=None, index='transcript_id'):
         print ('no exon_id field')
     return df
 
-def count_aligned_features(samfile, features, truecounts=None):
+def count_features(samfile, features=None, gtffile=None, truecounts=None):
     """Count reads in features from an alignment, if no truecounts we
        assume a non-collapsed file was used to map
        Args:
            samfile: mapped sam file
+           gtffile: feature file
            features: annotations read from bed or gtf file
            truecounts: read counts from original (un-collapsed) file
        Returns: dataframe of genes with total counts
     """
 
+    if gtffile != None:
+        gtf = HTSeq.GFF_Reader(gtffile)
+        features = get_exons(gtf)
     sam = HTSeq.SAM_Reader(samfile)
     if type(truecounts) is pd.DataFrame:
         truecounts = {r.seq: r['reads'] for i,r in truecounts.iterrows()}
@@ -185,10 +189,10 @@ def count_aligned_features(samfile, features, truecounts=None):
     print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
     return result
 
-def merge_features(counts, gtf_file):
+def merge_features(counts, gtffile):
     """Merge counts with dataframe containing original gtf info"""
 
-    gtf = HTSeq.GFF_Reader(gtf_file)
+    gtf = HTSeq.GFF_Reader(gtffile)
     df = gtf_to_dataframe(gtf)
     hits = counts.merge(df, left_on='name', right_on='transcript_id', how='inner')
     #hits = hits.sort_values(by='reads',ascending=False)
@@ -438,7 +442,7 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
         countfile = os.path.join(outpath, '%s.csv' %label)
         readcounts = pd.read_csv(countfile, index_col=0)
         #count
-        hits = count_aligned_features(samfile, exons, readcounts)
+        hits = count_features(samfile, exons, readcounts)
         #print hits[:10]
         hits['label'] = label
         hits['genome'] = ref
