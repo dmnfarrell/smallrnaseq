@@ -538,7 +538,7 @@ def get_mature(r, key='mature1', n=2):
         s = p[i-n:i+len(m)+n]
     return pd.Series([name,s],index=['name','sequence'])
 
-def get_mirbase_sequences(species='hsa', n=2):
+def get_mirbase_sequences(species='hsa', pad=2, dna=False):
     """Extract species specific sequences from mirbase file.
        Args:
            species: 3-letter code for species
@@ -548,16 +548,19 @@ def get_mirbase_sequences(species='hsa', n=2):
     """
 
     df = pd.read_csv(MIRBASE)
-    df = df[df.species==species]
+    if species != None:
+        df = df[df.species==species]
     #get both 5p and 3p seqs for each mirna
-    m1 = df.apply(lambda x: get_mature(x, n=n), 1)
-    m2 = df.apply(lambda x: get_mature(x, 'mature2', n), 1)
+    m1 = df.apply(lambda x: get_mature(x, n=pad), 1)
+    m2 = df.apply(lambda x: get_mature(x, 'mature2', pad), 1)
     df = pd.concat([m1,m2]).dropna().reset_index(drop=True)
     df = df.dropna()
     df = df.drop_duplicates('name')
+    if dna == True:
+        df['sequence'] = df.sequence.str.replace('U','T')
     return df
 
-def build_mirbase_index(species, aligner='bowtie', n=2):
+def build_mirbase_index(species, aligner='bowtie', pad=2):
     """Build species-specific mirbase bowtie index
        Args:
            species: 3-letter code for species
@@ -565,7 +568,7 @@ def build_mirbase_index(species, aligner='bowtie', n=2):
            n: bases to extend around ends of mature sequence
     """
 
-    mirs = get_mirbase_sequences(species, n)
+    mirs = get_mirbase_sequences(species, pad)
     print ('got %s sequences' %len(mirs))
     idxname = 'mirbase-'+species
     outfile = '%s.fa' %idxname
@@ -578,7 +581,7 @@ def build_mirbase_index(species, aligner='bowtie', n=2):
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
-                 aligner='bowtie', **kwargs):
+                 aligner='bowtie', pad=2, **kwargs):
     """Map multiple fastq files to mirbase mature sequences and get
        count results into one file. Used for counting of known miRNAs.
        Species: three letter name of species using mirbase convention
@@ -599,7 +602,7 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
     elif aligner == 'subread':
         global SUBREAD_INDEXES
         SUBREAD_INDEXES = 'indexes'
-    db = build_mirbase_index(species, aligner)
+    db = build_mirbase_index(species, aligner, pad)
 
     #now map to the mirbase index for all files
     res = map_rnas(files, [db], outpath, overwrite=overwrite, aligner=aligner, **kwargs)
@@ -608,11 +611,10 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
     res.to_csv('mirna_counts.csv')
     return res
 
-def map_mirnas(files, ref, outpath='mirna_results', overwrite=False):
-    """Map reads to detect mirnas in genome. This means optional removal
-       of other rnas first and then alignment to the genome using aligner
-       parameters tuned for reads ~17-25 bp."""
+def count_isomirs():
+    """Count mirna isomirs"""
 
+    #use samfile to count reads
     return
 
 def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):

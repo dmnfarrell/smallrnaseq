@@ -13,7 +13,8 @@ setup(
     package_data={'smallrnaseq': ['data/*','*.R']},
     install_requires=['pandas>=0.17',
                       'biopython>=1.5',
-                      'HTSeq>=0.6'],
+                      'HTSeq>=0.6',
+                      'seaborn>=0.7'],
     entry_points = {
         'console_scripts': [
             'smallrnaseq=smallrnaseq.app:main',
