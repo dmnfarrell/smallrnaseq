@@ -21,7 +21,32 @@
 """
 
 from __future__ import absolute_import, print_function
-from smallrnaseq import base, analysis, utils
+import sys, os, string, types
+from smallrnaseq import config, base, analysis, utils
+
+def run(opts):
+    """Run mapping routines based on conf file"""
+
+    print (opts)
+    fastafile = opts['filename']
+    path = opts['path']
+    if path != '':
+        files = glob.glob(os.path.join(path,'*.fastq'))
+    elif fastafile != '':
+        files = [fastafile]
+    else:
+        print ('provide at least one file or folder')
+        return
+    #base.build_bowtie_index(reffile, opts['bowtie_indexes'])
+    base.BOWTIE_PARAMS = opts['bowtie_params']
+
+    if opts['mirbase'] == 1:
+        base.map_mirbase(files, outpath=opts['output'], pad5=3,
+                         aligner='bowtie', species=opts['species'])
+    else:
+        pass
+        #res = base.map_rnas(files, outpath, aligner='bowtie')
+    return
 
 def main():
     """Run the application from outside the module - used for
@@ -39,16 +64,19 @@ def main():
 
     opts, remainder = parser.parse_args()
     if opts.test == True:
-        pass
+        #run tests
+        from smallrnaseq.tests import BasicTests
+        #import unittest
+        #unittest.main()
     elif opts.run == True:
         if opts.config == None:
             print ('No config file provided.')
-            base.write_default_config('default.conf', defaults=base.baseoptions)
+            config.write_default_config('default.conf', defaults=config.baseoptions)
             return
-        cp = base.parse_config(opts.config)
-        options = base.get_options(cp)
+        cp = config.parse_config(opts.config)
+        options = config.get_options(cp)
         print (options)
-        #base.map_rnas(**options)
+        run(options)
 
 if __name__ == '__main__':
     main()

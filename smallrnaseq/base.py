@@ -26,7 +26,7 @@ import types, re, subprocess, glob, shutil
 import pylab as plt
 import numpy as np
 import pandas as pd
-import configparser
+
 try:
     import HTSeq
 except:
@@ -49,62 +49,6 @@ SUBREAD_INDEXES = None
 SUBREAD_PARAMS = '-m 2 -M 2'
 BWA_INDEXES = None
 
-baseoptions = {'base': [('input',''),('adapter',''),('filetype','fastq'),
-                    ('bowtieindex',''),('refgenome',''),('species','hsa'),
-                    ('overwrite',1)]}
-
-def write_default_config(conffile='default.conf', defaults={}):
-    """Write a default config file"""
-
-    if not os.path.exists(conffile):
-        cp = createConfigParserfromDict(defaults, ['base'])
-        cp.write(open(conffile,'w'))
-        print ('wrote config file %s' %conffile)
-    return conffile
-
-def createConfigParserfromDict(data, sections, **kwargs):
-    """Helper method to create a ConfigParser from a dict and/or keywords"""
-
-    cp = configparser.ConfigParser()
-    for s in sections:
-        cp.add_section(s)
-        if not data.has_key(s):
-            continue
-        for i in data[s]:
-            name,val = i
-            cp.set(s, name, val)
-    #use kwargs to create specific settings in the appropriate section
-    for s in cp.sections():
-        opts = cp.options(s)
-        for k in kwargs:
-            if k in opts:
-                cp.set(s, k, kwargs[k])
-    return cp
-
-def parse_config(conffile=None):
-    """Parse a configparser file"""
-
-    f = open(conffile,'r')
-    cp = configparser.ConfigParser()
-    try:
-        cp.read(conffile)
-    except Exception as e:
-        print ('failed to read config file! check format')
-        print ('Error returned:', e)
-        return
-    f.close()
-    return cp
-
-def get_options(cp):
-    """Makes sure boolean opts are parsed"""
-
-    options = cp._sections['base']
-    for o in options:
-        try:
-            options[o] = cp.getboolean('base', o)
-        except:
-            pass
-    return options
 
 def first(x):
     return x.iloc[0]
