@@ -44,7 +44,7 @@ path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
 MIRBASE = os.path.join(datadir, 'miRBase_all.csv')
 BOWTIE_INDEXES = None
-BOWTIE_PARAMS = '-v 1 --best'
+BOWTIE_PARAMS = None
 SUBREAD_INDEXES = None
 SUBREAD_PARAMS = '-m 2 -M 2'
 BWA_INDEXES = None
@@ -526,8 +526,9 @@ def collapse_files(files, outpath, **kwargs):
         outfiles.append(cfile)
     return outfiles
 
-def get_mature(r, key='mature1', n=2):
+def _get_mature(r, key='mature1', pad5=0, pad3=0):
     """get mature sequences from mirbase file, row-based dataframe function"""
+
     p = r.precursor
     name = r[key]
     m = r[key+'_seq']
@@ -535,10 +536,10 @@ def get_mature(r, key='mature1', n=2):
         s=None
     else:
         i = p.find(m)
-        s = p[i-n:i+len(m)+n]
+        s = p[i-pad5:i+len(m)+pad3]
     return pd.Series([name,s],index=['name','sequence'])
 
-def get_mirbase_sequences(species='hsa', pad=2, dna=False):
+def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
     """Extract species specific sequences from mirbase file.
        Args:
            species: 3-letter code for species
@@ -551,8 +552,8 @@ def get_mirbase_sequences(species='hsa', pad=2, dna=False):
     if species != None:
         df = df[df.species==species]
     #get both 5p and 3p seqs for each mirna
-    m1 = df.apply(lambda x: get_mature(x, n=pad), 1)
-    m2 = df.apply(lambda x: get_mature(x, 'mature2', pad), 1)
+    m1 = df.apply(lambda x: _get_mature(x, 'mature1', pad5, pad3), 1)
+    m2 = df.apply(lambda x: _get_mature(x, 'mature2', pad5, pad3), 1)
     df = pd.concat([m1,m2]).dropna().reset_index(drop=True)
     df = df.dropna()
     df = df.drop_duplicates('name')
@@ -560,7 +561,7 @@ def get_mirbase_sequences(species='hsa', pad=2, dna=False):
         df['sequence'] = df.sequence.str.replace('U','T')
     return df
 
-def build_mirbase_index(species, aligner='bowtie', pad=2):
+def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5):
     """Build species-specific mirbase bowtie index
        Args:
            species: 3-letter code for species
@@ -568,7 +569,7 @@ def build_mirbase_index(species, aligner='bowtie', pad=2):
            n: bases to extend around ends of mature sequence
     """
 
-    mirs = get_mirbase_sequences(species, pad)
+    mirs = get_mirbase_sequences(species, pad5, pad3)
     print ('got %s sequences' %len(mirs))
     idxname = 'mirbase-'+species
     outfile = '%s.fa' %idxname
@@ -581,7 +582,7 @@ def build_mirbase_index(species, aligner='bowtie', pad=2):
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
-                 aligner='bowtie', pad=2, **kwargs):
+                 aligner='bowtie', pad5=3, pad=5, **kwargs):
     """Map multiple fastq files to mirbase mature sequences and get
        count results into one file. Used for counting of known miRNAs.
        Species: three letter name of species using mirbase convention
@@ -597,18 +598,22 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
 
     #generate new mirbase bowtie index
     if aligner == 'bowtie':
-        global BOWTIE_INDEXES
+        global BOWTIE_INDEXES, BOWTIE_PARAMS
         BOWTIE_INDEXES = 'indexes'
+        #global BOWTIE_PARAMS
+        if BOWTIE_PARAMS == None:
+            BOWTIE_PARAMS = '-n 1 -l 20'
     elif aligner == 'subread':
-        global SUBREAD_INDEXES
+        global SUBREAD_INDEXES, SUBREAD_PARAMS
         SUBREAD_INDEXES = 'indexes'
+        #SUBREAD_PARAMS = '-m 2 -M 2'
     db = build_mirbase_index(species, aligner, pad)
 
     #now map to the mirbase index for all files
     res = map_rnas(files, [db], outpath, overwrite=overwrite, aligner=aligner, **kwargs)
     #merge labels with results
     res = res.merge(labels, on='label')
-    res.to_csv('mirna_counts.csv')
+    res.to_csv('mature_counts.csv')
     return res
 
 def count_isomirs():
