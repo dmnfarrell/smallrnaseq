@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function
 import sys, os
 import pandas as pd
 import unittest
-from . import base, analysis, mirdeep2, srnabench
+from . import config, base, analysis, mirdeep2, srnabench
 
 class BasicTests(unittest.TestCase):
     """Basic tests for mirnaseq"""
@@ -65,9 +65,9 @@ class BasicTests(unittest.TestCase):
     def test_mirdeep(self):
         """mirdeep2 script test"""
 
-        config = 'testing/test_mdp.conf'
-        cp = base.parse_config(config)
-        options = base.get_options(cp)
+        conffile = 'testing/test_mdp.conf'
+        cp = config.parse_config(conffile)
+        options = config.get_options(cp)
         #print (options)
         #mirdeep2.run_multiple(**options)
         return

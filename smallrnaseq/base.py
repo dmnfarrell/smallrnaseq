@@ -306,6 +306,10 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         overwrite: whether to overwrite temp files
     """
 
+    if aligner == 'bowtie':
+        global BOWTIE_PARAMS
+        if BOWTIE_PARAMS == None:
+            BOWTIE_PARAMS = '-v 1 --best'
     if not os.path.exists(outpath):
         os.mkdir(outpath)
     if overwrite == True:
@@ -477,10 +481,12 @@ def _get_mature(r, key='mature1', pad5=0, pad3=0):
     name = r[key]
     m = r[key+'_seq']
     if pd.isnull(m):
-        s=None
+        s = np.nan
     else:
         i = p.find(m)
-        s = p[i-pad5:i+len(m)+pad3]
+        start = i-pad5
+        if start < 0: start = 0
+        s = p[start:i+len(m)+pad3]
     return pd.Series([name,s],index=['name','sequence'])
 
 def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
@@ -499,7 +505,7 @@ def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
     m1 = df.apply(lambda x: _get_mature(x, 'mature1', pad5, pad3), 1)
     m2 = df.apply(lambda x: _get_mature(x, 'mature2', pad5, pad3), 1)
     df = pd.concat([m1,m2]).dropna().reset_index(drop=True)
-    df = df.dropna()
+    df = df[df.sequence.str.len()>2]
     df = df.drop_duplicates('name')
     if dna == True:
         df['sequence'] = df.sequence.str.replace('U','T')
@@ -544,7 +550,6 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
     if aligner == 'bowtie':
         global BOWTIE_INDEXES, BOWTIE_PARAMS
         BOWTIE_INDEXES = 'indexes'
-        #global BOWTIE_PARAMS
         if BOWTIE_PARAMS == None:
             BOWTIE_PARAMS = '-n 1 -l 20'
     elif aligner == 'subread':
@@ -609,8 +614,10 @@ def plot_fractions(df, label=None, path=None):
         label = df.columns[0]
     if label != None:
         explode = [0.05 for i in range(len(df))]
-        axs = df.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',startangle=0,figsize=(6,6),
-                   labels=None,legend=True,pctdistance=1.1,explode=explode,fontsize=10)
+        axs = df.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',
+                      startangle=0,figsize=(6,6),
+                      labels=None,legend=True,pctdistance=1.1,
+                      explode=explode,fontsize=10)
     else:
         l = df.T.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
         plt.legend(ncol=4)
@@ -697,9 +704,11 @@ def subread_align(infile, ref, outfile):
         return
     ref = os.path.join(SUBREAD_INDEXES, ref)
     params = '-t 0 --SAMoutput -T 2 %s' %SUBREAD_PARAMS
+    from subprocess import Popen, PIPE
     cmd = 'subread-align %s -i %s -r %s -o %s' %(params, ref, infile, outfile)
     print (cmd)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash',
+                                     stderr= subprocess.STDOUT)
     return
 
 def featurecounts(samfile, gtffile):

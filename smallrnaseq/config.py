@@ -31,12 +31,13 @@ datadir = os.path.join(path, 'data')
 
 
 baseoptions = {'base': [('filename',''),('path',''),('filetype','fastq'),
-                    ('indexes','indexes'),('aligner','bowtie'),
+                    ('indexes',''),('index_path','indexes'),
+                    ('output','smrna_results'),
+                    ('aligner','bowtie'),
                     ('bowtie_params','-v 1 --best'),
                     ('ref_genome',''),('species','hsa'),
-                    ('mirbase',False),('pad5',3),('pad3',5),
-                    ('db',''),
-                    ('output','smrna_results')]}
+                    ('mirbase',0),('pad5',3),('pad3',5)
+                    ]}
 
 def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
@@ -90,3 +91,8 @@ def get_options(cp):
         except:
             pass
     return options
+
+def print_options(options):
+    for key in options:
+        print (key, ':', options[key])
+    print ()

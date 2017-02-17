@@ -27,25 +27,34 @@ from smallrnaseq import config, base, analysis, utils
 def run(opts):
     """Run mapping routines based on conf file"""
 
-    print (opts)
+    #print (opts)
     fastafile = opts['filename']
     path = opts['path']
+    out = opts['output']
     if path != '':
         files = glob.glob(os.path.join(path,'*.fastq'))
     elif fastafile != '':
         files = [fastafile]
     else:
-        print ('provide at least one file or folder')
+        print ('ou should provide at least one file or folder')
         return
-    #base.build_bowtie_index(reffile, opts['bowtie_indexes'])
+
+    base.BOWTIE_INDEXES = opts['index_path']
     base.BOWTIE_PARAMS = opts['bowtie_params']
 
     if opts['mirbase'] == 1:
-        base.map_mirbase(files, outpath=opts['output'], pad5=3,
+        #count with mirbase
+        base.map_mirbase(files, outpath=out, pad5=3,
                          aligner='bowtie', species=opts['species'])
     else:
-        pass
-        #res = base.map_rnas(files, outpath, aligner='bowtie')
+        #map to provided indexes  (create beforehand?)
+        #base.build_bowtie_index(reffile, opts['bowtie_indexes'])
+        indexes = opts['indexes'].split(',')
+        res = base.map_rnas(files, indexes, out, aligner='bowtie')
+        counts = base.pivot_count_data(res, idxcols=['name','db'])
+        counts.to_csv( 'rna_counts.csv', index=False)
+        print ('results saved to rna_counts.csv')
+    print ('intermediate files saved to %s' %out)
     return
 
 def main():
@@ -75,8 +84,12 @@ def main():
             return
         cp = config.parse_config(opts.config)
         options = config.get_options(cp)
-        print (options)
+        print ('using the following options:')
+        print ('----------------------------')
+        config.print_options(options)
         run(options)
+    else:
+        print ('you need a config file')
 
 if __name__ == '__main__':
     main()
