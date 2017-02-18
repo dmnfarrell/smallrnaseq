@@ -3,8 +3,17 @@ CHANGES
 =======
 
 ------
+0.2.0
+------
+
+Added command line functions
+Re-arrangement of modules
+Added feature counting
+
+------
 0.1.0
 ------
 
+Renamed from old mirnaseq name
 Updated modules for adding to pip
 Python 3 compatible

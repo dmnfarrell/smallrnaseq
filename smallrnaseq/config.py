@@ -32,11 +32,12 @@ datadir = os.path.join(path, 'data')
 
 baseoptions = {'base': [('filename',''),('path',''),('filetype','fastq'),
                     ('indexes',''),('index_path','indexes'),
-                    ('output','smrna_results'),
+                    ('ref_genome',''),
+                    ('output','smrna_results'),('add_labels',0),
+                    ('read_stack',0),
                     ('aligner','bowtie'),
                     ('bowtie_params','-v 1 --best'),
-                    ('ref_genome',''),('species','hsa'),
-                    ('mirbase',0),('pad5',3),('pad3',5)
+                    ('mirbase',0),('species','hsa'),('pad5',3),('pad3',5)
                     ]}
 
 def write_default_config(conffile='default.conf', defaults={}):

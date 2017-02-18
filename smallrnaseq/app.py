@@ -22,15 +22,17 @@
 
 from __future__ import absolute_import, print_function
 import sys, os, string, types
+import glob
 from smallrnaseq import config, base, analysis, utils
 
 def run(opts):
-    """Run mapping routines based on conf file"""
+    """Run batch mapping routines based on conf file"""
 
     #print (opts)
     fastafile = opts['filename']
     path = opts['path']
     out = opts['output']
+    indexes = opts['indexes'].split(',')
     if path != '':
         files = glob.glob(os.path.join(path,'*.fastq'))
     elif fastafile != '':
@@ -44,17 +46,33 @@ def run(opts):
 
     if opts['mirbase'] == 1:
         #count with mirbase
+        print ('mapping to mirbase')
         base.map_mirbase(files, outpath=out, pad5=3,
-                         aligner='bowtie', species=opts['species'])
+                         aligner='bowtie', species=opts['species'],
+                         add_labels=opts['add_labels'])
+    elif opts['ref_genome'] != '':
+        print ('mapping to reference genome')
+        res = base.map_genome_features(files, opts['ref_genome'], opts['features'],
+                                 outpath=out, aligner='bowtie')
+        counts = base.pivot_count_data(res, idxcols=['name','gene_name','gene_biotype'])
+        counts.to_csv( 'feature_counts.csv', index=False)
+        print ('results saved to feature_counts.csv')
     else:
-        #map to provided indexes  (create beforehand?)
-        #base.build_bowtie_index(reffile, opts['bowtie_indexes'])
-        indexes = opts['indexes'].split(',')
-        res = base.map_rnas(files, indexes, out, aligner='bowtie')
-        counts = base.pivot_count_data(res, idxcols=['name','db'])
-        counts.to_csv( 'rna_counts.csv', index=False)
+        #map to provided libraries
+        print ('mapping to these libraries: %s' %indexes)
+        res = base.map_rnas(files, indexes, out, aligner='bowtie',
+                            add_labels=opts['add_labels'])
+        if res is None:
+            print ('empty data returned. did alignments run?')
+            return
         print ('results saved to rna_counts.csv')
     print ('intermediate files saved to %s' %out)
+    return
+
+def build_indexes(filename):
+    path = 'indexes'
+    base.build_bowtie_index(filename, path)
+    base.build_subread_index(filename, path)
     return
 
 def main():
@@ -68,6 +86,8 @@ def main():
                         help="config file to use", metavar="FILE")
     parser.add_option("-r", "--run", dest="run",  action="store_true",
                         default=False, help="run smallrna mapping")
+    parser.add_option("-b", "--build", dest="build",
+                        help="build an index for given file", metavar="FILE")
     parser.add_option("-t", "--test", dest="test",  action="store_true",
                         default=False, help="run tests")
 
@@ -77,6 +97,8 @@ def main():
         from smallrnaseq.tests import BasicTests
         #import unittest
         #unittest.main()
+    elif opts.build != None:
+        build_indexes(opts.build)
     elif opts.run == True:
         if opts.config == None:
             print ('No config file provided.')

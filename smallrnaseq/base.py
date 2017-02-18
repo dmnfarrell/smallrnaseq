@@ -191,7 +191,10 @@ def count_aligned(samfile, readcounts=None, by='name'):
     counts = counts.reset_index().sort_values('reads',ascending=False)
     mapped = float(counts[counts.name!='_unmapped'].reads.sum())
     total = counts.reads.sum()
-    print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
+    if len(counts) > 0:
+        print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
+    else:
+        print ('no counts found')
     counts = counts[counts.name!='_unmapped']
     return counts
 
@@ -296,7 +299,8 @@ def deseq_normalize(df):
     return df
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
-             norm_method='quantile', use_remaining=False, overwrite=True, verbose=False):
+             norm_method='quantile', use_remaining=False, overwrite=True,
+             outfile='rna_counts.csv', add_labels=False):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
         files: input fastq read files
@@ -306,10 +310,6 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         overwrite: whether to overwrite temp files
     """
 
-    if aligner == 'bowtie':
-        global BOWTIE_PARAMS
-        if BOWTIE_PARAMS == None:
-            BOWTIE_PARAMS = '-v 1 --best'
     if not os.path.exists(outpath):
         os.mkdir(outpath)
     if overwrite == True:
@@ -318,41 +318,56 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         remove_files(outpath, '*_r.fa')
     cfiles = collapse_files(files, outpath)
     if len(cfiles)==0:
-        print ('no files to align')
+        print ('WARNING no files to align')
         return
     print (cfiles)
     result = []
+
+    #make sample ids
+    if add_labels == True:
+        names = get_base_names(files)
+        labels = assign_sample_ids(names)
+
     for cfile in cfiles:
         rem = None
-        label = os.path.splitext(os.path.basename(cfile))[0]
-        countfile = os.path.join(outpath, '%s.csv' %label)
+        filename = os.path.splitext(os.path.basename(cfile))[0]
+        countfile = os.path.join(outpath, '%s.csv' %filename)
         readcounts = pd.read_csv(countfile, index_col=0)
         total = readcounts.reads.sum()
-        #print total
+        print (filename)
         for idx in indexes:
             if use_remaining == True and rem != None:
                 query = rem
             else:
                 query = cfile
-            #print query
-            samfile = os.path.join(outpath, '%s_%s.sam' %(label,idx))
-            rem = os.path.join(outpath, label+'_r.fa')
-            #print (samfile)
+            samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
+            rem = os.path.join(outpath, filename+'_r.fa')
+
             if aligner == 'bowtie':
-                bowtie_align(query, idx, outfile=samfile, remaining=rem, verbose=verbose)
+                bowtie_align(query, idx, outfile=samfile, remaining=rem, verbose=False)
             elif aligner == 'subread':
                 subread_align(query, idx, samfile)
             counts = count_aligned(samfile, readcounts)
-            counts['label'] = label
+            if len(counts) == 0:
+                print ('WARNING: no counts found for %s.' %idx)
+                continue
+
+            if add_labels == True:
+                counts['label'] = labels[filename]
+            else:
+                counts['label'] = filename
             counts['db'] = idx
             counts['fraction'] = counts.reads/total
-            #print counts[:2]
             result.append(counts)
             #output read stack file
             #print_read_stack(samfile, fastaref, readcounts=readcounts,
             #                 outfile='%s_%s_reads.txt' %(label,idx), cutoff=1)
-
+        print()
+    if len(result) == 0:
+        return
     result = pd.concat(result)
+    counts = pivot_count_data(result, idxcols=['name','db'])
+    counts.to_csv( outfile, index=False )
     print ('done')
     return result
 
@@ -376,7 +391,7 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
         features = HTSeq.GFF_Reader(gtf_file)
     elif ext == '.bed':
         features = HTSeq.BED_Reader(gtf_file)
-    #use exons for rna-seq
+
     exons = get_exons(features)
 
     cfiles = collapse_files(files, outpath)
@@ -392,13 +407,13 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
         #get true read counts for collapsed file
         countfile = os.path.join(outpath, '%s.csv' %label)
         readcounts = pd.read_csv(countfile, index_col=0)
-        #count
-        hits = count_features(samfile, exons, readcounts)
-        #print hits[:10]
+        #count features
+        hits = count_features(samfile, features=exons, truecounts=readcounts)
         hits['label'] = label
         hits['genome'] = ref
         result.append(hits)
     result = pd.concat(result)
+    result = merge_features(result, gtf_file)
     return result
 
 def get_base_names(files):
@@ -406,16 +421,21 @@ def get_base_names(files):
     return names
 
 def assign_sample_ids(names):
-    """Assign labels/ids for sample names e.g. files"""
+    """Assign new ids for sample filenames e.g. files. Useful for
+       replacing long file names with short ids.
+       Returns: dict of filename/id values
+    """
 
-    l=[]
     i=1
+    labels = {}
     for n in names:
         sid = 's%02d' %i
-        l.append([sid,n])
+        labels[n] = sid
         i+=1
-    l = pd.DataFrame(l,columns=['id','label'])
-    return l
+    l = pd.DataFrame.from_dict(labels,orient='index')
+    l.columns = ['id']; l.index.name='filename'
+    l.to_csv('sample_labels.csv')
+    return labels
 
 def remove_files(path, wildcard=''):
     files = glob.glob(os.path.join(path, wildcard))
@@ -541,11 +561,6 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
     if not os.path.exists(outpath):
         os.mkdir(outpath)
 
-    #make sample ids
-    names = get_base_names(files)
-    labels = assign_sample_ids(names)
-    print (labels)
-
     #generate new mirbase bowtie index
     if aligner == 'bowtie':
         global BOWTIE_INDEXES, BOWTIE_PARAMS
@@ -557,18 +572,14 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
         SUBREAD_INDEXES = 'indexes'
         #SUBREAD_PARAMS = '-m 2 -M 2'
     db = build_mirbase_index(species, aligner, pad)
-
     #now map to the mirbase index for all files
-    res = map_rnas(files, [db], outpath, overwrite=overwrite, aligner=aligner, **kwargs)
-    #merge labels with results
-    res = res.merge(labels, on='label')
-    res.to_csv('mature_counts.csv')
+    res = map_rnas(files, [db], outpath, overwrite=overwrite, aligner=aligner,
+                    outfile='mirbase_mature_counts.csv', **kwargs)
     return res
 
 def count_isomirs():
     """Count mirna isomirs"""
 
-    #use samfile to count reads
     return
 
 def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):
@@ -642,21 +653,14 @@ def bwa_align(infile, ref=None, bowtie_index=None, outfile=None):
     result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
     return
 
-def build_bowtie_index(fastafile, path=None):
+def build_bowtie_index(fastafile, path):
     """Build a bowtie index"""
 
     name = os.path.splitext(fastafile)[0]
     cmd = 'bowtie-build -f %s %s' %(fastafile, name)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     files = glob.glob(name+'*.ebwt')
-    if path == None:
-        path = BOWTIE_INDEXES
-    if not os.path.exists(path):
-        os.mkdir(path)
-    for f in files:
-        shutil.move(f, os.path.join(path,os.path.basename(f)))
-
-        #shutil.move(f, path)
+    utils.move_files(files, path)
     return
 
 def build_subread_index(fastafile, path):
@@ -665,12 +669,9 @@ def build_subread_index(fastafile, path):
     name = os.path.splitext(fastafile)[0]
     cmd = 'subread-buildindex -o %s %s' %(name,fastafile)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    if not os.path.exists(path):
-        os.mkdir(path)
     exts = ['.00.b.array','.00.b.tab','.files','.reads']
     files = [name+i for i in exts]
-    for f in files:
-        shutil.move(f, os.path.join(path, f))
+    utils.move_files(files, path)
     return
 
 def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
@@ -691,7 +692,10 @@ def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
     cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
     if verbose == True:
         print (cmd)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    try:
+        result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    except subprocess.CalledProcessError as e:
+        print (str(e.output))
     if verbose == True:
         print (result)
     return remaining

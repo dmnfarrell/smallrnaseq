@@ -35,6 +35,13 @@ try:
 except:
     'HTSeq not present'
 
+def move_files(files, path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+    for f in files:
+        shutil.move(f, os.path.join(path,os.path.basename(f)))
+    return
+
 def gzipfile(filename, remove=False):
     """Compress a file with gzip"""
 

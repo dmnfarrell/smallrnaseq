@@ -33,7 +33,7 @@ class BasicTests(unittest.TestCase):
 
         base.BOWTIE_PARAMS = '-v 0 --best'
         fastafile = os.path.join(base.datadir, 'bosTau8-tRNAs.fa')
-        base.build_bowtie_index(fastafile)
+        base.build_bowtie_index(fastafile, path='indexes')
         path = os.path.join(self.testdir, 'ncrna_map')
         f = os.path.join(base.datadir, 'bovine_serum_sample.fastq')
         res = base.map_rnas([f], ['bosTau8-tRNAs'], path, overwrite=True, aligner='bowtie')
