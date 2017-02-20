@@ -23,7 +23,7 @@
 from __future__ import absolute_import, print_function
 import sys, os, string, types
 import glob
-from smallrnaseq import config, base, analysis, utils
+from smallrnaseq import config, base, analysis, utils, aligners
 
 def run(opts):
     """Run batch mapping routines based on conf file"""
@@ -41,8 +41,8 @@ def run(opts):
         print ('ou should provide at least one file or folder')
         return
 
-    base.BOWTIE_INDEXES = opts['index_path']
-    base.BOWTIE_PARAMS = opts['bowtie_params']
+    aligners.BOWTIE_INDEXES = opts['index_path']
+    aligners.BOWTIE_PARAMS = opts['bowtie_params']
 
     if opts['mirbase'] == 1:
         #count with mirbase
@@ -71,8 +71,8 @@ def run(opts):
 
 def build_indexes(filename):
     path = 'indexes'
-    base.build_bowtie_index(filename, path)
-    base.build_subread_index(filename, path)
+    aligners.build_bowtie_index(filename, path)
+    aligners.build_subread_index(filename, path)
     return
 
 def main():
@@ -88,15 +88,19 @@ def main():
                         default=False, help="run smallrna mapping")
     parser.add_option("-b", "--build", dest="build",
                         help="build an index for given file", metavar="FILE")
-    parser.add_option("-t", "--test", dest="test",  action="store_true",
-                        default=False, help="run tests")
+    parser.add_option("-f", "--infile", dest="infile",
+                        help="collapse reads in input file", metavar="FILE")
+    parser.add_option("-l", "--collapse", dest="collapse", action="store_true",
+                        default=False, help="collapse reads in input file")
+    parser.add_option("-t", "--trim", dest="trim",  type='string',
+                        help="trim given adapter")
 
     opts, remainder = parser.parse_args()
-    if opts.test == True:
-        #run tests
-        from smallrnaseq.tests import BasicTests
-        #import unittest
-        #unittest.main()
+    if opts.infile != None:
+        if opts.trim != None:
+            utils.trim_adapters(opts.infile, adapters=opts.trim, outfile='cut.fastq')
+        if opts.collapse == True:
+            base.collapse_reads(opts.infile)
     elif opts.build != None:
         build_indexes(opts.build)
     elif opts.run == True:
@@ -112,6 +116,10 @@ def main():
         run(options)
     else:
         print ('you need a config file')
+        #run tests
+        #from smallrnaseq.tests import BasicTests
+        #import unittest
+        #unittest.main()
 
 if __name__ == '__main__':
     main()

@@ -256,19 +256,25 @@ def get_mifam():
     df = pd.DataFrame(data,columns=['id','name','family'])
     return df
 
-def trim_adapters(infile, adapters=[], outfile='cut.fastq'):
+def trim_adapters(infile, adapters=[], outfile='cut.fastq', method='default'):
     """Trim adapters using cutadapt"""
 
-    #if os.path.exists(outfile):
-    #    return
     if len(adapters) == 0:
         print ('no adapters!')
         return
     adptstr = ' -a '.join(adapters)
-    cmd = 'cutadapt -m 18 -O 5 -q 20 -a %s %s -o %s' %(adptstr,infile,outfile)
-    print (cmd)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    #print result
+    if method == 'default':
+        newfile = open( outfile, "w" )
+        fastfile = HTSeq.FastqReader(infile, "solexa")
+        a = HTSeq.Sequence(adapters[0])
+        for s in fastfile:
+            new = s.trim_right_end(a, mismatch_prop = 0.)
+            new.write_to_fastq_file( newfile )
+        newfile.close()
+    elif method == 'cutadapt':
+        cmd = 'cutadapt -m 18 -O 5 -q 20 -a %s %s -o %s' %(adptstr,infile,outfile)
+        print (cmd)
+        result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     return
 
 def cogentalignment_to_dataframe(A):
@@ -469,7 +475,7 @@ def get_aligned_reads(samfile, truecounts=None):
         counts = counts.merge(truecounts, on='seq')
     return counts
 
-def print_read_stack(reads, fastafile=None, outfile=None, name=None,
+def print_read_stack(reads=None, fastafile=None, outfile=None, name=None,
                      cutoff=0, by=None):
     """Print local read alignments from a sam file against the mapped sequence
        and save the output to a text file or stdout if no filename.
@@ -481,9 +487,9 @@ def print_read_stack(reads, fastafile=None, outfile=None, name=None,
         cutoff: don't display read with <cutoff counts
     """
 
-    if fastafile != None:
-        refs = fasta_to_dataframe(fastafile)
+    refs = fasta_to_dataframe(fastafile)
     x = reads
+
     if name != None:
         names = [name]
     else:
@@ -497,7 +503,8 @@ def print_read_stack(reads, fastafile=None, outfile=None, name=None,
 
     for n in names:
         reads = x[x.name==n]
-        #if refs:
+        reads = reads[reads.reads>cutoff]
+        #if refs is not None:
         seq = refs.ix[n].sequence
         if by == 'start':
             reads = reads.sort_values('start')
@@ -509,7 +516,7 @@ def print_read_stack(reads, fastafile=None, outfile=None, name=None,
         for idx,r in reads.iterrows():
             s = r.seq
             count = r.reads
-            if count <= cutoff: continue
+            #if count <= cutoff: continue
             #pos = seq.find(s[:6]) #improve find string
             #pos = find_subseq(seq, s)
             pos = r.start-1
@@ -530,7 +537,7 @@ def plot_read_stack(reads, refseq=None, by=None, cutoff=0, ax=None):
         seqlen = len(refseq)
     else:
         seqlen = reads.end.max()
-    reads = reads[reads.reads>=cutoff]
+    reads = reads[reads.reads>cutoff]
     if len(reads)==0:
         return
     def pos_coverage(r, p):

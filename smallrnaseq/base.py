@@ -32,7 +32,7 @@ try:
 except:
     'HTSeq not present'
 
-from . import utils
+from . import utils, aligners
 import matplotlib as mpl
 import seaborn as sns
 sns.set_style("ticks", {'axes.facecolor': '#F7F7F7',
@@ -43,11 +43,6 @@ mpl.rcParams['savefig.dpi'] = 90
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
 MIRBASE = os.path.join(datadir, 'miRBase_all.csv')
-BOWTIE_INDEXES = None
-BOWTIE_PARAMS = None
-SUBREAD_INDEXES = None
-SUBREAD_PARAMS = '-m 2 -M 2'
-BWA_INDEXES = None
 
 
 def first(x):
@@ -306,8 +301,9 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         files: input fastq read files
         indexes: bowtie indexes of annotations/genomes
         adapters: if adapters need to be trimmed
-        bowtieparams: parameters for bowtie
         overwrite: whether to overwrite temp files
+        use_remaining: only align to remaining reads after each index
+        add_labels: replace file names with short ids for columns
     """
 
     if not os.path.exists(outpath):
@@ -344,14 +340,14 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             rem = os.path.join(outpath, filename+'_r.fa')
 
             if aligner == 'bowtie':
-                bowtie_align(query, idx, outfile=samfile, remaining=rem, verbose=False)
+                aligners.bowtie_align(query, idx, outfile=samfile,
+                                      remaining=rem, verbose=False)
             elif aligner == 'subread':
-                subread_align(query, idx, samfile)
+                aligners.subread_align(query, idx, samfile)
             counts = count_aligned(samfile, readcounts)
             if len(counts) == 0:
                 print ('WARNING: no counts found for %s.' %idx)
                 continue
-
             if add_labels == True:
                 counts['label'] = labels[filename]
             else:
@@ -359,9 +355,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             counts['db'] = idx
             counts['fraction'] = counts.reads/total
             result.append(counts)
-            #output read stack file
-            #print_read_stack(samfile, fastaref, readcounts=readcounts,
-            #                 outfile='%s_%s_reads.txt' %(label,idx), cutoff=1)
+
         print()
     if len(result) == 0:
         return
@@ -452,10 +446,11 @@ def cut_files(files, outpath, adapters):
             trim_adapters(f, adapters, cut)
     return
 
-def collapse_reads(infile, outfile=None, min_length=15):
-    """Collapse identical reads and retain copy number
-      puts all seqs in memory so needs to be optimized"""
+def collapse_reads(infile, outfile=None, min_length=15, progress=False):
+    """Collapse identical reads, retaining copy number in a csv file
+       and writing collapsed reads to a new fasta file"""
 
+    from itertools import islice
     if outfile == None:
         outfile = os.path.splitext(infile)[0]+'_collapsed.fa'
     print ('collapsing reads %s' %infile)
@@ -464,19 +459,36 @@ def collapse_reads(infile, outfile=None, min_length=15):
         fastfile = HTSeq.FastqReader(infile, "solexa")
     elif ext == '.fa' or ext == '.fasta':
         fastfile = HTSeq.FastaReader(infile)
-    sequences = [(s.name, s.seq, s.descr) for s in fastfile]
-    df = pd.DataFrame(sequences, columns=['id','seq','descr'])
-    df['length'] = df.seq.str.len()
-    df = df[df.length>=min_length]
-    g = df.groupby('seq').agg({'seq':np.size})
-    g = g.rename(columns={'seq': 'reads'})
-    g = g.sort_values(by='reads',ascending=False).reset_index()
-    g['id'] = g.apply(lambda x: 'seq_'+str(x.name),axis=1)
-    utils.dataframe_to_fasta(g, outfile=outfile)
-    g.to_csv(os.path.splitext(outfile)[0]+'.csv')
-    print ('collapsed %s reads to %s' %(len(df),len(g)))
-    x = df.length.value_counts()
-    return x
+    chunks = np.arange(0,10e6,1e5)
+
+    size=2e5
+    grps=[]
+    stop=False
+    i=0
+    total = 0
+    #step over sequences in chunks of size to save memory
+    while stop is False:
+        sequences = [(s.name, s.seq, s.descr) for s in islice(fastfile, i, i+size)]
+        if len(sequences) == 0:
+            stop = True
+        x = pd.DataFrame(sequences, columns=['id','seq','descr'])
+        x['length'] = x.seq.str.len()
+        x = x[x.length>=min_length]
+        g = x.groupby('seq').agg({'seq':np.size})
+        grps.append(g)
+        i+=size
+        total += len(x)
+        if progress == True:
+            print (total)
+    df = pd.concat(grps, 1)
+    df = pd.DataFrame(df.sum(1).astype(int),columns=['reads'])
+    df.index.name='seq'
+    df = df.sort_values(by='reads',ascending=False).reset_index()
+    df['id'] = df.apply(lambda x: 'seq_'+str(x.name), axis=1)
+    utils.dataframe_to_fasta(df, outfile=outfile)
+    df.to_csv(os.path.splitext(outfile)[0]+'.csv')
+    print ('collapsed %s reads to %s' %(total,len(df)))
+    return
 
 def collapse_files(files, outpath, **kwargs):
     """Collapse reads and save counts as csv
@@ -546,9 +558,9 @@ def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5):
     utils.dataframe_to_fasta(mirs, seqkey='sequence', idkey='name',
                             outfile=outfile)
     if aligner == 'bowtie':
-        build_bowtie_index(outfile, 'indexes')
+        aligners.build_bowtie_index(outfile, 'indexes')
     elif aligner == 'subread':
-        build_subread_index(outfile, 'indexes')
+        aligners.build_subread_index(outfile, 'indexes')
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
@@ -563,19 +575,39 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
 
     #generate new mirbase bowtie index
     if aligner == 'bowtie':
-        global BOWTIE_INDEXES, BOWTIE_PARAMS
-        BOWTIE_INDEXES = 'indexes'
-        if BOWTIE_PARAMS == None:
-            BOWTIE_PARAMS = '-n 1 -l 20'
+        #global BOWTIE_INDEXES, BOWTIE_PARAMS
+        aligners.BOWTIE_INDEXES = 'indexes'
+        if aligners.BOWTIE_PARAMS == None:
+            aligners.BOWTIE_PARAMS = '-n 1 -l 20'
+
     elif aligner == 'subread':
-        global SUBREAD_INDEXES, SUBREAD_PARAMS
-        SUBREAD_INDEXES = 'indexes'
+        #global SUBREAD_INDEXES, SUBREAD_PARAMS
+        aligners.SUBREAD_INDEXES = 'indexes'
         #SUBREAD_PARAMS = '-m 2 -M 2'
-    db = build_mirbase_index(species, aligner, pad)
+    idx = build_mirbase_index(species, aligner, pad)
     #now map to the mirbase index for all files
-    res = map_rnas(files, [db], outpath, overwrite=overwrite, aligner=aligner,
+    res = map_rnas(files, [idx], outpath, overwrite=overwrite, aligner=aligner,
                     outfile='mirbase_mature_counts.csv', **kwargs)
+
+    output_read_stacks(files, outpath, idx)
     return res
+
+def output_read_stacks(files, outpath, idx):
+    """Output read stack files from sam alignment files and a ref sequence"""
+
+    ref_fasta = idx+'.fa'
+    original = sys.stdout
+    sys.stdout = open('mirbase_read_stacks.txt', 'w')
+    for f in files:
+        print (f)
+        filename = os.path.splitext(os.path.basename(f))[0]
+        samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
+        countfile = os.path.join(outpath, '%s.csv' %filename)
+        readcounts = pd.read_csv(countfile)
+        reads = utils.get_aligned_reads(samfile, readcounts)
+        utils.print_read_stack(reads, cutoff=1, fastafile='mirbase-bta.fa')
+    sys.stdout = original
+    return
 
 def count_isomirs():
     """Count mirna isomirs"""
@@ -637,82 +669,6 @@ def plot_fractions(df, label=None, path=None):
     if path == None:
         path='.'
     plt.savefig(os.path.join(path,'ncrna_persample.png'))
-    return
-
-def bwa_align(infile, ref=None, bowtie_index=None, outfile=None):
-    """Align reads with bwa"""
-
-    if bwa_index == None:
-        bwa_index = BWA_INDEXES
-    ref = os.path.join(bwaindexes, ref)
-    label = os.path.splitext(os.path.basename(infile))[0]
-    outfile = label+'_'+ref+'_bwa.sam'
-    cmd1 = 'bwa aln -n 0 -t 2 %s %s > out.sai' %(ref,infile)
-    cmd2 = 'bwa samse %s out.sai %s > %s' %(ref,infile,outfile)
-    result = subprocess.check_output(cmd1, shell=True, executable='/bin/bash')
-    result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
-    return
-
-def build_bowtie_index(fastafile, path):
-    """Build a bowtie index"""
-
-    name = os.path.splitext(fastafile)[0]
-    cmd = 'bowtie-build -f %s %s' %(fastafile, name)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    files = glob.glob(name+'*.ebwt')
-    utils.move_files(files, path)
-    return
-
-def build_subread_index(fastafile, path):
-    """Build an index for subread"""
-
-    name = os.path.splitext(fastafile)[0]
-    cmd = 'subread-buildindex -o %s %s' %(name,fastafile)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    exts = ['.00.b.array','.00.b.tab','.files','.reads']
-    files = [name+i for i in exts]
-    utils.move_files(files, path)
-    return
-
-def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
-    """Map reads using bowtie"""
-
-    label = os.path.splitext(os.path.basename(infile))[0]
-    outpath = os.path.dirname(os.path.abspath(infile))
-    if outfile == None:
-        outfile = label+'_'+ref+'_bowtie.sam'
-
-    if BOWTIE_INDEXES == None:
-        print ('base.BOWTIE_INDEXES variable not set')
-        return
-    os.environ["BOWTIE_INDEXES"] = BOWTIE_INDEXES
-    params = BOWTIE_PARAMS
-    if remaining == None:
-        remaining = os.path.join(outpath, label+'_r.fa')
-    cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
-    if verbose == True:
-        print (cmd)
-    try:
-        result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    except subprocess.CalledProcessError as e:
-        print (str(e.output))
-    if verbose == True:
-        print (result)
-    return remaining
-
-def subread_align(infile, ref, outfile):
-    """Align reads with subread"""
-
-    if SUBREAD_INDEXES == None:
-        print ('base.SUBREAD_INDEXES variable not set')
-        return
-    ref = os.path.join(SUBREAD_INDEXES, ref)
-    params = '-t 0 --SAMoutput -T 2 %s' %SUBREAD_PARAMS
-    from subprocess import Popen, PIPE
-    cmd = 'subread-align %s -i %s -r %s -o %s' %(params, ref, infile, outfile)
-    print (cmd)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash',
-                                     stderr= subprocess.STDOUT)
     return
 
 def featurecounts(samfile, gtffile):
