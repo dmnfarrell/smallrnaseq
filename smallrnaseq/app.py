@@ -23,7 +23,7 @@
 from __future__ import absolute_import, print_function
 import sys, os, string, types
 import glob
-from smallrnaseq import config, base, analysis, utils, aligners
+from smallrnaseq import config, base, analysis, utils, aligners, plotting
 
 def run(opts):
     """Run batch mapping routines based on conf file"""
@@ -66,6 +66,9 @@ def run(opts):
             print ('empty data returned. did alignments run?')
             return
         print ('results saved to rna_counts.csv')
+        x = base.get_fractions_mapped(res)
+        print (x)
+        plotting.plot_fractions(x)
     print ('intermediate files saved to %s' %out)
     return
 

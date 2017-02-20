@@ -341,7 +341,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
 
             if aligner == 'bowtie':
                 aligners.bowtie_align(query, idx, outfile=samfile,
-                                      remaining=rem, verbose=False)
+                                      remaining=rem, verbose=True)
             elif aligner == 'subread':
                 aligners.subread_align(query, idx, samfile)
             counts = count_aligned(samfile, readcounts)
@@ -533,6 +533,7 @@ def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
     df = pd.read_csv(MIRBASE)
     if species != None:
         df = df[df.species==species]
+
     #get both 5p and 3p seqs for each mirna
     m1 = df.apply(lambda x: _get_mature(x, 'mature1', pad5, pad3), 1)
     m2 = df.apply(lambda x: _get_mature(x, 'mature2', pad5, pad3), 1)
@@ -585,6 +586,7 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
         aligners.SUBREAD_INDEXES = 'indexes'
         #SUBREAD_PARAMS = '-m 2 -M 2'
     idx = build_mirbase_index(species, aligner, pad)
+    hairpin = get_mirbase_sequences(species, )
     #now map to the mirbase index for all files
     res = map_rnas(files, [idx], outpath, overwrite=overwrite, aligner=aligner,
                     outfile='mirbase_mature_counts.csv', **kwargs)
@@ -647,29 +649,6 @@ def get_fractions_mapped(df):
     #x = x.reindex_axis((x).mean(1).sort_values().index)
     x = x.reset_index()
     return x
-
-def plot_fractions(df, label=None, path=None):
-    """Process results of multiple mappings to get fractions
-    of each annotations mapped
-    label: plot this sample only"""
-
-    if len(df.columns) == 1:
-        label = df.columns[0]
-    if label != None:
-        explode = [0.05 for i in range(len(df))]
-        axs = df.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',
-                      startangle=0,figsize=(6,6),
-                      labels=None,legend=True,pctdistance=1.1,
-                      explode=explode,fontsize=10)
-    else:
-        l = df.T.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
-        plt.legend(ncol=4)
-
-    plt.tight_layout()
-    if path == None:
-        path='.'
-    plt.savefig(os.path.join(path,'ncrna_persample.png'))
-    return
 
 def featurecounts(samfile, gtffile):
     """Count aligned features with the featureCounts program.

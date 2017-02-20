@@ -78,6 +78,7 @@ def plot_read_lengths(filename, df=None):
     return ax
 
 def plot_sample_variation(df):
+
     fig,axs=plt.subplots(2,1,figsize=(6,6))
     axs=axs.flat
     cols,ncols = mirdeep2.get_column_names(m)
@@ -103,4 +104,30 @@ def plot_by_label(X, palette='Set1'):
                    lw=1, edgecolor='black')
     ax.legend(fontsize=10)
     sns.despine()
+    return
+
+def plot_fractions(df, label=None, path=None):
+    """Process results of multiple mappings to get fractions
+    of each annotations mapped
+    label: plot this sample only"""
+
+    if len(df.columns) == 1:
+        label = df.columns[0]
+    if label != None:
+        explode = [0.05 for i in range(len(df))]
+        axs = df.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',
+                      startangle=0,figsize=(6,6),
+                      labels=None,legend=True,pctdistance=1.1,
+                      explode=explode,fontsize=10)
+    else:
+        df = df.set_index('label')
+        df = df._get_numeric_data()
+        l = df.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
+        plt.legend(ncol=4)
+        plt.title('rna fractions mapped')
+
+    plt.tight_layout()
+    if path == None:
+        path='.'
+    plt.savefig(os.path.join(path,'fractions_mapped.png'))
     return

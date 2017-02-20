@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function
 import sys, os
 import pandas as pd
 import unittest
-from . import config, base, analysis, mirdeep2, srnabench
+from . import config, base, analysis, mirdeep2, srnabench, aligners
 
 class BasicTests(unittest.TestCase):
     """Basic tests for mirnaseq"""
@@ -20,7 +20,7 @@ class BasicTests(unittest.TestCase):
         self.testdir = 'testing'
         if not os.path.exists(self.testdir):
             os.mkdir(self.testdir)
-        base.BOWTIE_INDEXES = 'indexes'
+        aligners.BOWTIE_INDEXES = 'indexes'
         return
 
     def test_count_features(self):
@@ -31,9 +31,9 @@ class BasicTests(unittest.TestCase):
     def test_map_rnas(self):
         """Generic mapping to rna annotations"""
 
-        base.BOWTIE_PARAMS = '-v 0 --best'
+        aligners.BOWTIE_PARAMS = '-v 0 --best'
         fastafile = os.path.join(base.datadir, 'bosTau8-tRNAs.fa')
-        base.build_bowtie_index(fastafile, path='indexes')
+        aligners.build_bowtie_index(fastafile, path='indexes')
         path = os.path.join(self.testdir, 'ncrna_map')
         f = os.path.join(base.datadir, 'bovine_serum_sample.fastq')
         res = base.map_rnas([f], ['bosTau8-tRNAs'], path, overwrite=True, aligner='bowtie')
@@ -48,13 +48,12 @@ class BasicTests(unittest.TestCase):
                                aligner='bowtie', species='bta')
         res = base.map_mirbase(files=[f], overwrite=True, outpath=path,
                                aligner='subread', species='bta')
-        print (len(res))
         return
 
     def test_map_features(self):
         """Genomic feature mapping/counting"""
 
-        base.BOWTIE_PARAMS = '-v 0 --best'
+        aligners.BOWTIE_PARAMS = '-v 0 --best'
         #fastafile = os.path.join(base.datadir, 'bostau.fa')
         #base.build_bowtie_index(fastafile)
         path = os.path.join(self.testdir, 'ncrna_map')
