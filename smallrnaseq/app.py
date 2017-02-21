@@ -23,12 +23,13 @@
 from __future__ import absolute_import, print_function
 import sys, os, string, types
 import glob
+import pandas as pd
 from smallrnaseq import config, base, analysis, utils, aligners, plotting
 
 def run(opts):
     """Run batch mapping routines based on conf file"""
 
-    #print (opts)
+    opts = config.check_options(opts)
     fastafile = opts['filename']
     path = opts['path']
     out = opts['output']
@@ -38,18 +39,21 @@ def run(opts):
     elif fastafile != '':
         files = [fastafile]
     else:
-        print ('ou should provide at least one file or folder')
+        print ('you should provide at least one file or folder')
         return
 
     aligners.BOWTIE_INDEXES = opts['index_path']
     aligners.BOWTIE_PARAMS = opts['bowtie_params']
-
+    if not os.path.exists(opts['index_path']):
+        print ('no such folder for indexes')
+        return
     if opts['mirbase'] == 1:
         #count with mirbase
         print ('mapping to mirbase')
-        base.map_mirbase(files, outpath=out, pad5=3,
+        res = base.map_mirbase(files, outpath=out, pad5=3,
                          aligner='bowtie', species=opts['species'],
                          add_labels=opts['add_labels'])
+        plot_results(res)
     elif opts['ref_genome'] != '':
         print ('mapping to reference genome')
         res = base.map_genome_features(files, opts['ref_genome'], opts['features'],
@@ -66,16 +70,51 @@ def run(opts):
             print ('empty data returned. did alignments run?')
             return
         print ('results saved to rna_counts.csv')
-        x = base.get_fractions_mapped(res)
-        print (x)
-        plotting.plot_fractions(x)
+        plot_results(res)
     print ('intermediate files saved to %s' %out)
+    return
+
+def plot_results(res):
+    """Some results plots"""
+
+    counts = base.pivot_count_data(res, idxcols=['name','db'])
+    x = base.get_fractions_mapped(res)
+    print (x)
+    plotting.plot_fractions(x)
+    plotting.plot_sample_counts(counts)
+    plotting.plot_read_count_dists(counts)
+    scols,ncols = base.get_column_names(counts)
+    if len(scols)>1:
+        plotting.expression_clustermap(counts)
     return
 
 def build_indexes(filename):
     path = 'indexes'
     aligners.build_bowtie_index(filename, path)
     aligners.build_subread_index(filename, path)
+    return
+
+def diff_expression(opts):
+    """Diff expression workflow"""
+
+    labels = pd.read_csv(os.path.join(path,'SraRunTable.txt'), sep='\t')
+    counts = pd.read_csv(os.path.join(path,'mirna_counts.csv'))
+
+    #define sample_col
+    #get the samples needed for the required conditions we want to compare
+    data = de.get_factor_samples(counts,
+                                 labels, [(sample_col,cond1),(sample_col,cond2)],
+                                 samplecol='Run_s', index='name')
+    res = de.run_edgeR(data=data, cutoff=1.5)
+    print (res)
+    names = res.name
+
+    #plot these genes with seaborn
+    #xorder=['3 months','6 months','15 months']
+    #m = de.melt_samples(counts, labels, names, samplecol='Run_s')
+    #g = base.sns.factorplot('age_s','read count', data=m, col='name', kind="point",
+    #                        s=10, lw=1, col_wrap=4, size=4, aspect=1.2,
+    #                        legend_out=True,sharey=False, order=xorder)
     return
 
 def main():
@@ -92,11 +131,13 @@ def main():
     parser.add_option("-b", "--build", dest="build",
                         help="build an index for given file", metavar="FILE")
     parser.add_option("-f", "--infile", dest="infile",
-                        help="collapse reads in input file", metavar="FILE")
+                        help="input file", metavar="FILE")
     parser.add_option("-l", "--collapse", dest="collapse", action="store_true",
                         default=False, help="collapse reads in input file")
     parser.add_option("-t", "--trim", dest="trim",  type='string',
-                        help="trim given adapter")
+                        help="trim given adapter in input file")
+    parser.add_option("-d", "--de", dest="de",  action="store_true",
+                        default=False, help="run DE analysis")
 
     opts, remainder = parser.parse_args()
     if opts.infile != None:
@@ -106,23 +147,20 @@ def main():
             base.collapse_reads(opts.infile)
     elif opts.build != None:
         build_indexes(opts.build)
-    elif opts.run == True:
-        if opts.config == None:
-            print ('No config file provided.')
-            config.write_default_config('default.conf', defaults=config.baseoptions)
-            return
+    elif opts.config != None:
         cp = config.parse_config(opts.config)
         options = config.get_options(cp)
         print ('using the following options:')
         print ('----------------------------')
         config.print_options(options)
-        run(options)
+        if opts.run == True:
+            run(options)
+        if opts.de == True:
+            diff_expression(options)
     else:
-        print ('you need a config file')
-        #run tests
-        #from smallrnaseq.tests import BasicTests
-        #import unittest
-        #unittest.main()
+        print ('No config file provided.')
+        config.write_default_config('default.conf', defaults=config.baseoptions)
+        return
 
 if __name__ == '__main__':
     main()

@@ -27,7 +27,8 @@ import matplotlib
 import pylab as plt
 import numpy as np
 import pandas as pd
-from . import utils, analysis
+import seaborn as sns
+from . import base, utils, analysis
 
 def venn_diagram(names,labels,ax=None,**kwargs):
     """Plot venn diagrams"""
@@ -111,23 +112,66 @@ def plot_fractions(df, label=None, path=None):
     of each annotations mapped
     label: plot this sample only"""
 
-    if len(df.columns) == 1:
-        label = df.columns[0]
+    df = df.set_index('label')
+    df = df._get_numeric_data()
+    if len(df) == 1:
+        label = df.index[0]
     if label != None:
-        explode = [0.05 for i in range(len(df))]
-        axs = df.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',
+        axs = df.T.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',
                       startangle=0,figsize=(6,6),
                       labels=None,legend=True,pctdistance=1.1,
-                      explode=explode,fontsize=10)
+                      fontsize=10)
     else:
-        df = df.set_index('label')
-        df = df._get_numeric_data()
         l = df.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
         plt.legend(ncol=4)
-        plt.title('rna fractions mapped')
-
+    plt.title('fractions mapped')
     plt.tight_layout()
     if path == None:
         path='.'
     plt.savefig(os.path.join(path,'fractions_mapped.png'))
+    return
+
+def plot_sample_counts(counts):
+
+    fig,ax = plt.subplots(figsize=(10,6))
+    scols,ncols = base.get_column_names(counts)
+    counts[scols].sum().plot(kind='bar',ax=ax)
+    plt.title('total counts per sample (unnormalised)')
+    plt.tight_layout()
+    fig.savefig('total_per_sample.png')
+    return
+
+def plot_read_count_dists(counts, h=8):
+    """Boxplots of read count distributions """
+
+    scols,ncols = base.get_column_names(counts)
+    df = counts.sort_values(by='mean_norm',ascending=False)[:80]
+    df = df.set_index('name')[ncols]
+    t = df.T
+    w=int(h*(len(df)/60.0))+4
+    fig, ax = plt.subplots(figsize=(w,h))
+    if len(t.columns) > 1:
+        sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
+    else:
+        df.plot(kind='bar',ax=ax)
+    sns.despine(trim=True)
+    ax.set_yscale('log')
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
+    plt.ylabel('read count')
+    plt.tight_layout()
+    fig.savefig('distr_per_sample.png')
+    return fig
+
+def expression_clustermap(counts, freq=0.8):
+
+    scols,ncols = base.get_column_names(counts)
+    X = counts.set_index('name')[ncols]
+    X = np.log(X)
+    v = X.std(1).sort_values(ascending=False)
+    X = X[X.isnull().sum(1)/len(X.columns)<0.2]
+    X = X.fillna(0)
+    cg = sns.clustermap(X,cmap='YlGnBu',figsize=(12,12),lw=0,linecolor='gray')
+    mt = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, fontsize=9)
+    mt = plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
+    cg.savefig('expr_map.png')
     return

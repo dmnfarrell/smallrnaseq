@@ -395,25 +395,6 @@ def plot_read_count_dists(df,h=8):
     plt.tight_layout()
     return fig
 
-'''def perSampleDists(df,cols=None,names=None):
-
-    #base.seabornsetup()
-    #df=df[df.index.isin(names)]
-    df = df[:2]
-    cols,normcols = get_column_names(df)
-    df = df[normcols]
-    df= df.reset_index()
-    m = pd.melt(df,id_vars=['#miRNA'],
-                   var_name='sample',value_name='read count')
-    print (m)
-    g = base.sns.factorplot('sample','read count', None, m, col='#miRNA', kind="bar",
-                            col_wrap=3,size=3,aspect=1.5,legend_out=True,sharey=False)
-    locs, labels = plt.xticks()
-    plt.setp(labels, rotation=45)
-    plt.tight_layout()
-    plt.savefig('mirdeep_persample_counts.png')
-    return'''
-
 def get_file_ids(path):
     """Get file<->mirdeep2 id mapping"""
 

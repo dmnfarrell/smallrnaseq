@@ -37,7 +37,8 @@ baseoptions = {'base': [('filename',''),('path',''),('filetype','fastq'),
                     ('read_stack',0),
                     ('aligner','bowtie'),
                     ('bowtie_params','-v 1 --best'),
-                    ('mirbase',0),('species','hsa'),('pad5',3),('pad3',5)
+                    ('mirbase',0),('species','hsa'),('pad5',3),('pad3',5),
+                    ('sample_labels','')
                     ]}
 
 def write_default_config(conffile='default.conf', defaults={}):
@@ -94,6 +95,18 @@ def get_options(cp):
     return options
 
 def print_options(options):
+    """Print option key/value pairs"""
+
     for key in options:
         print (key, ':', options[key])
     print ()
+
+def check_options(opts):
+    """Check for missing default options in dict. Meant to handle
+       incomplete config files"""
+
+    defaults = dict(baseoptions['base'])
+    for i in defaults:
+        if i not in opts:
+            opts[i] = defaults[i]
+    return opts
