@@ -24,7 +24,7 @@ from __future__ import absolute_import, print_function
 import sys, os, string, types
 import glob
 import pandas as pd
-from smallrnaseq import config, base, analysis, utils, aligners, plotting
+from smallrnaseq import config, base, analysis, utils, aligners, plotting, de
 
 def run(opts):
     """Run batch mapping routines based on conf file"""
@@ -97,24 +97,44 @@ def build_indexes(filename):
 def diff_expression(opts):
     """Diff expression workflow"""
 
-    labels = pd.read_csv(os.path.join(path,'SraRunTable.txt'), sep='\t')
-    counts = pd.read_csv(os.path.join(path,'mirna_counts.csv'))
+    if opts['sample_labels'] == '':
+        print ('you need a sample labels file')
+        print_help()
+        return
+    labels = pd.read_csv(opts['sample_labels'], sep=opts['sep'])
+    #print (labels)
+    counts = pd.read_csv(opts['count_file'])
 
-    #define sample_col
+    #define sample/factor cols and conditions for de
+    samplecol = opts['sample_col']
+    factorcol = opts['factors_col']
+    conds = opts['conditions'].split(',')
+    print (conds)
     #get the samples needed for the required conditions we want to compare
     data = de.get_factor_samples(counts,
-                                 labels, [(sample_col,cond1),(sample_col,cond2)],
-                                 samplecol='Run_s', index='name')
+                                 labels, [(factorcol,conds[0]),(factorcol,conds[1])],
+                                 samplecol=samplecol, index='name')
+    #print (data[:4])
     res = de.run_edgeR(data=data, cutoff=1.5)
+    res.to_csv('de_genes.csv')
     print (res)
     names = res.name
 
     #plot these genes with seaborn
-    #xorder=['3 months','6 months','15 months']
-    #m = de.melt_samples(counts, labels, names, samplecol='Run_s')
-    #g = base.sns.factorplot('age_s','read count', data=m, col='name', kind="point",
-    #                        s=10, lw=1, col_wrap=4, size=4, aspect=1.2,
-    #                        legend_out=True,sharey=False, order=xorder)
+    xorder=conds
+    m = de.melt_samples(counts, labels, names, samplecol=samplecol)
+    g = base.sns.factorplot('age_s','read count', data=m, col='name', kind="point",
+                            s=10, lw=1, col_wrap=4, size=4, aspect=1.2,
+                            legend_out=True,sharey=False, order=xorder)
+    g.savefig('de_genes.png')
+    return
+
+def print_help():
+    """generic help message"""
+
+    print ('to run a workflow use smallrnaseq -c <config> -r')
+    print ('see https://github.com/dmnfarrell/smallrnaseq/wiki')
+    print ('for further information')
     return
 
 def main():
@@ -147,7 +167,7 @@ def main():
             base.collapse_reads(opts.infile)
     elif opts.build != None:
         build_indexes(opts.build)
-    elif opts.config != None:
+    elif opts.config != None and os.path.exists(opts.config):
         cp = config.parse_config(opts.config)
         options = config.get_options(cp)
         print ('using the following options:')
@@ -155,11 +175,18 @@ def main():
         config.print_options(options)
         if opts.run == True:
             run(options)
-        if opts.de == True:
+        elif opts.de == True:
             diff_expression(options)
+        else:
+            print_help()
     else:
-        print ('No config file provided.')
-        config.write_default_config('default.conf', defaults=config.baseoptions)
+        if opts.config != None:
+            conffile = opts.config
+        else:
+            print ('No config file provided.')
+            conffile = 'default.conf'
+        config.write_default_config(conffile, defaults=config.baseoptions)
+        print_help()
         return
 
 if __name__ == '__main__':
