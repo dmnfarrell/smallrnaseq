@@ -37,8 +37,8 @@ baseoptions = {'base': [('filename',''),('path',''),('filetype','fastq'),
                     ('read_stack',0),
                     ('aligner','bowtie'),
                     ('bowtie_params','-v 1 --best'),
-                    ('mirbase',0),('species','hsa'),('pad5',3),('pad3',5),
-                    ('sample_labels',''),('sep',','),
+                    ('mirbase',0),('species','hsa'),('pad5',3),('pad3',5)],
+               'de':[('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
                     ('conditions','')
                     ]}
@@ -47,7 +47,7 @@ def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
     if not os.path.exists(conffile):
-        cp = create_config_parser_from_dict(defaults, ['base'])
+        cp = create_config_parser_from_dict(defaults, ['base','de'])
         cp.write(open(conffile,'w'))
         print ('wrote config file %s' %conffile)
     return conffile
@@ -88,7 +88,13 @@ def parse_config(conffile=None):
 def get_options(cp):
     """Makes sure boolean opts are parsed"""
 
-    options = cp._sections['base']
+    from collections import OrderedDict
+    options = OrderedDict()
+    #options = cp._sections['base']
+    print (options)
+    for section in cp.sections():
+        options.update( (cp._sections[section]) )
+    print (options)
     for o in options:
         try:
             options[o] = cp.getboolean('base', o)
