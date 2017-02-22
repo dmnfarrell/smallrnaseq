@@ -122,8 +122,8 @@ def plot_fractions(df, label=None, path=None):
                       labels=None,legend=True,pctdistance=1.1,
                       fontsize=10)
     else:
-        l = df.plot(kind='bar',stacked=True,cmap='Spectral',figsize=(12,6))
-        plt.legend(ncol=4)
+        ax = df.plot(kind='barh',stacked=True,cmap='Spectral',figsize=(8,8))
+        ax.legend(ncol=2)
     plt.title('fractions mapped')
     plt.tight_layout()
     if path == None:

@@ -6,9 +6,10 @@ CHANGES
 0.2.0
 ------
 
-Added command line functions
+Added command line interface
 Re-arrangement of modules
 Added feature counting
+Native mirna/isomir counting
 
 ------
 0.1.0

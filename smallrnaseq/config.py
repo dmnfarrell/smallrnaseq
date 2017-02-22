@@ -91,10 +91,8 @@ def get_options(cp):
     from collections import OrderedDict
     options = OrderedDict()
     #options = cp._sections['base']
-    print (options)
     for section in cp.sections():
         options.update( (cp._sections[section]) )
-    print (options)
     for o in options:
         try:
             options[o] = cp.getboolean('base', o)

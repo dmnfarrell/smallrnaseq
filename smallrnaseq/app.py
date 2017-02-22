@@ -34,6 +34,7 @@ def run(opts):
     path = opts['path']
     out = opts['output']
     indexes = opts['indexes'].split(',')
+
     if path != '':
         files = glob.glob(os.path.join(path,'*.fastq'))
     elif fastafile != '':
@@ -53,6 +54,7 @@ def run(opts):
         res = base.map_mirbase(files, outpath=out, pad5=3,
                          aligner='bowtie', species=opts['species'],
                          add_labels=opts['add_labels'])
+        res.to_csv('mirbase_mature_found.csv',index=False)
         plot_results(res)
     elif opts['ref_genome'] != '':
         print ('mapping to reference genome')
@@ -70,6 +72,7 @@ def run(opts):
             print ('empty data returned. did alignments run?')
             return
         print ('results saved to rna_counts.csv')
+        res.to_csv('rna_found.csv',index=False)
         plot_results(res)
     print ('intermediate files saved to %s' %out)
     return
@@ -77,6 +80,8 @@ def run(opts):
 def plot_results(res):
     """Some results plots"""
 
+    if res is None or len(res) == 0:
+        return
     counts = base.pivot_count_data(res, idxcols=['name','db'])
     x = base.get_fractions_mapped(res)
     print (x)
@@ -97,13 +102,15 @@ def build_indexes(filename):
 def diff_expression(opts):
     """Diff expression workflow"""
 
-    if opts['sample_labels'] == '':
-        print ('you need a sample labels file')
-        print_help()
-        return
-    labels = pd.read_csv(opts['sample_labels'], sep=opts['sep'])
-    #print (labels)
-    counts = pd.read_csv(opts['count_file'])
+    labelsfile = opts['sample_labels']
+    countsfile = opts['count_file']
+    for f in [labelsfile,countsfile]:
+        if not os.path.exists(f) or f == '':
+            print ('no such file %s!' %f)
+            print_help()
+            return
+    labels = pd.read_csv(labelsfile, sep=opts['sep'])
+    counts = pd.read_csv(countsfile)
 
     #define sample/factor cols and conditions for de
     samplecol = opts['sample_col']
