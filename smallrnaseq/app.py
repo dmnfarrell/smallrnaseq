@@ -27,13 +27,16 @@ import pandas as pd
 from smallrnaseq import config, base, analysis, utils, aligners, plotting, de
 
 def run(opts):
-    """Run batch mapping routines based on conf file"""
+    """Run predefined batch mapping routines based on options from
+     a config file"""
 
     opts = config.check_options(opts)
     fastafile = opts['filename']
     path = opts['path']
     out = opts['output']
+    temp_path = os.path.join(out,'temp') #path for temp files
     indexes = opts['indexes'].split(',')
+    species=opts['species']
 
     if path != '':
         files = glob.glob(os.path.join(path,'*.fastq'))
@@ -43,54 +46,67 @@ def run(opts):
         print ('you should provide at least one file or folder')
         return
 
-    aligners.BOWTIE_INDEXES = opts['index_path']
-    aligners.BOWTIE_PARAMS = opts['bowtie_params']
+    aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = opts['index_path']
+    if opts['aligner_params'] != '':
+        aligners.set_params(opts['aligner'], opts['aligner_params'])
+
     if not os.path.exists(opts['index_path']):
         print ('no such folder for indexes')
         return
     if opts['mirbase'] == 1:
         #count with mirbase
         print ('mapping to mirbase')
-        res = base.map_mirbase(files, outpath=out, pad5=3,
-                         aligner='bowtie', species=opts['species'],
+        res, counts = base.map_mirbase(files, outpath=temp_path, pad5=3,
+                         aligner=opts['aligner'], species=species,
                          add_labels=opts['add_labels'])
-        res.to_csv('mirbase_mature_found.csv',index=False)
-        plot_results(res)
+        res.to_csv( os.path.join(out, 'mirbase_mature_found.csv'),index=False )
+        counts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
+        plot_results(res, out)
+        #isomir counting
+        iso, isocounts = base.map_isomirs(files, temp_path, species)
+        iso.to_csv( os.path.join(out, 'isomirs_found.csv'),index=False )
+
     elif opts['ref_genome'] != '':
         print ('mapping to reference genome')
         res = base.map_genome_features(files, opts['ref_genome'], opts['features'],
-                                 outpath=out, aligner='bowtie')
+                                       outpath=temp_path, aligner=opts['aligner'])
         counts = base.pivot_count_data(res, idxcols=['name','gene_name','gene_biotype'])
-        counts.to_csv( 'feature_counts.csv', index=False)
+        res.to_csv( os.path.join(out, 'features_found.csv'), index=False )
+        counts.to_csv( os.path.join(out, 'feature_counts.csv'), index=False)
         print ('results saved to feature_counts.csv')
     else:
         #map to provided libraries
         print ('mapping to these libraries: %s' %indexes)
-        res = base.map_rnas(files, indexes, out, aligner='bowtie',
-                            add_labels=opts['add_labels'])
+        res, counts = base.map_rnas(files, indexes, temp_path, aligner=opts['aligner'],
+                                    add_labels=opts['add_labels'])
         if res is None:
             print ('empty data returned. did alignments run?')
             return
         print ('results saved to rna_counts.csv')
-        res.to_csv('rna_found.csv',index=False)
-        plot_results(res)
+        res.to_csv( os.path.join(out, 'rna_found.csv'),index=False)
+        counts.to_csv( os.path.join(out, 'rna_counts.csv'), index=False )
+        plot_results(res, out)
     print ('intermediate files saved to %s' %out)
     return
 
-def plot_results(res):
+def plot_results(res, path):
     """Some results plots"""
 
     if res is None or len(res) == 0:
         return
-    counts = base.pivot_count_data(res, idxcols=['name','db'])
+    counts = base.pivot_count_data(res, idxcols=['name','ref'])
     x = base.get_fractions_mapped(res)
     print (x)
-    plotting.plot_fractions(x)
-    plotting.plot_sample_counts(counts)
-    plotting.plot_read_count_dists(counts)
+    fig = plotting.plot_fractions(x)
+    fig.savefig(os.path.join(path,'fractions_mapped.png'))
+    fig = plotting.plot_sample_counts(counts)
+    fig.savefig(os.path.join(path,'total_per_sample.png'))
+    fig = plotting.plot_read_count_dists(counts)
+    fig.savefig(os.path.join(path,'distr_per_sample.png'))
     scols,ncols = base.get_column_names(counts)
     if len(scols)>1:
-        plotting.expression_clustermap(counts)
+        fig=plotting.expression_clustermap(counts)
+        fig.savefig(os.path.join(path,'expr_map.png'))
     return
 
 def build_indexes(filename):
@@ -102,6 +118,7 @@ def build_indexes(filename):
 def diff_expression(opts):
     """Diff expression workflow"""
 
+    path = opts['output']
     labelsfile = opts['sample_labels']
     countsfile = opts['count_file']
     for f in [labelsfile,countsfile]:
@@ -123,7 +140,7 @@ def diff_expression(opts):
                                  samplecol=samplecol, index='name')
     #print (data[:4])
     res = de.run_edgeR(data=data, cutoff=1.5)
-    res.to_csv('de_genes.csv')
+    res.to_csv(os.path.join(path,'de_genes.csv'))
     print (res)
     names = res.name
 
@@ -133,7 +150,7 @@ def diff_expression(opts):
     g = base.sns.factorplot('age_s','read count', data=m, col='name', kind="point",
                             s=10, lw=1, col_wrap=4, size=4, aspect=1.2,
                             legend_out=True,sharey=False, order=xorder)
-    g.savefig('de_genes.png')
+    g.savefig(os.path.join(path,'de_genes.png'))
     return
 
 def print_help():

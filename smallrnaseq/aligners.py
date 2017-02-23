@@ -30,11 +30,18 @@ import pandas as pd
 from . import utils
 
 BOWTIE_INDEXES = None
-BOWTIE_PARAMS = None
+BOWTIE_PARAMS = '-v 1 --best'
 SUBREAD_INDEXES = None
 SUBREAD_PARAMS = '-m 2 -M 2'
-BWA_INDEXES = None
 
+def set_params(aligner, params):
+    print (aligner, params)
+    if aligner == 'bowtie':
+        global BOWTIE_PARAMS
+        BOWTIE_PARAMS = params
+    elif aligner == 'subread':
+        global SUBREAD_PARAMS
+        SUBREAD_PARAMS = params
 
 def bwa_align(infile, ref=None, bowtie_index=None, outfile=None):
     """Align reads with bwa"""
@@ -55,7 +62,11 @@ def build_bowtie_index(fastafile, path):
 
     name = os.path.splitext(fastafile)[0]
     cmd = 'bowtie-build -f %s %s' %(fastafile, name)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    try:
+        result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    except subprocess.CalledProcessError as e:
+        print (str(e.output))
+        return
     files = glob.glob(name+'*.ebwt')
     utils.move_files(files, path)
     return
@@ -65,7 +76,11 @@ def build_subread_index(fastafile, path):
 
     name = os.path.splitext(fastafile)[0]
     cmd = 'subread-buildindex -o %s %s' %(name,fastafile)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    try:
+        result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    except subprocess.CalledProcessError as e:
+        print (str(e.output))
+        return
     exts = ['.00.b.array','.00.b.tab','.files','.reads']
     files = [name+i for i in exts]
     utils.move_files(files, path)

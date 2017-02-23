@@ -76,7 +76,7 @@ def plot_read_lengths(filename, df=None):
     x = analysis.read_length_dist(df)
     fig,ax=plt.subplots(1,1,figsize=(10,4))
     ax.bar(x[1][:-1],x[0], align='center')
-    return ax
+    return fig
 
 def plot_sample_variation(df):
 
@@ -89,7 +89,7 @@ def plot_sample_variation(df):
     x2.plot(kind='bar',ax=axs[1])
     sns.despine()
     plt.tight_layout()
-    return
+    return fig
 
 def plot_by_label(X, palette='Set1'):
     """Color scatter plot by dataframe index label"""
@@ -107,29 +107,26 @@ def plot_by_label(X, palette='Set1'):
     sns.despine()
     return
 
-def plot_fractions(df, label=None, path=None):
+def plot_fractions(df, label=None):
     """Process results of multiple mappings to get fractions
     of each annotations mapped
     label: plot this sample only"""
 
+    fig,ax = plt.subplots(figsize=(8,8))
     df = df.set_index('label')
     df = df._get_numeric_data()
     if len(df) == 1:
         label = df.index[0]
     if label != None:
-        axs = df.T.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',
-                      startangle=0,figsize=(6,6),
-                      labels=None,legend=True,pctdistance=1.1,
-                      fontsize=10)
+        ax = df.T.plot(y=label,kind='pie',colormap='Spectral',autopct='%.1f%%',
+                      startangle=0, labels=None,legend=True,pctdistance=1.1,
+                      fontsize=10, ax=ax)
     else:
-        ax = df.plot(kind='barh',stacked=True,cmap='Spectral',figsize=(8,8))
+        ax = df.plot(kind='barh',stacked=True,cmap='Spectral',ax=ax)
         ax.legend(ncol=2)
     plt.title('fractions mapped')
     plt.tight_layout()
-    if path == None:
-        path='.'
-    plt.savefig(os.path.join(path,'fractions_mapped.png'))
-    return
+    return fig
 
 def plot_sample_counts(counts):
 
@@ -138,8 +135,7 @@ def plot_sample_counts(counts):
     counts[scols].sum().plot(kind='bar',ax=ax)
     plt.title('total counts per sample (unnormalised)')
     plt.tight_layout()
-    fig.savefig('total_per_sample.png')
-    return
+    return fig
 
 def plot_read_count_dists(counts, h=8):
     """Boxplots of read count distributions """
@@ -159,7 +155,6 @@ def plot_read_count_dists(counts, h=8):
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
     plt.ylabel('read count')
     plt.tight_layout()
-    fig.savefig('distr_per_sample.png')
     return fig
 
 def expression_clustermap(counts, freq=0.8):
@@ -173,5 +168,4 @@ def expression_clustermap(counts, freq=0.8):
     cg = sns.clustermap(X,cmap='YlGnBu',figsize=(12,12),lw=0,linecolor='gray')
     mt = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, fontsize=9)
     mt = plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
-    cg.savefig('expr_map.png')
-    return
+    return cg

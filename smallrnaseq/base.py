@@ -294,7 +294,7 @@ def deseq_normalize(df):
     return df
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
-             norm_method='quantile', use_remaining=False, overwrite=True,
+             norm_method='quantile', use_remaining=False, overwrite=False,
              outfile='rna_counts.csv', add_labels=False):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
@@ -352,7 +352,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
                 counts['label'] = labels[filename]
             else:
                 counts['label'] = filename
-            counts['db'] = idx
+            counts['ref'] = idx
             counts['fraction'] = counts.reads/total
             result.append(counts)
 
@@ -360,10 +360,9 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     if len(result) == 0:
         return
     result = pd.concat(result)
-    counts = pivot_count_data(result, idxcols=['name','db'])
-    counts.to_csv( outfile, index=False )
+    counts = pivot_count_data(result, idxcols=['name','ref'])
     print ('done')
-    return result
+    return result, counts
 
 def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
                         overwrite=True):
@@ -395,9 +394,9 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
         label = os.path.splitext(os.path.basename(cfile))[0]
         samfile = os.path.join(outpath, '%s_%s.sam' %(label,ref))
         if aligner == 'bowtie':
-            bowtie_align(cfile, ref, outfile=samfile)
+            aligners.bowtie_align(cfile, ref, outfile=samfile)
         elif aligner == 'subread':
-            subread_align(cfile, ref, samfile)
+            aligners.subread_align(cfile, ref, samfile)
         #get true read counts for collapsed file
         countfile = os.path.join(outpath, '%s.csv' %label)
         readcounts = pd.read_csv(countfile, index_col=0)
@@ -586,22 +585,52 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
         aligners.SUBREAD_INDEXES = 'indexes'
         #SUBREAD_PARAMS = '-m 2 -M 2'
     idx = build_mirbase_index(species, aligner, pad)
-    hairpin = get_mirbase_sequences(species, )
+    #hairpin = get_mirbase_sequences(species, )
     #now map to the mirbase index for all files
-    res = map_rnas(files, [idx], outpath, overwrite=overwrite, aligner=aligner,
+    res, counts = map_rnas(files, [idx], outpath, overwrite=overwrite, aligner=aligner,
                     outfile='mirbase_mature_counts.csv', **kwargs)
 
     output_read_stacks(files, outpath, idx)
-    return res
+    return res, counts
+
+def map_isomirs(files, outpath, species):
+    """Count mirna isomirs using previously aligned files"""
+
+    print ('counting isomirs')
+    idx = 'mirbase-'+species
+    result = []
+    for f in files:
+        filename = os.path.splitext(os.path.basename(f))[0]
+        samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
+        countsfile = os.path.join(outpath, '%s.csv' %filename)
+        c = count_isomirs(samfile, countsfile, species)
+        c['label'] = f
+        result.append(c)
+    result = pd.concat(result)
+    counts = pivot_count_data(result, idxcols=['name'])
+    return result, counts
+
+def count_isomirs(samfile, countsfile, species):
+    """Count miRNA isomirs using aligned reads from a samfile and actual
+       read counts from a csv file"""
+
+    truecounts = pd.read_csv(countsfile)
+    print (samfile, countsfile)
+    canonical = get_mirbase_sequences(species, dna=True).set_index('name')
+    #padded sequences so we can see where each read landed relative to canonical
+    mirs = get_mirbase_sequences(species, pad5=6, pad3=6, dna=True).set_index('name')
+    reads = utils.get_aligned_reads(samfile, truecounts)
+    reads = reads.drop(['read','id','start','end'],1)
+
+    return reads
 
 def output_read_stacks(files, outpath, idx):
     """Output read stack files from sam alignment files and a ref sequence"""
 
     ref_fasta = idx+'.fa'
     original = sys.stdout
-    sys.stdout = open('mirbase_read_stacks.txt', 'w')
+    sys.stdout = open(os.path.join(outpath, '%s_read_stacks.txt' %idx), 'w')
     for f in files:
-        print (f)
         filename = os.path.splitext(os.path.basename(f))[0]
         samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
         countfile = os.path.join(outpath, '%s.csv' %filename)
@@ -609,11 +638,6 @@ def output_read_stacks(files, outpath, idx):
         reads = utils.get_aligned_reads(samfile, readcounts)
         utils.print_read_stack(reads, cutoff=1, fastafile='mirbase-bta.fa')
     sys.stdout = original
-    return
-
-def count_isomirs():
-    """Count mirna isomirs"""
-
     return
 
 def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):
@@ -624,7 +648,7 @@ def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):
     df = df[df['mean_norm']>=meanreads]
     return df
 
-def compare_expression_profiles(df, by='db', key='reads', threshold=1, path=None):
+def compare_expression_profiles(df, by='ref', key='reads', threshold=1, path=None):
     """Scatter matrix of count values across samples and/or by label"""
 
     df = df[df.name!='_unmapped']
@@ -641,7 +665,7 @@ def get_fractions_mapped(df):
     """Process results of multiple mappings to get fractions
     of each annotations mapped"""
 
-    x = df.groupby(['db','label']).agg({'fraction':np.sum})
+    x = df.groupby(['ref','label']).agg({'fraction':np.sum})
     x = x.unstack(level=0)
     x.columns = x.columns.droplevel(0)
     x['unmapped'] = 1-x.sum(1)

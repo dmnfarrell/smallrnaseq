@@ -23,9 +23,23 @@ class BasicTests(unittest.TestCase):
         aligners.BOWTIE_INDEXES = 'indexes'
         return
 
+    def test_collapse_reads(self):
+        f = os.path.join(base.datadir, 'bovine_serum_sample.fastq')
+        base.collapse_reads(f)
+        return
+
+    def test_build_index(self):
+        filename = os.path.join(base.datadir, 'bosTau8-tRNAs.fa')
+        aligners.build_bowtie_index(filename, 'indexes')
+        aligners.build_subread_index(filename, 'indexes')
+        return
+
     def test_count_features(self):
         """feature counting"""
 
+        #countfile = os.path.join(outpath, '%s.csv' %label)
+        #readcounts = pd.read_csv(countfile, index_col=0)
+        #hits = count_features(samfile, features=exons, truecounts=readcounts)
         return
 
     def test_map_rnas(self):
