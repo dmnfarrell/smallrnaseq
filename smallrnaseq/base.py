@@ -126,6 +126,7 @@ def count_features(samfile, features=None, gtffile=None, truecounts=None, merge=
     um = ['_no_feature','_unmapped']
     mapped = float(result[-result.name.isin(um)].reads.sum())
     total = result.reads.sum()
+    
     print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
     if merge == True and gtffile != None:
         result = merge_features(result, gtffile)

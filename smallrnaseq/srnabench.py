@@ -27,7 +27,7 @@ import subprocess
 import pylab as plt
 import numpy as np
 import pandas as pd
-from . import base
+from . import base, config
 
 modulepath = os.path.dirname(__file__)
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
@@ -83,7 +83,7 @@ def run(infile, outpath='srnabench_runs', overwrite=True, adapter='', species='b
     print (result)
     return outdir
 
-def run_all(path, outpath='runs', filetype='fastq', **kwargs):
+def run_all(path, outpath='srnabench_runs', filetype='fastq', **kwargs):
     """Run all fastq files in folder"""
 
     if os.path.isdir(path):
@@ -375,28 +375,6 @@ def analyse_isomirs(iso,outpath=None):
     iso.to_csv('srnabench_isomirs_all.csv',index=False)
     return top
 
-def plot_read_count_dists(df,h=8):
-    """Boxplots of read count distributions per miRNA"""
-
-    w=int(h*(len(df)/60.0))+4
-    fig, ax = plt.subplots(figsize=(w,h))
-    cols,normcols = get_column_names(df)
-    df = df.set_index('name')
-    n = df[normcols]
-    t=n.T
-    t.index = n.columns
-    try:
-        base.seabornsetup()
-        base.sns.boxplot(t,linewidth=1.0,palette='coolwarm_r',saturation=0.2,)
-        base.sns.despine(trim=True)
-    except:
-        t.plot(kind='box',color='black',grid=False,whis=1.0,ax=ax)
-    ax.set_yscale('log')
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
-    plt.ylabel('read count')
-    plt.tight_layout()
-    return fig
-
 def get_file_ids(path):
     """Get file-id mapping"""
 
@@ -425,26 +403,23 @@ def main():
                            help="input path or file")
     parser.add_option("-a", "--analyse", dest="analyse",
                            help="analyse results of runs")
-
     parser.add_option("-c", "--config", dest="config",
                             help="config file")
     opts, remainder = parser.parse_args()
     pd.set_option('display.width', 600)
     if opts.run == True:
         if opts.config == None:
-            base.write_default_config('srnabench.conf',defaults=srnabenchoptions)
-        cp = base.parse_config(opts.config)
+            config.write_default_config('srnabench.conf', defaults=srnabenchoptions)
+        cp = config.parse_config(opts.config)
         options = cp._sections['base']
         print (options)
         if opts.input == None:
-            opts.input = options['input']
-        run_all(opts.input, **options)
+            opts.input = options['path']
+        run_all(**options)
     elif opts.analyse != None:
         k,n,iso = get_results(opts.analyse)
         analyse_results(k,n)
         analyse_isomirs(iso)
-    else:
-        test()
 
 if __name__ == '__main__':
     main()
