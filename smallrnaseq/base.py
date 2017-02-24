@@ -126,7 +126,7 @@ def count_features(samfile, features=None, gtffile=None, truecounts=None, merge=
     um = ['_no_feature','_unmapped']
     mapped = float(result[-result.name.isin(um)].reads.sum())
     total = result.reads.sum()
-    
+
     print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
     if merge == True and gtffile != None:
         result = merge_features(result, gtffile)
@@ -437,11 +437,11 @@ def remove_files(path, wildcard=''):
         os.remove(f)
     return
 
-def cut_files(files, outpath, adapters):
-    """Cut adapters from fastq files"""
+def trim_files(files, outpath, adapters):
+    """Trim adapters from fastq files"""
 
     for f in files:
-        cut = os.path.join(outpath,label+'.fa')
+        cut = os.path.join(outpath, f)
         if not os.path.exists(cut):
             trim_adapters(f, adapters, cut)
     return
@@ -625,6 +625,12 @@ def count_isomirs(samfile, countsfile, species):
 
     return reads
 
+def find_novel_mirnas(samfile, ref_fasta):
+    """Find novel mirnas in reference mapped reads"""
+
+    return
+
+
 def output_read_stacks(files, outpath, idx):
     """Output read stack files from sam alignment files and a ref sequence"""
 
@@ -674,16 +680,3 @@ def get_fractions_mapped(df):
     #x = x.reindex_axis((x).mean(1).sort_values().index)
     x = x.reset_index()
     return x
-
-def featurecounts(samfile, gtffile):
-    """Count aligned features with the featureCounts program.
-        Returns: a dataframe of counts"""
-
-    params = '-T 5 -t exon -g transcript_id'
-    cmd = 'featureCounts %s -a %s -o counts.txt %s' %(params, gtffile, samfile)
-    print (cmd)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    counts =  pd.read_csv('counts.txt', sep='\t', comment='#')
-    counts = counts.rename(columns={samfile:'reads'})
-    counts = counts.sort('reads', ascending=False)
-    return counts

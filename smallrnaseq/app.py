@@ -31,7 +31,7 @@ def run(opts):
      a config file"""
 
     opts = config.check_options(opts)
-    fastafile = opts['filename']
+    files = opts['filenames'].split(',')
     path = opts['path']
     out = opts['output']
     temp_path = os.path.join(out,'temp') #path for temp files
@@ -40,9 +40,7 @@ def run(opts):
 
     if path != '':
         files = glob.glob(os.path.join(path,'*.fastq'))
-    elif fastafile != '':
-        files = [fastafile]
-    else:
+    elif len(files) == 0:
         print ('you should provide at least one file or folder')
         return
 

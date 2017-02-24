@@ -24,6 +24,7 @@ from __future__ import absolute_import, print_function
 import sys, os, string, types, re, csv
 import shutil, glob, collections
 import itertools
+from itertools import islice
 import subprocess
 import matplotlib
 import pylab as plt
@@ -168,8 +169,11 @@ def fasta_to_dataframe(infile,idindex=0):
     df.set_index(['name'],inplace=True)
     return df
 
-def fastq_to_dataframe(f):
-    """Convert fastq to dataframe - may use a lot of memory"""
+def fastq_to_dataframe(f, size=None):
+    """Convert fastq to dataframe.
+        size: limit to the first reads of total size
+        Returns: dataframe with reads
+    """
 
     ext = os.path.splitext(f)[1]
     if ext=='.fastq':
@@ -178,7 +182,10 @@ def fastq_to_dataframe(f):
         ffile = HTSeq.FastaReader(f)
     else:
         return
-    sequences = [(s.name,s.seq) for s in ffile]
+    if size != None:
+        sequences = [(s.name, s.seq, s.descr) for s in islice(fastfile, i, i+size)]
+    else:
+        sequences = [(s.name,s.seq) for s in ffile]
     df = pd.DataFrame(sequences,columns=['id','seq'])
     return df
 
@@ -256,23 +263,23 @@ def get_mifam():
     df = pd.DataFrame(data,columns=['id','name','family'])
     return df
 
-def trim_adapters(infile, adapters=[], outfile='cut.fastq', method='default'):
+def trim_adapters(infile, adapter, outfile='cut.fastq', method='default'):
     """Trim adapters using cutadapt"""
 
-    if len(adapters) == 0:
-        print ('no adapters!')
+    if not type(adapter) is str:
+        print ('not valid adapter')
         return
-    adptstr = ' -a '.join(adapters)
+
     if method == 'default':
         newfile = open( outfile, "w" )
         fastfile = HTSeq.FastqReader(infile, "solexa")
-        a = HTSeq.Sequence(adapters[0])
+        a = HTSeq.Sequence(adapter)
         for s in fastfile:
             new = s.trim_right_end(a, mismatch_prop = 0.)
             new.write_to_fastq_file( newfile )
         newfile.close()
     elif method == 'cutadapt':
-        cmd = 'cutadapt -m 18 -O 5 -q 20 -a %s %s -o %s' %(adptstr,infile,outfile)
+        cmd = 'cutadapt -m 18 -O 5 -q 20 -a %s %s -o %s' %(adapter,infile,outfile)
         print (cmd)
         result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     return
@@ -471,6 +478,7 @@ def get_aligned_reads(samfile, truecounts=None):
             f.append((a.read.seq,a.read.name,a.iv.chrom,a.iv.start+1,a.iv.end))
     counts = pd.DataFrame(f, columns=['seq','read','name','start','end'])
     counts['length'] = counts.seq.str.len()
+    counts = counts.drop(['read'],1)
     if truecounts is not None:
         counts = counts.merge(truecounts, on='seq')
     return counts
@@ -571,3 +579,16 @@ def find_subseq(seq, s):
         c = seq.find(s[:i])
         if c != -1: return c
     return -1
+
+def featurecounts(samfile, gtffile):
+    """Count aligned features with the featureCounts program.
+       Returns: a dataframe of counts"""
+
+    params = '-T 5 -t exon -g transcript_id'
+    cmd = 'featureCounts %s -a %s -o counts.txt %s' %(params, gtffile, samfile)
+    print (cmd)
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    counts =  pd.read_csv('counts.txt', sep='\t', comment='#')
+    counts = counts.rename(columns={samfile:'reads'})
+    counts = counts.sort('reads', ascending=False)
+    return counts

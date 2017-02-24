@@ -30,7 +30,8 @@ path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')
 
 
-baseoptions = {'base': [('filename',''),('path',''),('filetype','fastq'),
+baseoptions = {'base': [('filenames',''),('path',''),('filetype','fastq'),
+                    ('adapter',''),
                     ('indexes',''),('index_path','indexes'),
                     ('ref_genome',''),
                     ('output','smrna_results'),('add_labels',0),

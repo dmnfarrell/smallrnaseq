@@ -72,7 +72,7 @@ def heatmap(df,fname=None,cmap='seismic',log=False):
 def plot_read_lengths(filename, df=None):
     """View read length distributions"""
 
-    df = utils.fastq_to_dataframe(filename)
+    df = utils.fastq_to_dataframe(filename, size=5e5)
     x = analysis.read_length_dist(df)
     fig,ax=plt.subplots(1,1,figsize=(10,4))
     ax.bar(x[1][:-1],x[0], align='center')
