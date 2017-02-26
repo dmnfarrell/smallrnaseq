@@ -147,14 +147,15 @@ def fastq_to_fasta(infile, rename=True):
 def dataframe_to_fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
     """Convert dataframe to fasta"""
 
-    df = df.reset_index() #in case key is the index
+    if idkey not in df.columns:
+        df = df.reset_index()
     fastafile = open(outfile, "w")
     for i,row in df.iterrows():
         seq = row[seqkey].upper().replace('U','T')
         if idkey in row:
-            d = row[idkey]
+            d = str(row[idkey])
         else:
-            d = ''
+            d = row.name
         myseq = HTSeq.Sequence(seq, d)
         myseq.write_to_fasta_file(fastafile)
     return
@@ -483,55 +484,64 @@ def get_aligned_reads(samfile, truecounts=None):
         counts = counts.merge(truecounts, on='seq')
     return counts
 
-def print_read_stack(reads=None, fastafile=None, outfile=None, name=None,
-                     cutoff=0, by=None):
-    """Print local read alignments from a sam file against the mapped sequence
-       and save the output to a text file or stdout if no filename.
+def print_read_stacks(reads, fastafile, outfile=None, name=None, by=None):
+    """Print multiple read alignments to file or stdout
        Args:
         reads: dataframe of read counts with position info
         fastafile: optional fasta file with references sequences mapped to
-        outfile: file name to write output, else send to stdout
-        readcounts: original read counts if using a collapsed file
-        cutoff: don't display read with <cutoff counts
     """
-
-    refs = fasta_to_dataframe(fastafile)
-    x = reads
 
     if name != None:
         names = [name]
     else:
-        names = x.name.unique()
+        names = reads.name.unique()
     if outfile != None:
         f = open(outfile, 'w')
+        print (f)
     else:
         f = None
-    if by is not None:
-        x = x.sort_values(by)
-
+    refs = fasta_to_dataframe(fastafile)
     for n in names:
-        reads = x[x.name==n]
-        reads = reads[reads.reads>cutoff]
-        #if refs is not None:
-        seq = refs.ix[n].sequence
-        if by == 'start':
-            reads = reads.sort_values('start')
-        l = len(reads)
-        if l==0: continue
-        print (n, '(%s unique reads)' %l, file=f)
-        print ('-------------------------------------', file=f)
-        print (seq, file=f)
-        for idx,r in reads.iterrows():
-            s = r.seq
-            count = r.reads
-            #if count <= cutoff: continue
-            #pos = seq.find(s[:6]) #improve find string
-            #pos = find_subseq(seq, s)
-            pos = r.start-1
-            if pos == -1: continue
-            i = len(s)+pos
-            print ("{:>{w}} ({c})".format(s,w=i,c=count), file=f)
-        print ('', file=f)
+        x = reads[reads.name==n]
+        refseq = refs.ix[n].sequence
+        print_read_stack(x, refseq, by=by, cutoff=0, label=n)
+    if f != None:
+        f.close()
+    return
+
+def print_read_stack(reads, refseq=None, outfile=None, cutoff=0, by=None, label=''):
+    """Print local read alignments from a sam file against the mapped sequence
+       and save the output to a text file or stdout if no filename.
+       Args:
+        reads: dataframe of read counts with position info
+        refseq: sequence segment or gene that reads are mapped to
+        outfile: file name to write output, else send to stdout
+        cutoff: don't display read with <cutoff counts
+    """
+
+    if refseq != None:
+        seqlen = len(refseq)
+    else:
+        seqlen = reads.end.max()
+    f = None
+    reads = reads[reads.reads>cutoff]
+    if by is not None:
+        reads = reads.sort_values(by)
+
+    l = len(reads)
+    if l==0: return
+    print (label, '(%s unique reads)' %l, file=f)
+    print ('-------------------------------------', file=f)
+    print (refseq, file=f)
+    #print (reads)
+    for idx,r in reads.iterrows():
+        s = r.seq
+        count = r.reads
+        pos = r.start-1
+        if pos == -1: continue
+        i = len(s)+pos
+        print ("{:>{w}} ({c})".format(s,w=i,c=count), file=f)
+    print ('', file=f)
     return
 
 def plot_read_stack(reads, refseq=None, by=None, cutoff=0, ax=None):

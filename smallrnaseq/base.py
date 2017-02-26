@@ -484,8 +484,9 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     df = pd.DataFrame(df.sum(1).astype(int),columns=['reads'])
     df.index.name='seq'
     df = df.sort_values(by='reads',ascending=False).reset_index()
-    df['id'] = df.apply(lambda x: 'seq_'+str(x.name), axis=1)
-    utils.dataframe_to_fasta(df, outfile=outfile)
+    #df['id'] = df.apply(lambda x: 'seq_'+str(x.name), axis=1)
+    df['read_id'] = df.index.copy()
+    utils.dataframe_to_fasta(df, idkey='read_id', outfile=outfile)
     df.to_csv(os.path.splitext(outfile)[0]+'.csv')
     print ('collapsed %s reads to %s' %(total,len(df)))
     return
@@ -498,12 +499,13 @@ def collapse_files(files, outpath, **kwargs):
     outfiles = []
     for f in files:
         label = os.path.splitext(os.path.basename(f))[0]
-        cfile = os.path.join(outpath, label+'.fa')
-        if not os.path.exists(cfile):
-            collapse_reads(f, outfile=cfile, **kwargs)
+        collapsedfile = os.path.join(outpath, label+'.fa')
+        countsfile = os.path.join(outpath, label+'.csv')
+        if not os.path.exists(collapsedfile) or not os.path.exists(countsfile):
+            collapse_reads(f, outfile=collapsedfile, **kwargs)
         else:
             print ('found collapsed file')
-        outfiles.append(cfile)
+        outfiles.append(collapsedfile)
     return outfiles
 
 def _get_mature(r, key='mature1', pad5=0, pad3=0):
@@ -621,8 +623,7 @@ def count_isomirs(samfile, countsfile, species):
     #padded sequences so we can see where each read landed relative to canonical
     mirs = get_mirbase_sequences(species, pad5=6, pad3=6, dna=True).set_index('name')
     reads = utils.get_aligned_reads(samfile, truecounts)
-    reads = reads.drop(['read','id','start','end'],1)
-
+    reads = reads.drop(['read_id','start','end'],1)
     return reads
 
 def find_novel_mirnas(samfile, ref_fasta):
@@ -630,21 +631,22 @@ def find_novel_mirnas(samfile, ref_fasta):
 
     return
 
-
 def output_read_stacks(files, outpath, idx):
     """Output read stack files from sam alignment files and a ref sequence"""
 
     ref_fasta = idx+'.fa'
     original = sys.stdout
-    sys.stdout = open(os.path.join(outpath, '%s_read_stacks.txt' %idx), 'w')
+    out = open(os.path.join(outpath, '%s_read_stacks.txt' %idx), 'w')
+    sys.stdout = out
     for f in files:
         filename = os.path.splitext(os.path.basename(f))[0]
         samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
         countfile = os.path.join(outpath, '%s.csv' %filename)
         readcounts = pd.read_csv(countfile)
         reads = utils.get_aligned_reads(samfile, readcounts)
-        utils.print_read_stack(reads, cutoff=1, fastafile='mirbase-bta.fa')
+        utils.print_read_stacks(reads, fastafile='mirbase-bta.fa')
     sys.stdout = original
+    out.close()
     return
 
 def filter_expr_results(df, freq=0.5, meanreads=0, totalreads=50):
