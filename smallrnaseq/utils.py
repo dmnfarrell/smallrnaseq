@@ -298,7 +298,11 @@ def rnafold(seq, name=None):
     """Run RNAfold for precursor"""
 
     import RNA
-    x = RNA.fold(seq)
+    try:
+        x = RNA.fold(seq)
+    except Exception as e:
+        print (e)
+        return
     colors = [" 1. 0. .2", " 0. .9 .5"]
     if name != None:
         path=''
@@ -412,13 +416,12 @@ def sequence_from_coords(fastafile, coords):
     """Fasta sequence from genome feature coords"""
 
     from pybedtools import BedTool
-    from Bio.Seq import Seq
     chrom,start,end,strand = coords
     if strand == '+':
         seq = str(BedTool.seq(coords, fastafile))
     else: #reverse strand
         seq = str(BedTool.seq(coords, fastafile))
-        seq = Seq(seq).reverse_complement()
+        seq = str(HTSeq.Sequence(seq).get_reverse_complement())
     return seq
 
 def sequence_from_bedfile(fastafile, features=None, bedfile=None, pad5=0, pad3=0):
@@ -432,7 +435,6 @@ def sequence_from_bedfile(fastafile, features=None, bedfile=None, pad5=0, pad3=0
             a pandas dataframe with name, sequence and coord columns"""
 
     from pybedtools import BedTool
-    from Bio.Seq import Seq
     if bedfile != None:
         features = utils.bed_to_dataframe(bedfile)
     new = []
@@ -443,7 +445,7 @@ def sequence_from_bedfile(fastafile, features=None, bedfile=None, pad5=0, pad3=0
         else: #reverse strand
             coords = (r.chr,r.chromStart-pad3,r.chromEnd+pad5)
             seq = str(BedTool.seq(coords, fastafile))
-            seq = Seq(seq).reverse_complement()
+            seq = HTSeq.Sequence(seq).get_reverse_complement()
         #print n, coords, r['name']
         new.append([r['name'],str(seq),coords])
     new = pd.DataFrame(new, columns=['name','seq','coords'])
@@ -476,8 +478,8 @@ def get_aligned_reads(samfile, truecounts=None):
     f=[]
     for a in sam:
         if a.aligned == True:
-            f.append((a.read.seq,a.read.name,a.iv.chrom,a.iv.start+1,a.iv.end))
-    counts = pd.DataFrame(f, columns=['seq','read','name','start','end'])
+            f.append((a.read.seq,a.read.name,a.iv.chrom,a.iv.start+1,a.iv.end,a.iv.strand))
+    counts = pd.DataFrame(f, columns=['seq','read','name','start','end','strand'])
     counts['length'] = counts.seq.str.len()
     counts = counts.drop(['read'],1)
     if truecounts is not None:
