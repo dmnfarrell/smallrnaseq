@@ -523,6 +523,14 @@ def _get_mature(r, key='mature1', pad5=0, pad3=0):
         s = p[start:i+len(m)+pad3]
     return pd.Series([name,s],index=['name','sequence'])
 
+def get_mirbase(species):
+    """ """
+
+    df = pd.read_csv(MIRBASE)
+    df = df[df.species==species]
+    df.precursor = df.precursor.str.replace('U','T')
+    return df
+
 def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
     """Extract species specific sequences from mirbase file.
        Args:
