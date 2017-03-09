@@ -478,7 +478,7 @@ def get_aligned_reads(samfile, truecounts=None):
     f=[]
     for a in sam:
         if a.aligned == True:
-            f.append((a.read.seq,a.read.name,a.iv.chrom,a.iv.start+1,a.iv.end,a.iv.strand))
+            f.append((a.read.seq,a.read.name,a.iv.chrom,a.iv.start,a.iv.end,a.iv.strand))
     counts = pd.DataFrame(f, columns=['seq','read','name','start','end','strand'])
     counts['length'] = counts.seq.str.len()
     counts = counts.drop(['read'],1)

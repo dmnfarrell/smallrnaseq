@@ -523,12 +523,15 @@ def _get_mature(r, key='mature1', pad5=0, pad3=0):
         s = p[start:i+len(m)+pad3]
     return pd.Series([name,s],index=['name','sequence'])
 
-def get_mirbase(species):
-    """ """
+def get_mirbase(species=None):
+    """Get mirbase sequences"""
 
     df = pd.read_csv(MIRBASE)
-    df = df[df.species==species]
+    if species is not None:
+        df = df[df.species==species]
     df.precursor = df.precursor.str.replace('U','T')
+    df.mature1_seq = df.mature1_seq.str.replace('U','T')
+    df.mature2_seq = df.mature2_seq.str.replace('U','T')
     return df
 
 def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
