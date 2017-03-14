@@ -169,3 +169,50 @@ def expression_clustermap(counts, freq=0.8):
     mt = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, fontsize=9)
     mt = plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
     return cg
+
+def forna_show(seq, struct=None, id=None, height=200, width=600):
+    """Use local forna to display rna structure"""
+
+    if id==None:
+        import random, string
+        id = ''.join(random.choice(string.ascii_uppercase) for i in range(12))
+    if struct == None:
+        struct,sc = utils.rnafold(seq)
+
+    html = """<link rel="stylesheet" type="text/css" href="forna/htdocs/css/fornac.css" media="screen" />
+
+    <div id='%s' style="height:%spx;width:%spx"> </div>
+
+        <script type='text/javascript' src='forna/htdocs/js/jquery.js'></script>
+        <script type='text/javascript' src='forna/htdocs/js/d3.js'></script>
+        <script type='text/javascript' src='forna/htdocs/js/fornac.js'></script>
+        <script type="text/javascript" src="js/saveSvgAsPng.js"></script>
+
+        <script type='text/javascript'>
+            var container = new FornaContainer("#%s", {'applyForce': false,
+                                            'allowPanningAndZooming': false,});
+
+            var options = {'structure': '%s',
+                           'sequence':  '%s'};
+
+            container.addRNA(options.structure, options);
+            container.addCustomColors('9:#ff7f0e 10:#ff7f0e 11:#ff7f0e 12:#aec7e8');
+
+        </script>
+
+        <!-- <button type="button" class="btn btn-default">    -->
+        <!-- <a role="menuitem" data-bind="click: savePNG" download="rna.png">PNG</a>  -->
+        <!-- </button> -->
+
+        """ %(id,height,width,id,struct,seq)
+    display(HTML(html))
+    return
+
+def forna_view(seq, struct=None):
+    """Forna viewer javascript"""
+    if struct == None:
+        struct,sc = utils.rnafold(seq)
+    url='http://nibiru.tbi.univie.ac.at/forna/forna.html?id=url/name&sequence=%s&structure=%s' %(seq,struct)
+    iframe = '<iframe src=' + url + ' width=500 height=500 frameBorder="0" AllowFullScreen></iframe>'
+    display(HTML(iframe))
+    return
