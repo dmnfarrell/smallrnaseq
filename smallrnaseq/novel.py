@@ -117,6 +117,7 @@ def build_rna_features(seq, mature=None):
     if mature == None:
         #mature should be given - place holder for code to guess it later
         start = np.random.randint(1,len(sm)-20)
+        end = start+22
     else:
         start = utils.find_subseq(seq, mature)
         end = start+len(mature)
@@ -404,13 +405,11 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
     else:
         return
 
-def find_mirnas(samfile, ref_fasta, truecounts):
+def find_mirnas(reads, ref_fasta):
     """Find novel miRNAs in reference mapped reads. Assumes we have already
         mapped to known miRNAs. """
 
-    reads = utils.get_aligned_reads(samfile, truecounts)
     df = get_read_clusters(reads)
-
     print ('%s unique reads in clusters' %len(df))
     clusts = df.groupby(['name','cluster','cl_start','cl_end','strand'])\
                             .agg({'reads':np.sum,'length':np.max})\
