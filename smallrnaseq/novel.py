@@ -29,6 +29,11 @@ import numpy as np
 import pandas as pd
 from . import base, utils
 
+path = os.path.dirname(os.path.abspath(__file__))
+datadir = os.path.join(path, 'data')
+X, y = get_training_data()
+CLASSIFIER = precursor_classifier(X,y)
+
 def get_triplets(seq, struct):
     """triplet elements"""
 
@@ -61,6 +66,8 @@ def get_stem_pairs(bg):
     return pairs
 
 def get_stem_matches(bg):
+    """Find rna stem mismatches"""
+
     pairs = get_stem_pairs(bg)
     wc = {'G':'C','C':'G','T':'A','A':'T'}
     matches = [True if i[1]==wc[i[0]] else False for i in pairs]
@@ -179,9 +186,9 @@ def get_positives(species='hsa'):
         f['star'] = row.mature2_seq
         feats.append(f)
 
-    known = pd.DataFrame(feats)
-    known.to_csv('known_mirna_features.csv')
-    return known
+    result = pd.DataFrame(feats)
+    result.to_csv('known_mirna_features.csv', index=False)
+    return result
 
 def get_negatives():
     """negative pseudo mirna set"""
@@ -208,48 +215,65 @@ def get_negatives():
         result.append(f)
     result = pd.DataFrame(result)
     result = result[(result.loops==1) & (result.mfe*result.length<=-15) & (result.stem_length>18)]
+    result.to_csv('negative_mirna_features.csv', index=False)
     return result
 
-def precursor_classifier(known, neg):
-    """Train a mirna precursor classifier"""
+def get_training_data(known=None, neg=None):
+    """get training data for classifier"""
 
-    import sklearn
-    from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier, RandomForestRegressor)
-    from sklearn.model_selection import train_test_split,cross_val_score
-
+    if known == None:
+        known = pd.read_csv(os.path.join(datadir, 'training_positives.csv'))
+        #known = get_positives()
+    if neg == None:
+        neg = pd.read_csv(os.path.join(datadir, 'training_negatives.csv'))
     print (len(known), len(neg))
     known['target'] = 1
     neg['target'] = 0
     data = pd.concat([known,neg]).reset_index(drop=True)
     data = data.sample(frac=1)
-
     y = data.target
     data = data.drop('target',1)
     X = data.select_dtypes(['float','int'])
-    #print data[:5]
     #X = sklearn.preprocessing.scale(X)
+    return X, y
 
-    #test
-    #X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.4)
-    #rf = RandomForestClassifier()
-    rf = RandomForestRegressor()
-    #rf.fit(X_train, y_train)
-    #y_score = rf.predict(X_test)
-    scores = cross_val_score(rf, X, y, cv=5, scoring='roc_auc')
-    print (scores)
-    #print sklearn.metrics.classification_report(y_test, y_score)
+def precursor_classifier(X, y):
+    """Train a miRNA precursor classifier using positive and negatives. If these
+        are not provided default training sets are used."""
 
+    from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
     rf = RandomForestClassifier()
     #rf = RandomForestRegressor()
     rf.fit(X,y)
-    names = data.columns
+    return rf
+
+def test_classifier(known=None, neg=None):
+
+    X, y = get_training_data(known, neg)
+    rf = precursor_classifier(X, y)
+    from sklearn.model_selection import train_test_split,cross_val_score
+    #X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.4)
+    #rf = RandomForestRegressor()
+    scores = cross_val_score(rf, X, y, cv=5, scoring='roc_auc')
+    print (scores)
+    #print sklearn.metrics.classification_report(y_test, y_score)
+    names = X.columns
     importances = rf.feature_importances_
     indices = np.argsort(importances)[::-1]
-    #print indices
     print ('feature ranking:')
     for f in range(X.shape[1])[:10]:
         print("%d. %s (%f)" % (f + 1, names[indices[f]], importances[indices[f]]))
-    return rf
+    '''a = neg[:2000].drop('target',1)
+    a['score'] = score_features(a, rf)
+    b = known[:2000].drop('target',1)
+    b['score'] = score_features(b, rf)
+    x = a.score.value_counts().sort_index()
+    y = b.score.value_counts().sort_index()
+
+    res = pd.DataFrame({'neg':x,'pos':y})
+    res.plot(kind='bar')
+    '''
+    return
 
 def score_features(data, rf):
     """Score a set of features"""
@@ -281,8 +305,8 @@ def build_cluster_trees(alnmt, cluster_distance=100, min_size=2, key='read_id'):
     return dict(cluster_trees)
 
 def get_read_clusters(reads):
-    """get clusters of reads from a dataframe with alignment fields
-      i.e. from samfile info"""
+    """Get clusters of reads from a dataframe with alignment fields
+      i.e. from a sam file"""
 
     df = reads
     df = df[df.length<=26]
@@ -346,13 +370,15 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
         end5 = x.start + 2 * len(x.seq)-1 + loop + i
         coords = [chrom,start5,end5,strand]
         prseq = utils.sequence_from_coords(ref_fasta, coords)
-        N.append({'precursor':prseq, 'chrom':chrom,'start':start5,'end':end5,'mature':x.seq,'strand':strand})
+        N.append({'precursor':prseq, 'chrom':chrom,'start':start5,'end':end5,
+                  'mature':x.seq,'strand':strand})
         #3' side
         start3 = x.start - (loop + len(x.seq) + i)
         end3 = x.end + i
         coords = [chrom,start3,end3,strand]
         prseq = utils.sequence_from_coords(ref_fasta, coords)
-        N.append({'precursor':prseq, 'chrom':chrom,'start':start3,'end':end3,'mature':x.seq,'strand':strand})
+        N.append({'precursor':prseq, 'chrom':chrom,'start':start3,'end':end3,
+                  'mature':x.seq,'strand':strand})
 
     N = pd.DataFrame(N)
     print (len(N))
@@ -364,6 +390,7 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
 
     f = N.apply(lambda x: pd.Series(build_rna_features(x.precursor, x.mature)), 1)
 
+    rf = CLASSIFIER
     N['score'] = score_features(f, rf)
     N['mfe'] = f.mfe
     #filter by feature
