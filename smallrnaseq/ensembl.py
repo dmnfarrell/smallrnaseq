@@ -38,7 +38,7 @@ try:
     Species.amendSpecies('Erinaceus europaeus', 'hedgehog')
     Species.amendSpecies('Mustela putorius furo', 'ferret')
 except:
-    print ('cogent not available, ensembl module requires it')
+    print ('cogent not installed')
 
 
 def get_orthologs(refgenome, ensid=None, symbol=None):

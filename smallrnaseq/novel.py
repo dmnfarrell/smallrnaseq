@@ -31,8 +31,7 @@ from . import base, utils
 
 path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')
-X, y = get_training_data()
-CLASSIFIER = precursor_classifier(X,y)
+CLASSIFIER = None
 
 def get_triplets(seq, struct):
     """triplet elements"""
@@ -220,12 +219,18 @@ def get_negatives():
     return result
 
 def get_training_data(known=None, neg=None):
-    """get training data for classifier"""
+    """Get training data for classifier
+        Args:
+            known: known precursor data, a dataframe
+            neg: negatives
+        Returns:
+            a dataframe with all features and a set of true/false values
+    """
 
-    if known == None:
+    if known is None:
         known = pd.read_csv(os.path.join(datadir, 'training_positives.csv'))
         #known = get_positives()
-    if neg == None:
+    if neg is None:
         neg = pd.read_csv(os.path.join(datadir, 'training_negatives.csv'))
     print (len(known), len(neg))
     known['target'] = 1
@@ -238,20 +243,32 @@ def get_training_data(known=None, neg=None):
     #X = sklearn.preprocessing.scale(X)
     return X, y
 
-def precursor_classifier(X, y):
-    """Train a miRNA precursor classifier using positive and negatives. If these
-        are not provided default training sets are used."""
+def precursor_classifier(known=None, neg=None, kind='classifier'):
+    """Get a miRNA precursor classifier using given training data.
+       Args:
+        X: numpy array/dataframe with features
+        y: true/false values matching feature rows, 1's and 0's
+        kind: use 'classifier' or 'regressor' random forest
+       Returns:
+        random forest classifier fitted to X,y
+    """
 
+    X, y = get_training_data(known, neg)
     from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
-    rf = RandomForestClassifier()
-    #rf = RandomForestRegressor()
+    if kind == 'classifier':
+        rf = RandomForestClassifier()
+    else:
+        rf = RandomForestRegressor()
+    #print ('fitting..')
     rf.fit(X,y)
     return rf
 
 def test_classifier(known=None, neg=None):
 
+    from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
     X, y = get_training_data(known, neg)
-    rf = precursor_classifier(X, y)
+    rf = RandomForestClassifier()
+    rf.fit(X,y)
     from sklearn.model_selection import train_test_split,cross_val_score
     #X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.4)
     #rf = RandomForestRegressor()
@@ -270,7 +287,6 @@ def test_classifier(known=None, neg=None):
     b['score'] = score_features(b, rf)
     x = a.score.value_counts().sort_index()
     y = b.score.value_counts().sort_index()
-
     res = pd.DataFrame({'neg':x,'pos':y})
     res.plot(kind='bar')
     '''
@@ -283,7 +299,7 @@ def score_features(data, rf):
     #data['score'] = rf.predict(X)
     return rf.predict(X)
 
-def build_cluster_trees(alnmt, cluster_distance=100, min_size=2, key='read_id'):
+def build_cluster_trees(alnmt, cluster_distance=10, min_size=2, key='read_id'):
     """Build cluster tree of reads from a dataframe of locations e.g from
         a set of aligned reads from a sam file.
     Args:
@@ -310,54 +326,60 @@ def get_read_clusters(reads):
       i.e. from a sam file"""
 
     df = reads
-    df = df[df.length<=26]
+    df = df[df.length<=25]
     #get clusters of reads and store by read_id
-    clustertrees = build_cluster_trees(df, 10, 5)
+    clustertrees = build_cluster_trees(df, cluster_distance=10, min_size=2)
     df.set_index('read_id',inplace=True)
 
     groups = []
     i=1
     for chrom, cltree in clustertrees.items():
-        #print chrom
+        #print (chrom)
         for start, end, ids in cltree.getregions():
-            #print start, end, ids
-            c = df.ix[ids]
+            #print (start, end, ids)
+            c = df.ix[ids].copy()
             c['cl_start'] = start
             c['cl_end'] = end
             c['cluster'] = i
             groups.append(c)
+            #print (c)
             i+=1
     df = pd.concat(groups)
     return df
 
 def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
-    """Find most likely precursor from a genomic sequence and
+    """Find the most likely precursor from a genomic sequence and
        one or two mapped read clusters.
        Args:
            ref_fasta: genomic reference sequence
            cluster: reads in a cluster, a dataframe
            cluster2: a pair to the first cluster, optional
            step: increment for extending precursors
+           score_cutoff: if using non-classifier, optional
        Returns:
            the top precursor
     """
 
+    rf = CLASSIFIER
+    if rf == None:
+        print ('no classifier defined, set novel.CLASSIFIER variable')
+        return
     x = cluster.iloc[0]
-    maturereads = reads1 = cluster.reads.sum()
+    maturecounts = reads1 = cluster.reads.sum()
     mature = x.seq
     star = None
-    starreads = 0
+    starcounts = 0
     #dtermine mature/star if two clusters present
     if cluster2 is not None:
         reads2 = cluster2.reads.sum()
         y = cluster2.iloc[0]
         if reads2>reads1:
             mature = y.seq
-            maturereads = reads2
+            maturecounts = reads2
             star = x.seq
-            starreads = reads1
+            starcount = reads1
 
-    print (mature, star, maturereads, starreads)
+    print (mature, star, maturecounts, starcounts)
     #check mature for non templated additions?
 
     chrom = x['name']
@@ -371,6 +393,8 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
         end5 = x.start + 2 * len(x.seq)-1 + loop + i
         coords = [chrom,start5,end5,strand]
         prseq = utils.sequence_from_coords(ref_fasta, coords)
+        if prseq == None:
+            continue
         N.append({'precursor':prseq, 'chrom':chrom,'start':start5,'end':end5,
                   'mature':x.seq,'strand':strand})
         #3' side
@@ -378,20 +402,24 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
         end3 = x.end + i
         coords = [chrom,start3,end3,strand]
         prseq = utils.sequence_from_coords(ref_fasta, coords)
+        if prseq == None:
+            continue
         N.append({'precursor':prseq, 'chrom':chrom,'start':start3,'end':end3,
                   'mature':x.seq,'strand':strand})
-
+    if len(N) == 0:
+        return
     N = pd.DataFrame(N)
-    print (len(N))
-    N['mature_reads'] = maturereads
-    N['star_reads'] = starreads
+    #print (len(N))
+    N['mature_reads'] = maturecounts
+    N['star_reads'] = starcounts
     if cluster2 is not None:
         N['star'] = cluster2.iloc[0].seq
         #'check star for non templated additions?
 
     f = N.apply(lambda x: pd.Series(build_rna_features(x.precursor, x.mature)), 1)
 
-    rf = CLASSIFIER
+    if CLASSIFIER == None:
+        rf = get_default_classifier()
     N['score'] = score_features(f, rf)
     N['mfe'] = f.mfe
     #filter by feature
@@ -405,17 +433,26 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
     else:
         return
 
-def find_mirnas(reads, ref_fasta):
+def find_mirnas(reads, ref_fasta, score_cutoff=.9):
     """Find novel miRNAs in reference mapped reads. Assumes we have already
-        mapped to known miRNAs. """
+        mapped to known miRNAs.
+        Args:
+            reads: unique aligned reads with counts in a dataframe
+            ref_fasta: reference genome fasta file
+            rf: precursor classifier, optional
+    """
+
+    global CLASSIFIER
+    if CLASSIFIER == None:
+        print ('getting default classifier')
+        CLASSIFIER = precursor_classifier(kind='regressor')
 
     df = get_read_clusters(reads)
-    print ('%s unique reads in clusters' %len(df))
     clusts = df.groupby(['name','cluster','cl_start','cl_end','strand'])\
                             .agg({'reads':np.sum,'length':np.max})\
                             .reset_index()\
                             .rename(columns={'cl_start':'start','cl_end':'end'})
-    print ('%s read clusters' %len(clusts))
+    print ('%s read clusters in %s unique reads' %(len(clusts),len(df)))
 
     #find pairs of read clusters - likely to be mature/star sequences
     clustpairs = build_cluster_trees(clusts, 120, min_size=2, key='cluster')
@@ -433,14 +470,15 @@ def find_mirnas(reads, ref_fasta):
         return r['chrom']+':'+str(r.start)+'..'+str(r.end)+':'+r.strand
 
     clusts['pair'] = clusts.apply(get_pairs, 1)
-    #print clusts
+    #print (clusts)
 
     n1 = []
-    for i,r in clusts.groupby('pair'):
+    pairs = clusts.groupby('pair')
+    print ('%s paired clusters found' %len(pairs.groups))
+    for i,r in pairs:
         a,b = list(r.cluster)
         c1 = df[df.cluster==a]
         c2 = df[df.cluster==b]
-        print ('paired clusters found')
         p = find_precursor(ref_fasta, c1, c2, step=7)
         if p is None:
             print ('no precursor predicted')
@@ -451,9 +489,11 @@ def find_mirnas(reads, ref_fasta):
     n2 = []
     #guess precursors for single clusters
     singleclusts = clusts[clusts.pair.isnull()]
-    for i,r in islice(singleclusts.iterrows(),5,20):
+    print ()
+    print ('checking %s single clusters' %len(singleclusts))
+    for i,r in singleclusts.iterrows():
         c = df[df.cluster==r.cluster]
-        p = find_precursor(ref_fasta, c, step=7)
+        p = find_precursor(ref_fasta, c, step=7, score_cutoff=score_cutoff)
         #print p
         if p is None:
             print ('no precursor predicted')
@@ -464,6 +504,9 @@ def find_mirnas(reads, ref_fasta):
     n2 = pd.DataFrame(n2)
 
     novel = pd.concat([n1,n2])
+    if len(novel) == 0:
+        print ('no mirnas found!')
+        return
     #get seed seq and mirbase matches
     novel['seed'] = novel.apply(lambda x: x.mature[2:8], 1)
     #get coords column

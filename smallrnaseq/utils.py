@@ -383,7 +383,7 @@ def bed_to_dataframe(bedfile):
 
 def features_to_gtf(df, filename):
     """Take generic dataframe of features and create ensembl gtf file. Note some fields
-       will be redundnant as they require ensembl specific information"""
+       will be redundant as they require ensembl specific information"""
 
     #ensembl gtf header format
     gtfheader=['chrom', 'start', 'end', 'exon_id', 'exon_number', 'exon_version', 'gene_biotype', 'gene_id',
@@ -413,15 +413,18 @@ def features_to_gtf(df, filename):
     return gtf
 
 def sequence_from_coords(fastafile, coords):
-    """Fasta sequence from genome feature coords"""
+    """Fasta sequence from genome coords"""
 
     from pybedtools import BedTool
     chrom,start,end,strand = coords
-    if strand == '+':
-        seq = str(BedTool.seq(coords, fastafile))
-    else: #reverse strand
-        seq = str(BedTool.seq(coords, fastafile))
-        seq = str(HTSeq.Sequence(seq).get_reverse_complement())
+    try:
+        if strand == '+':
+            seq = str(BedTool.seq(coords, fastafile))
+        else: #reverse strand
+            seq = str(BedTool.seq(coords, fastafile))
+            seq = str(HTSeq.Sequence(seq).get_reverse_complement())
+    except Exception as e:
+        return
     return seq
 
 def sequence_from_bedfile(fastafile, features=None, bedfile=None, pad5=0, pad3=0):

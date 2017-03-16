@@ -329,7 +329,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         rem = None
         filename = os.path.splitext(os.path.basename(cfile))[0]
         countfile = os.path.join(outpath, '%s.csv' %filename)
-        readcounts = pd.read_csv(countfile, index_col=0)
+        readcounts = pd.read_csv(countfile)
         total = readcounts.reads.sum()
         print (filename)
         for idx in indexes:
@@ -487,7 +487,7 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     #df['id'] = df.apply(lambda x: 'seq_'+str(x.name), axis=1)
     df['read_id'] = df.index.copy()
     utils.dataframe_to_fasta(df, idkey='read_id', outfile=outfile)
-    df.to_csv(os.path.splitext(outfile)[0]+'.csv')
+    df.to_csv(os.path.splitext(outfile)[0]+'.csv', index=False)
     print ('collapsed %s reads to %s' %(total,len(df)))
     return
 
