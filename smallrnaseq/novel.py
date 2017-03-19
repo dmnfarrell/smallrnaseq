@@ -325,11 +325,9 @@ def get_read_clusters(reads):
     """Get clusters of reads from a dataframe with alignment fields
       i.e. from a sam file"""
 
-    df = reads
-    df = df[df.length<=25]
     #get clusters of reads and store by read_id
-    clustertrees = build_cluster_trees(df, cluster_distance=10, min_size=2)
-    df.set_index('read_id',inplace=True)
+    clustertrees = build_cluster_trees(reads, cluster_distance=10, min_size=2)
+    reads.set_index('read_id',inplace=True)
 
     groups = []
     i=1
@@ -337,7 +335,7 @@ def get_read_clusters(reads):
         #print (chrom)
         for start, end, ids in cltree.getregions():
             #print (start, end, ids)
-            c = df.ix[ids].copy()
+            c = reads.ix[ids].copy()
             c['cl_start'] = start
             c['cl_end'] = end
             c['cluster'] = i
@@ -447,6 +445,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9):
         print ('getting default classifier')
         CLASSIFIER = precursor_classifier(kind='regressor')
 
+    reads = reads[(reads.length<=25) & (reads.length>=18)]
     df = get_read_clusters(reads)
     clusts = df.groupby(['name','cluster','cl_start','cl_end','strand'])\
                             .agg({'reads':np.sum,'length':np.max})\
@@ -470,7 +469,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9):
         return r['chrom']+':'+str(r.start)+'..'+str(r.end)+':'+r.strand
 
     clusts['pair'] = clusts.apply(get_pairs, 1)
-    #print (clusts)
+    print (clusts)
 
     n1 = []
     pairs = clusts.groupby('pair')

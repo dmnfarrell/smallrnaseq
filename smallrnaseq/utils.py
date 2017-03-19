@@ -303,13 +303,19 @@ def rnafold(seq, name=None):
     except Exception as e:
         print (e)
         return
-    colors = [" 1. 0. .2", " 0. .9 .5"]
-    if name != None:
-        path=''
-        RNA.svg_rna_plot(seq,x[0],os.path.join(path,name+'.svg'))
-        #macro = format_cmark_values(range(0,10), rgb=colors[0])
-        #RNA.PS_rna_plot_a(seq, x[0], name+'.ps', '', macro)
     return x
+
+def rnaplot(seq, struct=None, path='rnaplots', name='temp'):
+
+    import RNA
+    if struct==None:
+        struct = RNA.fold(seq)[0]
+    filename = os.path.join(path,name+'.ps')
+    #RNA.svg_rna_plot(seq,struct,filename)
+    colors = [" 1. 0. .2", " 0. .9 .5"]
+    macro = format_cmark_values(range(0,10), rgb=colors[0])
+    RNA.PS_rna_plot_a(seq, struct, filename, '', macro)
+    return filename
 
 def format_cmark_values(values, rgb=" 1. 0. .2"):
     """PS colored marks for rnaplot"""

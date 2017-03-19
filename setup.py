@@ -15,7 +15,8 @@ setup(
                       'HTSeq>=0.6',
                       'pybedtools>=0.7.9',
                       'seaborn>=0.7',
-                      'sklearn>=0.18'],
+                      'sklearn>=0.18',
+                      'forgi>=0.4'],
     entry_points = {
         'console_scripts': [
             'smallrnaseq=smallrnaseq.app:main',
