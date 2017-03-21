@@ -469,7 +469,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9):
         return r['chrom']+':'+str(r.start)+'..'+str(r.end)+':'+r.strand
 
     clusts['pair'] = clusts.apply(get_pairs, 1)
-    print (clusts)
+    #print (clusts)
 
     n1 = []
     pairs = clusts.groupby('pair')
@@ -510,6 +510,6 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9):
     novel['seed'] = novel.apply(lambda x: x.mature[2:8], 1)
     #get coords column
     novel['coords'] = novel.apply(get_coords,1)
-
+    #novel['id'] = novel.chrom+'_'
     print ('found %s novel mirnas' %len(novel))
     return novel

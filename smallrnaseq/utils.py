@@ -495,6 +495,32 @@ def get_aligned_reads(samfile, truecounts=None):
         counts = counts.merge(truecounts, on='seq')
     return counts
 
+def combine_aligned_reads(filenames, path, idx):
+    """Combine reads from mapping of multiple samples to a genome/library.
+    Args:
+        filenames: names of files with or without extensions.
+        path: folder with sam files and collapsed counts from mapping, should
+        contain results corresponding to filenames
+        idx: name of index mapped to
+    Returns: pandas dataframe with all read counts summed
+    """
+
+    a = []
+    for f in filenames:
+        samfile = os.path.join(path, '%s_%s.sam' %(f,idx))
+        countsfile = os.path.join(path, '%s.csv' %f)
+        readcounts = pd.read_csv(countsfile)
+        reads = utils.get_aligned_reads(samfile, readcounts)
+        a.append(reads)
+
+    a = pd.concat(a)
+    cols = ['seq', 'name', 'start', 'end', 'strand', 'length']
+    s = a.groupby(cols).agg({'reads':np.sum}).reset_index()
+    s['read_id'] = s.index.copy()
+    s = s.sort_values(by='reads',ascending=False)
+    print ('pooled %s files into %s unique reads' %(len(filenames),len(s)))
+    return s
+
 def print_read_stacks(reads, fastafile, outfile=None, name=None, by=None):
     """Print multiple read alignments to file or stdout
        Args:
