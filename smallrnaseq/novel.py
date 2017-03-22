@@ -98,6 +98,7 @@ def build_rna_features(seq, mature=None):
         h0seq=''
         feats['loops'] = 0
         feats['loop_length'] = 0
+    feats['gc'] = GC(seq)
     feats['loop_gc']= GC(h0seq)
     feats['stem_length'] = len(get_stem_pairs(bg))
     feats['longest_stem'] = get_biggest_stem(bg)[0]
@@ -149,7 +150,7 @@ def get_star(seq, mature, struct=None):
     #print start, end
     #is mature on 5' or 3' end?
     if start < max(stem1):
-        print ('5p')
+        #print ('5p')
         matidx = [i for i in matidx if i in stem1]
         staridx = [i[1] for i in stempairs if i[0] in matidx]
         gaps = [abs(t-s) for s, t in zip(staridx, staridx[1:])]
@@ -159,7 +160,7 @@ def get_star(seq, mature, struct=None):
         offset = len(matidx)-len(staridx)+2
         starseq = seq[staridx[-1]:staridx[0]+offset]
     else:
-        print ('3p')
+        #print ('3p')
         matidx = [i for i in matidx if i in stem2]
         staridx = [i[0] for i in stempairs if i[1] in matidx]
         offset = len(matidx)-len(staridx)+2
@@ -190,10 +191,11 @@ def get_positives(species='hsa'):
     result.to_csv('known_mirna_features.csv', index=False)
     return result
 
-def get_negatives():
-    """negative pseudo mirna set"""
+def get_negatives(fasta_file=None):
+    """Create a negative pseudo mirna set for training classifier"""
 
-    cds = utils.fasta_to_dataframe('../genomes/human/Homo_sapiens.GRCh38.cds.all.fa')
+    if fasta_file == None:
+        cds = utils.fasta_to_dataframe('../genomes/human/Homo_sapiens.GRCh38.cds.all.fa')
     cds = cds.drop_duplicates('sequence')
     cds = cds[cds.sequence.str.len()>50]
 
@@ -358,10 +360,11 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
            the top precursor
     """
 
-    rf = CLASSIFIER
-    if rf == None:
-        print ('no classifier defined, set novel.CLASSIFIER variable')
-        return
+    global CLASSIFIER
+    if CLASSIFIER == None:
+        rf = precursor_classifier()
+    else:
+        rf = CLASSIFIER
     x = cluster.iloc[0]
     maturecounts = reads1 = cluster.reads.sum()
     mature = x.seq
@@ -377,7 +380,7 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
             star = x.seq
             starcount = reads1
 
-    print (mature, star, maturecounts, starcounts)
+    #print (mature, star, maturecounts, starcounts)
     #check mature for non templated additions?
 
     chrom = x['name']
@@ -385,7 +388,7 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
     loop = 15
     N = []
     #generate candidate precursors
-    for i in range(1,45,step):
+    for i in range(1,40,step):
         #5' side
         start5 = x.start - i
         end5 = x.start + 2 * len(x.seq)-1 + loop + i
@@ -416,14 +419,14 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
 
     f = N.apply(lambda x: pd.Series(build_rna_features(x.precursor, x.mature)), 1)
 
-    if CLASSIFIER == None:
-        rf = get_default_classifier()
     N['score'] = score_features(f, rf)
     N['mfe'] = f.mfe
-    #filter by feature
-    N = N[(f.loops==1) & (f.stem_length>18) & (f.mfe*f.length<-15)]
+    #filter by features
+    N = N[(f.loops==1) & (f.stem_length>18) & (f.mfe*f.length<-15) & \
+          (f.longest_bulge<10) & (f.gc<75) & (f.bulges_asymmetric<7)]
+
     N = N[N.score>=score_cutoff]
-    #print N
+    #print (N)
     N = N.sort_values('mfe')
     if len(N)>0:
         found = N.iloc[0]
@@ -438,6 +441,8 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9):
             reads: unique aligned reads with counts in a dataframe
             ref_fasta: reference genome fasta file
             rf: precursor classifier, optional
+        Returns:
+            dataframes of read clusters and novel mirnas
     """
 
     global CLASSIFIER
@@ -446,12 +451,12 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9):
         CLASSIFIER = precursor_classifier(kind='regressor')
 
     reads = reads[(reads.length<=25) & (reads.length>=18)]
-    df = get_read_clusters(reads)
-    clusts = df.groupby(['name','cluster','cl_start','cl_end','strand'])\
+    rcl = get_read_clusters(reads)
+    clusts = rcl.groupby(['name','cluster','cl_start','cl_end','strand'])\
                             .agg({'reads':np.sum,'length':np.max})\
                             .reset_index()\
                             .rename(columns={'cl_start':'start','cl_end':'end'})
-    print ('%s read clusters in %s unique reads' %(len(clusts),len(df)))
+    print ('%s read clusters in %s unique reads' %(len(clusts),len(rcl)))
 
     #find pairs of read clusters - likely to be mature/star sequences
     clustpairs = build_cluster_trees(clusts, 120, min_size=2, key='cluster')
@@ -469,47 +474,57 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9):
         return r['chrom']+':'+str(r.start)+'..'+str(r.end)+':'+r.strand
 
     clusts['pair'] = clusts.apply(get_pairs, 1)
-    #print (clusts)
+    #print (clusts[-clusts.pair.isnull()])
 
     n1 = []
     pairs = clusts.groupby('pair')
     print ('%s paired clusters found' %len(pairs.groups))
     for i,r in pairs:
-        a,b = list(r.cluster)
-        c1 = df[df.cluster==a]
-        c2 = df[df.cluster==b]
+        #need to handle >2 clusters cases
+        a,b = list(r.cluster[:2])
+        c1 = rcl[rcl.cluster==a]
+        c2 = rcl[rcl.cluster==b]
         p = find_precursor(ref_fasta, c1, c2, step=7)
         if p is None:
-            print ('no precursor predicted')
+            #print ('no precursor predicted')
             continue
         n1.append(p)
     n1 = pd.DataFrame(n1)
-    print
+
     n2 = []
     #guess precursors for single clusters
     singleclusts = clusts[clusts.pair.isnull()]
-    print ()
-    print ('checking %s single clusters' %len(singleclusts))
+    #print ()
+    print ('checking %s unpaired read clusters' %len(singleclusts))
     for i,r in singleclusts.iterrows():
-        c = df[df.cluster==r.cluster]
+        c = rcl[rcl.cluster==r.cluster]
         p = find_precursor(ref_fasta, c, step=7, score_cutoff=score_cutoff)
         #print p
         if p is None:
-            print ('no precursor predicted')
+            #print ('no precursor predicted')
             continue
         #estimate star sequence
         p['star'] = get_star(p.precursor, p.mature)
+        p['cluster'] = r.cluster
         n2.append(p)
     n2 = pd.DataFrame(n2)
 
-    novel = pd.concat([n1,n2])
-    if len(novel) == 0:
+    new = pd.concat([n1,n2])
+    if len(new) == 0:
         print ('no mirnas found!')
         return
     #get seed seq and mirbase matches
-    novel['seed'] = novel.apply(lambda x: x.mature[2:8], 1)
+    new['seed'] = new.apply(lambda x: x.mature[2:8], 1)
     #get coords column
-    novel['coords'] = novel.apply(get_coords,1)
-    #novel['id'] = novel.chrom+'_'
-    print ('found %s novel mirnas' %len(novel))
-    return novel
+    new['coords'] = new.apply(get_coords,1)
+    new = new.reset_index(drop=True)
+    assign_names(new)
+    new = new.sort_values(by='mature_reads', ascending=False)
+    print ('found %s novel mirnas' %len(new))
+    return new, rcl
+
+def assign_names(df, species=''):
+    """Assign name to novel mirna, precursor/mature ids should allow consistent
+       identification across datasets"""
+
+    df['id'] = df.apply( lambda x: species+'_novel_'+x.chrom+'_'+str(x.start),1 )

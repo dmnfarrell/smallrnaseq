@@ -495,24 +495,31 @@ def get_aligned_reads(samfile, truecounts=None):
         counts = counts.merge(truecounts, on='seq')
     return counts
 
-def combine_aligned_reads(filenames, path, idx):
+def combine_aligned_reads(path, filenames, idx):
     """Combine reads from mapping of multiple samples to a genome/library.
     Args:
-        filenames: names of files with or without extensions.
         path: folder with sam files and collapsed counts from mapping, should
         contain results corresponding to filenames
+        filenames: names of files with or without extensions
         idx: name of index mapped to
     Returns: pandas dataframe with all read counts summed
     """
 
     a = []
+    #remove extenstions if present
+    filenames = [os.path.splitext(os.path.basename(f))[0] for f in filenames]
     for f in filenames:
+        print(f)
         samfile = os.path.join(path, '%s_%s.sam' %(f,idx))
         countsfile = os.path.join(path, '%s.csv' %f)
+        if not os.path.exists(samfile) or not os.path.exists(countsfile):
+            print ('no sam file or count data found for this sample')
+            continue
         readcounts = pd.read_csv(countsfile)
-        reads = utils.get_aligned_reads(samfile, readcounts)
+        reads = get_aligned_reads(samfile, readcounts)
         a.append(reads)
-
+    if len(a) == 0:
+        return
     a = pd.concat(a)
     cols = ['seq', 'name', 'start', 'end', 'strand', 'length']
     s = a.groupby(cols).agg({'reads':np.sum}).reset_index()
@@ -534,21 +541,18 @@ def print_read_stacks(reads, fastafile, outfile=None, name=None, by=None):
         names = reads.name.unique()
     if outfile != None:
         f = open(outfile, 'w')
-        print (f)
-    else:
-        f = None
+
     refs = fasta_to_dataframe(fastafile)
     for n in names:
         x = reads[reads.name==n]
         refseq = refs.ix[n].sequence
-        print_read_stack(x, refseq, by=by, cutoff=0, label=n)
-    if f != None:
-        f.close()
-    return
+        s += print_read_stack(x, refseq, by=by, cutoff=0, label=n)
+    #if f != None:
+    #    f.close()
+    return s
 
 def print_read_stack(reads, refseq=None, outfile=None, cutoff=0, by=None, label=''):
-    """Print local read alignments from a sam file against the mapped sequence
-       and save the output to a text file or stdout if no filename.
+    """Print local read alignments from a sam file against the mapped sequence.
        Args:
         reads: dataframe of read counts with position info
         refseq: sequence segment or gene that reads are mapped to
@@ -567,19 +571,20 @@ def print_read_stack(reads, refseq=None, outfile=None, cutoff=0, by=None, label=
 
     l = len(reads)
     if l==0: return
-    print (label, '(%s unique reads)' %l, file=f)
-    print ('-------------------------------------', file=f)
-    print (refseq, file=f)
-    #print (reads)
+    s = ''
+    s += '%s unique reads\n' %l
+    s += '-------------------------------------\n'
+    s += refseq
     for idx,r in reads.iterrows():
-        s = r.seq
+        seq = r.seq
         count = r.reads
         pos = r.start-1
         if pos == -1: continue
         i = len(s)+pos
-        print ("{:>{w}} ({c})".format(s,w=i,c=count), file=f)
-    print ('', file=f)
-    return
+        #s += "{:>{w}} ({c})\n".format(seq,w=i,c=count)
+        s += seq+'\n'
+    s += '\n'
+    return s
 
 def plot_read_stack(reads, refseq=None, by=None, cutoff=0, ax=None):
     """Plot read stack using coverage at each position"""
