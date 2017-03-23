@@ -36,6 +36,9 @@ try:
 except:
     'HTSeq not present'
 
+def first(x):
+    return x.iloc[0]
+
 def move_files(files, path):
     if not os.path.exists(path):
         os.mkdir(path)
@@ -69,11 +72,11 @@ def create_html(df,name,path='.'):
     f.write(body)
     return
 
-def run_blastn(database, query):
+def run_blastn(database, query, params='-m 7 -e .1'):
     """Run blast"""
 
     out = os.path.splitext(query)[0]
-    cmd = 'blastall -d %s -i %s -p blastn -m 7 -e .1 > %s.xml' %(database,query,out)
+    cmd = 'blastall -d %s -i %s -p blastn %s > %s.xml' %(database,query,params,out)
     print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     gzipfile(out+'.xml', remove=True)
@@ -99,36 +102,36 @@ def get_blast_results(handle=None, filename=None, n=80):
     from Bio.Blast import NCBIXML
     import gzip
     if filename!=None:
-        #handle = open(filename)
         handle = gzip.open(filename, 'rb')
     blastrecs = NCBIXML.parse(handle)
     rows=[]
     for rec in blastrecs:
-        r = parseBlastRec(rec)
+        r = parse_blast_rec(rec)
         rows.extend(r)
-        #print r
+        #print (r)
     df = pd.DataFrame(rows, columns=['query','subj','score','expect','identity',
                             'positive','align_length'])
     df['perc_ident'] = df.identity/df.align_length*100
+    handle.close()
     return df
 
-def blastDB(f, database, ident=100):
-    """Blast a blastdb and save hits to csv"""
+def local_blast(fastafile, database, ident=100, params='-m 7 -e .1', results='all'):
+    """Blast a blastdb and save hits to csv
+       Args:
+            fastafile: file with queries
+            ident: cutoff percentage identity
+            results: return 'all' or 'best'
+        Returns: dataframe of hits"""
 
-    outname = os.path.splitext(f)[0]
-    runBlastN(database, f)
-    df = getBlastResults(filename=outname+'.xml.gz')
-    df = df[df['perc_ident']>=ident]
-    #print df[:10]
-    g = df.groupby('query').agg({'subj':first})
-    g = g.sort('subj',ascending=False)
-    g = g.reset_index()
-    #print g[:15]
-    print ('found %s hits in db' %len(df))
+    outname = os.path.splitext(fastafile)[0]
+    run_blastn(database, fastafile, params)
+    res = get_blast_results(filename=outname+'.xml.gz')
+    print ('found %s hits in db' %len(res))
+    res = res[res['perc_ident']>=ident]
+    if results == 'best':
+        res = res.groupby('query').first().reset_index()
     print ()
-    #outname = os.path.splitext(f)[0]+'_hits.csv'
-    #g.to_csv(outname)
-    return g
+    return res
 
 def fastq_to_fasta(infile, rename=True):
     """Fastq to fasta"""
