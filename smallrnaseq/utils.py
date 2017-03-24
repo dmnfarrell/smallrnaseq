@@ -72,51 +72,18 @@ def create_html(df,name,path='.'):
     f.write(body)
     return
 
-def run_blastn(database, query, params='-m 7 -e .1'):
+def run_blastn(database, query, params='-e .1 -G 10'):
     """Run blast"""
 
     out = os.path.splitext(query)[0]
-    cmd = 'blastall -d %s -i %s -p blastn %s > %s.xml' %(database,query,params,out)
+    cmd = 'blastall -d %s -i %s -p blastn -m 8 %s > %s.csv' %(database,query,params,out)
     print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    gzipfile(out+'.xml', remove=True)
+    #zipfile(out+'.xml', remove=True)
     return
 
-def parse_blast_rec(rec):
-    """Parse blast record alignment(s)"""
-
-    #if len(rec.alignments) == 0 : print 'no alignments'
-    recs=[]
-    qry = rec.query.split()[0]
-    for align in rec.alignments:
-        hsp = align.hsps[0]
-        subj = align.title.split()[1]
-        if qry == subj: continue
-        recs.append([qry, subj, hsp.score, hsp.expect, hsp.identities,
-                    hsp.positives, hsp.align_length])
-    return recs
-
-def get_blast_results(handle=None, filename=None, n=80):
-    """Get blast results into dataframe"""
-
-    from Bio.Blast import NCBIXML
-    import gzip
-    if filename!=None:
-        handle = gzip.open(filename, 'rb')
-    blastrecs = NCBIXML.parse(handle)
-    rows=[]
-    for rec in blastrecs:
-        r = parse_blast_rec(rec)
-        rows.extend(r)
-        #print (r)
-    df = pd.DataFrame(rows, columns=['query','subj','score','expect','identity',
-                            'positive','align_length'])
-    df['perc_ident'] = df.identity/df.align_length*100
-    handle.close()
-    return df
-
-def local_blast(fastafile, database, ident=100, params='-m 7 -e .1', results='all'):
-    """Blast a blastdb and save hits to csv
+def local_blast(fastafile, database, ident=100, params='-e .1 -G 10', results='all'):
+    """Blast a blastdb and save hits to a dataframe.
        Args:
             fastafile: file with queries
             ident: cutoff percentage identity
@@ -125,9 +92,11 @@ def local_blast(fastafile, database, ident=100, params='-m 7 -e .1', results='al
 
     outname = os.path.splitext(fastafile)[0]
     run_blastn(database, fastafile, params)
-    res = get_blast_results(filename=outname+'.xml.gz')
+    cols = ['query', 'subj', 'pident', 'length', 'mismatch', 'gapopen', 'qstart',
+            'qend', 'sstart', 'send', 'evalue', 'bitscore']
+    res = pd.read_csv(outname+'.csv',names=cols,sep='\t')
     print ('found %s hits in db' %len(res))
-    res = res[res['perc_ident']>=ident]
+    res = res[res['pident']>=ident]
     if results == 'best':
         res = res.groupby('query').first().reset_index()
     print ()
