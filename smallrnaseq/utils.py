@@ -75,30 +75,34 @@ def create_html(df,name,path='.'):
 def run_blastn(database, query, params='-e .1 -G 10'):
     """Run blast"""
 
-    out = os.path.splitext(query)[0]
-    cmd = 'blastall -d %s -i %s -p blastn -m 8 %s > %s.csv' %(database,query,params,out)
+    out = 'blast_result.csv'
+    cmd = 'blastall -d %s -i %s -p blastn -m 8 %s > %s' %(database,query,params,out)
     print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     #zipfile(out+'.xml', remove=True)
     return
 
-def local_blast(fastafile, database, ident=100, params='-e .1 -G 10', results='all'):
+def local_blast(fastafile, database, ident=100, params='-e 10 -a 2', results='all'):
     """Blast a blastdb and save hits to a dataframe.
        Args:
             fastafile: file with queries
+            database: name of blast db
             ident: cutoff percentage identity
+            params: custom blast parameters (see blastall -h)
             results: return 'all' or 'best'
         Returns: dataframe of hits"""
 
-    outname = os.path.splitext(fastafile)[0]
+    outname = 'blast_result.csv'
     run_blastn(database, fastafile, params)
     cols = ['query', 'subj', 'pident', 'length', 'mismatch', 'gapopen', 'qstart',
             'qend', 'sstart', 'send', 'evalue', 'bitscore']
-    res = pd.read_csv(outname+'.csv',names=cols,sep='\t')
+    res = pd.read_csv(outname, names=cols, sep='\t')
     print ('found %s hits in db' %len(res))
     res = res[res['pident']>=ident]
     if results == 'best':
         res = res.groupby('query').first().reset_index()
+    queries = fasta_to_dataframe(fastafile).reset_index()
+    res = res.merge(queries, left_on='query', right_on='name', how='left')
     print ()
     return res
 
