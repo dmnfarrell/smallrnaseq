@@ -347,6 +347,40 @@ def get_read_clusters(reads):
     df = pd.concat(groups)
     return df
 
+def generate_precursors(ref_fasta, coords, seq=None, step=5):
+    """Create a set of possible precursors for scoring"""
+
+    chrom,start,end,strand=coords
+    loop = 15
+    N = []
+    if seq != None:
+        seqlen = len(seq)
+    else:
+        seqlen = 20
+    #generate candidate precursors
+    for i in range(1,40,step):
+        #5' side
+        start5 = start - i
+        end5 = start + 2 * seqlen-1 + loop + i
+        coords = [chrom,start5,end5,strand]
+        prseq = utils.sequence_from_coords(ref_fasta, coords)
+        if prseq == None:
+            continue
+        N.append({'precursor':prseq, 'chrom':chrom,'start':start5,'end':end5,
+                  'mature':seq,'strand':strand})
+    for i in range(1,40,step):
+        #3' side
+        start3 = start - (loop + seqlen + i)
+        end3 = end + i
+        coords = [chrom,start3,end3,strand]
+        prseq = utils.sequence_from_coords(ref_fasta, coords)
+        if prseq == None:
+            continue
+        N.append({'precursor':prseq, 'chrom':chrom,'start':start3,'end':end3,
+                  'mature':seq,'strand':strand})
+    N = pd.DataFrame(N)
+    return N
+
 def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
     """Find the most likely precursor from a genomic sequence and
        one or two mapped read clusters.
@@ -383,33 +417,9 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
     #print (mature, star, maturecounts, starcounts)
     #check mature for non templated additions?
 
-    chrom = x['name']
-    strand = x.strand
-    loop = 15
-    N = []
-    #generate candidate precursors
-    for i in range(1,40,step):
-        #5' side
-        start5 = x.start - i
-        end5 = x.start + 2 * len(x.seq)-1 + loop + i
-        coords = [chrom,start5,end5,strand]
-        prseq = utils.sequence_from_coords(ref_fasta, coords)
-        if prseq == None:
-            continue
-        N.append({'precursor':prseq, 'chrom':chrom,'start':start5,'end':end5,
-                  'mature':x.seq,'strand':strand})
-        #3' side
-        start3 = x.start - (loop + len(x.seq) + i)
-        end3 = x.end + i
-        coords = [chrom,start3,end3,strand]
-        prseq = utils.sequence_from_coords(ref_fasta, coords)
-        if prseq == None:
-            continue
-        N.append({'precursor':prseq, 'chrom':chrom,'start':start3,'end':end3,
-                  'mature':x.seq,'strand':strand})
-    if len(N) == 0:
-        return
-    N = pd.DataFrame(N)
+    coords = (x['name'], x.start, x.start, x.strand)
+    N = generate_precursors(ref_fasta, coords, seq=x.seq, step=step)
+
     #print (len(N))
     N['mature_reads'] = maturecounts
     N['star_reads'] = starcounts
