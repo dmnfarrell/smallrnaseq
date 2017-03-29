@@ -120,13 +120,15 @@ def fastq_to_fasta(infile, rename=True):
     outfile.close()
     return
 
-def dataframe_to_fasta(df, seqkey='seq', idkey='id', outfile='out.fa'):
+def dataframe_to_fasta(df, outfile='out.fa', seqkey='seq', idkey='id'):
     """Convert dataframe to fasta"""
 
     if idkey not in df.columns:
         df = df.reset_index()
     fastafile = open(outfile, "w")
     for i,row in df.iterrows():
+        if type(row[seqkey]) is not str:
+            continue
         seq = row[seqkey].upper().replace('U','T')
         if idkey in row:
             d = str(row[idkey])

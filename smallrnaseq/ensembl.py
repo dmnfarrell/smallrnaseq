@@ -37,8 +37,8 @@ try:
     Species.amendSpecies('Ovis aries', 'sheep')
     Species.amendSpecies('Erinaceus europaeus', 'hedgehog')
     Species.amendSpecies('Mustela putorius furo', 'ferret')
-except:
-    print ('cogent not installed')
+except Exception as e:
+    print (e)
 
 
 def get_orthologs(refgenome, ensid=None, symbol=None):
@@ -57,7 +57,7 @@ def get_orthologs(refgenome, ensid=None, symbol=None):
     return
 
 def get_genes_from_location(ref, coords, pad=0):
-    """Get genes from a set of coords.
+    """Get genes from a set of genome coordinates.
        pad will add n bases to either side to expand area"""
 
     genome = Genome(Species=ref, Release=release, account=account)
@@ -133,7 +133,7 @@ def get_host_genes(df, ref='cow'):
         c,locs,strand = r['precursor coordinate'].split(':')
         start,end = locs.split('..')
         coords = c,int(start),int(end),strand
-        genes = getGenesFromLocation(ref, coords)
+        genes = get_genes_from_location(ref, coords)
         for g in genes:
             if g.BioType != 'miRNA':
                 tu = findinGene(g, start, end)
