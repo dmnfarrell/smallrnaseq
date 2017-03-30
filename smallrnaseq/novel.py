@@ -34,7 +34,7 @@ datadir = os.path.join(path, 'data')
 CLASSIFIER = None
 
 def get_triplets(seq, struct):
-    """triplet elements"""
+    """Get triplet elements used by Xue et al."""
 
     tr=['(((', '((.', '(..', '(.(', '.((', '.(.', '..(' , '...']
     nuc = ['A','G','T','C']
@@ -58,6 +58,8 @@ def get_biggest_stem(bg):
     return biggest_stem
 
 def get_stem_pairs(bg):
+    """Stem pairs of rna hairpin"""
+
     pairs=[]
     for s in bg.stem_iterator():
         for p in bg.stem_bp_iterator(s):
@@ -71,6 +73,17 @@ def get_stem_matches(bg):
     wc = {'G':'C','C':'G','T':'A','A':'T'}
     matches = [True if i[1]==wc[i[0]] else False for i in pairs]
     return matches
+
+def get_bg(seq, struct=None):
+    """get bulgegraph object from sequence/struct"""
+
+    import forgi.graph.bulge_graph as cgb
+    if struct == None:
+        struct,sc = utils.rnafold(seq)
+    bg = cgb.BulgeGraph()
+    bg.from_dotbracket(struct)
+    bg.seq = seq
+    return bg
 
 def build_rna_features(seq, mature=None):
     """Get features for mirna sequence"""
@@ -123,7 +136,7 @@ def build_rna_features(seq, mature=None):
         end = start+len(mature)
         #print start, end
     feats['mature_mismatches'] = sm[start:end].count(False)
-
+    feats['struct'] = struct
     tr = get_triplets(seq, struct)
     feats.update(tr)
     return feats
@@ -131,14 +144,9 @@ def build_rna_features(seq, mature=None):
 def get_star(seq, mature, struct=None):
     """Estimate the star sequence from a given mature and precursor."""
 
-    import forgi.graph.bulge_graph as cgb
+    bg = get_bg(seq, struct)
     start = utils.find_subseq(seq, mature)+1
     end = start + len(mature)
-    if struct == None:
-        struct,sc = utils.rnafold(seq)
-    bg = cgb.BulgeGraph()
-    bg.from_dotbracket(struct)
-    bg.seq = seq
     stempairs = []
     for s in bg.sorted_stem_iterator():
         stempairs.extend( list(bg.stem_bp_iterator(s)) )
@@ -173,6 +181,19 @@ def get_star(seq, mature, struct=None):
     #print mature
     #print starseq
     return starseq
+
+def mature_overlap(seq, mature, struct):
+    """Check if mature sequence is in hairpin loop"""
+
+    bg = get_bg(seq, struct)
+    start = utils.find_subseq(seq, mature)+1
+    end = start + len(mature)
+    loops = list(bg.hloop_iterator())
+    if len(loops)==0: return True
+    l = list(bg.define_range_iterator('h0'))[0]
+    if (start<l[0] and end>l[0]) or (start<l[1] and end>l[1]):
+        return True
+    return False
 
 def get_positives(species='hsa'):
     """Get known mirbase hairpins for training precursor classifier. """
@@ -216,7 +237,7 @@ def get_negatives(fasta_file=None):
         f['seq'] = seq
         result.append(f)
     result = pd.DataFrame(result)
-    result = result[(result.loops==1) & (result.mfe*result.length<=-15) & (result.stem_length>18)]
+    result = result[(result.loops<2) & (result.mfe*result.length<=-15) & (result.stem_length>18)]
     result.to_csv('negative_mirna_features.csv', index=False)
     return result
 
@@ -295,7 +316,7 @@ def test_classifier(known=None, neg=None):
     return
 
 def score_features(data, rf):
-    """Score a set of features"""
+    """Score a set of rna features"""
 
     X = data.select_dtypes(['float','int'])
     #data['score'] = rf.predict(X)
@@ -347,8 +368,14 @@ def get_read_clusters(reads):
     df = pd.concat(groups)
     return df
 
+def check_hairpin(seq, struct):
+    """check ends of hairpin"""
+
+    return
+
 def generate_precursors(ref_fasta, coords, seq=None, step=5):
-    """Create a set of possible precursors for scoring"""
+    """Create a set of possible precursor sequences from flanking sequence given
+       genomics coordinates."""
 
     chrom,start,end,strand=coords
     loop = 15
@@ -371,7 +398,7 @@ def generate_precursors(ref_fasta, coords, seq=None, step=5):
     for i in range(1,40,step):
         #3' side
         start3 = start - (loop + seqlen + i)
-        end3 = end + i
+        end3 = end + i + seqlen+1
         coords = [chrom,start3,end3,strand]
         prseq = utils.sequence_from_coords(ref_fasta, coords)
         if prseq == None:
@@ -379,6 +406,33 @@ def generate_precursors(ref_fasta, coords, seq=None, step=5):
         N.append({'precursor':prseq, 'chrom':chrom,'start':start3,'end':end3,
                   'mature':seq,'strand':strand})
     N = pd.DataFrame(N)
+    return N
+
+def score_precursors(N):
+    """Filter/score a set of precursor sequences, requires a dataframe
+      with a column of precursor sequences and structures made by the
+      generate_precursors method. """
+
+    global CLASSIFIER
+    if CLASSIFIER == None:
+        rf = precursor_classifier()
+    else:
+        rf = CLASSIFIER
+    f = N.apply( lambda x: pd.Series(build_rna_features(x.precursor, x.mature)), 1 )
+    N['struct'] = f.struct
+    N['loop_overlap'] = N.apply( lambda x: mature_overlap(x.precursor, x.mature, x.struct), 1 )
+    #check mature out of stem range also
+    #check mature for non templated additions?
+
+    N['score'] = score_features(f, rf)
+    N['mfe'] = f.mfe
+    #filter by features
+    N = N[(f.loops==1) & (f.stem_length>18) & (f.mfe*f.length<-15) & \
+          (f.longest_bulge<10) & (f.gc<75) & (f.bulges_asymmetric<7) & \
+          (N.loop_overlap==False)]
+
+    N = N.sort_values('mfe')
+    #print (N)
     return N
 
 def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
@@ -394,17 +448,17 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
            the top precursor
     """
 
-    global CLASSIFIER
-    if CLASSIFIER == None:
-        rf = precursor_classifier()
-    else:
-        rf = CLASSIFIER
     x = cluster.iloc[0]
+    coords = (x['name'], x.start, x.start, x.strand)
+    N = generate_precursors(ref_fasta, coords, seq=x.seq, step=step)
+    N = score_precursors(N)
+    N = N[N.score>=score_cutoff]
+
     maturecounts = reads1 = cluster.reads.sum()
     mature = x.seq
     star = None
     starcounts = 0
-    #dtermine mature/star if two clusters present
+    #determine mature/star if two clusters present
     if cluster2 is not None:
         reads2 = cluster2.reads.sum()
         y = cluster2.iloc[0]
@@ -413,31 +467,13 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
             maturecounts = reads2
             star = x.seq
             starcount = reads1
-
     #print (mature, star, maturecounts, starcounts)
-    #check mature for non templated additions?
-
-    coords = (x['name'], x.start, x.start, x.strand)
-    N = generate_precursors(ref_fasta, coords, seq=x.seq, step=step)
-
-    #print (len(N))
     N['mature_reads'] = maturecounts
     N['star_reads'] = starcounts
     if cluster2 is not None:
         N['star'] = cluster2.iloc[0].seq
         #'check star for non templated additions?
 
-    f = N.apply(lambda x: pd.Series(build_rna_features(x.precursor, x.mature)), 1)
-
-    N['score'] = score_features(f, rf)
-    N['mfe'] = f.mfe
-    #filter by features
-    N = N[(f.loops==1) & (f.stem_length>18) & (f.mfe*f.length<-15) & \
-          (f.longest_bulge<10) & (f.gc<75) & (f.bulges_asymmetric<7)]
-
-    N = N[N.score>=score_cutoff]
-    #print (N)
-    N = N.sort_values('mfe')
     if len(N)>0:
         found = N.iloc[0]
         return found
@@ -514,7 +550,8 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9):
             #print ('no precursor predicted')
             continue
         #estimate star sequence
-        p['star'] = get_star(p.precursor, p.mature)
+        #p['star'] = get_star(p.precursor, p.mature)
+        p['star'] = None
         p['cluster'] = r.cluster
         n2.append(p)
     n2 = pd.DataFrame(n2)

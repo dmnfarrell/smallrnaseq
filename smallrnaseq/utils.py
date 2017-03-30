@@ -521,6 +521,7 @@ def print_read_stacks(reads, fastafile, outfile=None, name=None, by=None):
         f = open(outfile, 'w')
 
     refs = fasta_to_dataframe(fastafile)
+    s = ''
     for n in names:
         x = reads[reads.name==n]
         refseq = refs.ix[n].sequence
