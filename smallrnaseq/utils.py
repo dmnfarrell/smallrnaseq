@@ -546,22 +546,21 @@ def print_read_stack(reads, refseq=None, outfile=None, cutoff=0, by=None, label=
     f = None
     reads = reads[reads.reads>cutoff]
     if by is not None:
-        reads = reads.sort_values(by)
+        reads = reads.sort_values(by, ascending=False)
 
     l = len(reads)
     if l==0: return
     s = ''
     s += '%s unique reads\n' %l
     s += '-------------------------------------\n'
-    s += refseq
+    s += refseq+'\n'
     for idx,r in reads.iterrows():
         seq = r.seq
         count = r.reads
-        pos = r.start-1
+        pos = find_subseq(refseq, seq)
         if pos == -1: continue
-        i = len(s)+pos
-        #s += "{:>{w}} ({c})\n".format(seq,w=i,c=count)
-        s += seq+'\n'
+        i = len(seq)+pos
+        s += "{:>{w}} ({c})\n".format(seq,w=i,c=count)
     s += '\n'
     return s
 

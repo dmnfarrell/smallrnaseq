@@ -85,13 +85,14 @@ def get_bg(seq, struct=None):
     bg.seq = seq
     return bg
 
-def build_rna_features(seq, mature=None):
+def build_rna_features(seq, struct=None, sc=None, mature=None):
     """Get features for mirna sequence"""
 
     from Bio.SeqUtils import GC
     import forgi.graph.bulge_graph as cgb
 
-    struct,sc = utils.rnafold(seq)
+    if struct == None:
+        struct,sc = utils.rnafold(seq)
 
     feats = {}
     #feats['reads'] = reads.reads.sum()
@@ -182,18 +183,38 @@ def get_star(seq, mature, struct=None):
     #print starseq
     return starseq
 
-def mature_overlap(seq, mature, struct):
-    """Check if mature sequence is in hairpin loop"""
+def check_hairpin(seq, struct):
+    """Remove free ends of hairpin"""
+
+    bg = get_bg(seq, struct)
+    loops = list(bg.hloop_iterator())
+    if len(loops) != 1:
+        return seq, struct
+    p = list(bg.stem_bp_iterator('s0'))[0]
+    s = p[0]-1; e=p[1]
+    return seq[s:e], struct[s:e]
+
+def check_mature(seq, struct, mature):
+    """Check if the mature sequence is not in hairpin loop and inside stem"""
 
     bg = get_bg(seq, struct)
     start = utils.find_subseq(seq, mature)+1
     end = start + len(mature)
     loops = list(bg.hloop_iterator())
-    if len(loops)==0: return True
+    if len(loops)==0: return False
     l = list(bg.define_range_iterator('h0'))[0]
     if (start<l[0] and end>l[0]) or (start<l[1] and end>l[1]):
-        return True
-    return False
+        #print ('mature in loop')
+        return False
+    p = list(bg.stem_bp_iterator('s0'))[0]
+    #print (p[0], p[1], start, end)
+    #if start == -1:
+        #print ('mature not found')
+    if end>p[1]+2:
+        #print ('3p mature outside')
+        return False
+    #print ('ok')
+    return True
 
 def get_positives(species='hsa'):
     """Get known mirbase hairpins for training precursor classifier. """
@@ -202,7 +223,7 @@ def get_positives(species='hsa'):
     mirs = base.get_mirbase(species)
     feats=[]
     for i,row in mirs.iterrows():
-        f = build_rna_features(row.precursor, row.mature1_seq)
+        f = build_rna_features(row.precursor, mature=row.mature1_seq)
         f['seq'] = row.precursor
         f['mature'] = row.mature1_seq
         f['star'] = row.mature2_seq
@@ -212,7 +233,7 @@ def get_positives(species='hsa'):
     result.to_csv('known_mirna_features.csv', index=False)
     return result
 
-def get_negatives(fasta_file=None):
+def get_negatives(fasta_file=None, samples=2000):
     """Create a negative pseudo mirna set for training classifier"""
 
     if fasta_file == None:
@@ -227,17 +248,23 @@ def get_negatives(fasta_file=None):
         s = [r.sequence[ind:ind+maxlen] for ind in range(0, len(r.sequence), maxlen)]
         return pd.Series(s)
 
-    seqs = cds[:2000].apply(split_seqs,1).stack().reset_index(drop=True)
+    seqs = cds[:5000].apply(split_seqs,1).stack().reset_index(drop=True)
     seqs = seqs[seqs.str.len()>50]
     seqs = seqs[-seqs.str.contains('N')]
     result=[]
+    i=1
     for seq in seqs:
         ms = int(np.random.randint(2,5))
         f = build_rna_features(seq, mature=seq[ms:ms+22])
         f['seq'] = seq
+        if f['loops'] > 2:# or f['stem_length']>18:
+            continue
         result.append(f)
+        i+=1
+        if i > samples:
+            break
     result = pd.DataFrame(result)
-    result = result[(result.loops<2) & (result.mfe*result.length<=-15) & (result.stem_length>18)]
+    #result = result[(result.mfe*result.length<=-15)]
     result.to_csv('negative_mirna_features.csv', index=False)
     return result
 
@@ -266,7 +293,7 @@ def get_training_data(known=None, neg=None):
     #X = sklearn.preprocessing.scale(X)
     return X, y
 
-def precursor_classifier(known=None, neg=None, kind='classifier'):
+def precursor_classifier(known=None, neg=None, kind='regressor'):
     """Get a miRNA precursor classifier using given training data.
        Args:
         X: numpy array/dataframe with features
@@ -368,24 +395,26 @@ def get_read_clusters(reads):
     df = pd.concat(groups)
     return df
 
-def check_hairpin(seq, struct):
-    """check ends of hairpin"""
-
-    return
-
-def generate_precursors(ref_fasta, coords, seq=None, step=5):
+def generate_precursors(ref_fasta, coords, mature=None, step=5):
     """Create a set of possible precursor sequences from flanking sequence given
-       genomics coordinates."""
+       genomic coordinates and the reference genome sequence.
+       Args:
+        ref_fasta: reference genome fasta file
+        cooords: coordinates of estimated mature sequence to start from
+        seq: mature sequence
+       Returns:
+        dataframe with precursor sequences and their coordinates
+    """
 
     chrom,start,end,strand=coords
     loop = 15
     N = []
-    if seq != None:
-        seqlen = len(seq)
+    if mature != None:
+        seqlen = len(mature)
     else:
-        seqlen = 20
+        seqlen = 22
     #generate candidate precursors
-    for i in range(1,40,step):
+    for i in range(2,40,step):
         #5' side
         start5 = start - i
         end5 = start + 2 * seqlen-1 + loop + i
@@ -393,9 +422,18 @@ def generate_precursors(ref_fasta, coords, seq=None, step=5):
         prseq = utils.sequence_from_coords(ref_fasta, coords)
         if prseq == None:
             continue
-        N.append({'precursor':prseq, 'chrom':chrom,'start':start5,'end':end5,
-                  'mature':seq,'strand':strand})
-    for i in range(1,40,step):
+        struct,sc = utils.rnafold(prseq)
+        prseq, struct = check_hairpin(prseq, struct)
+        mstatus = check_mature(prseq, struct, mature)
+        #print (i)
+        #print (prseq)
+        #print (struct)
+        if mstatus == False:
+            continue
+        N.append({'precursor':prseq,'struct':struct,'score':sc,
+                  'chrom':chrom,'start':start5,'end':end5,
+                  'mature':mature,'strand':strand})
+    for i in range(2,40,step):
         #3' side
         start3 = start - (loop + seqlen + i)
         end3 = end + i + seqlen+1
@@ -403,8 +441,16 @@ def generate_precursors(ref_fasta, coords, seq=None, step=5):
         prseq = utils.sequence_from_coords(ref_fasta, coords)
         if prseq == None:
             continue
-        N.append({'precursor':prseq, 'chrom':chrom,'start':start3,'end':end3,
-                  'mature':seq,'strand':strand})
+        struct,sc = utils.rnafold(prseq)
+        prseq, struct = check_hairpin(prseq, struct)
+        mstatus = check_mature(prseq, struct, mature)
+        #print (prseq)
+        #print (struct)
+        if mstatus == False:
+            continue
+        N.append({'precursor':prseq,'struct':struct,'score':sc,
+                  'chrom':chrom,'start':start3,'end':end3,
+                  'mature':mature,'strand':strand})
     N = pd.DataFrame(N)
     return N
 
@@ -418,9 +464,9 @@ def score_precursors(N):
         rf = precursor_classifier()
     else:
         rf = CLASSIFIER
-    f = N.apply( lambda x: pd.Series(build_rna_features(x.precursor, x.mature)), 1 )
-    N['struct'] = f.struct
-    N['loop_overlap'] = N.apply( lambda x: mature_overlap(x.precursor, x.mature, x.struct), 1 )
+    f = N.apply( lambda x: pd.Series(build_rna_features(x.precursor,
+                                                        x.struct, x.score, x.mature)), 1 )
+    #N['struct'] = f.struct
     #check mature out of stem range also
     #check mature for non templated additions?
 
@@ -428,14 +474,13 @@ def score_precursors(N):
     N['mfe'] = f.mfe
     #filter by features
     N = N[(f.loops==1) & (f.stem_length>18) & (f.mfe*f.length<-15) & \
-          (f.longest_bulge<10) & (f.gc<75) & (f.bulges_asymmetric<7) & \
-          (N.loop_overlap==False)]
+          (f.longest_bulge<10) & (f.gc<75) & (f.bulges_asymmetric<7)]
 
     N = N.sort_values('mfe')
     #print (N)
     return N
 
-def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
+def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=.9):
     """Find the most likely precursor from a genomic sequence and
        one or two mapped read clusters.
        Args:
@@ -450,7 +495,9 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
 
     x = cluster.iloc[0]
     coords = (x['name'], x.start, x.start, x.strand)
-    N = generate_precursors(ref_fasta, coords, seq=x.seq, step=step)
+    N = generate_precursors(ref_fasta, coords, mature=x.seq, step=step)
+    if len(N)==0:
+        return
     N = score_precursors(N)
     N = N[N.score>=score_cutoff]
 
@@ -480,7 +527,7 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=1):
     else:
         return
 
-def find_mirnas(reads, ref_fasta, score_cutoff=.9):
+def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50):
     """Find novel miRNAs in reference mapped reads. Assumes we have already
         mapped to known miRNAs.
         Args:
