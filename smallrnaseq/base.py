@@ -459,6 +459,9 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
         fastfile = HTSeq.FastqReader(infile, "solexa")
     elif ext == '.fa' or ext == '.fasta':
         fastfile = HTSeq.FastaReader(infile)
+    else:
+        print ('not fasta or fastq')
+        return False
     chunks = np.arange(0,10e6,1e5)
 
     size=2e5
@@ -468,6 +471,7 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     total = 0
     #step over sequences in chunks of size to save memory
     while stop is False:
+        print (fastfile)
         sequences = [(s.name, s.seq, s.descr) for s in islice(fastfile, i, i+size)]
         if len(sequences) == 0:
             stop = True
@@ -489,7 +493,7 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     utils.dataframe_to_fasta(df, idkey='read_id', outfile=outfile)
     df.to_csv(os.path.splitext(outfile)[0]+'.csv', index=False)
     print ('collapsed %s reads to %s' %(total,len(df)))
-    return
+    return True
 
 def collapse_files(files, outpath, **kwargs):
     """Collapse reads and save counts as csv
@@ -502,7 +506,9 @@ def collapse_files(files, outpath, **kwargs):
         collapsedfile = os.path.join(outpath, label+'.fa')
         countsfile = os.path.join(outpath, label+'.csv')
         if not os.path.exists(collapsedfile) or not os.path.exists(countsfile):
-            collapse_reads(f, outfile=collapsedfile, **kwargs)
+            res = collapse_reads(f, outfile=collapsedfile, **kwargs)
+            if res == False:
+                continue
         else:
             print ('found collapsed file')
         outfiles.append(collapsedfile)

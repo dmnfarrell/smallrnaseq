@@ -682,7 +682,7 @@ def create_report(df, reads, species='Homo_sapiens', outfile='report.html'):
     df = df.copy()
     df = df.set_index('id')
 
-    ens_sp = pd.read_csv('ensembl_names.csv',index_col=0)
+    ens_sp = pd.read_csv(os.path.join(datadir, 'ensembl_names.csv'), index_col=0)
     if species in ens_sp.index:
         ensname = ens_sp.ix[species]['scientific name']
         df['coords'] = df.coords.apply(

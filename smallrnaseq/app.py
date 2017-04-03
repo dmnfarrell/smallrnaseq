@@ -70,7 +70,7 @@ def run(opts):
         #novel prediction
         if ref_genome != '':
             print ('predicting novel mirnas..')
-            allreads = utils.combine_aligned_reads(temp_path, files, ref_genome)
+            allreads = utils.combine_aligned_reads(path, files, ref_genome)
             new,cl = novel.find_mirnas(allreads, cow_fasta)
             new.to_csv(os.path.join(out,'novel.csv'), index=False)
             novel.create_report(new, cl, species, filename=os.path.join(out, 'novel.html'))
