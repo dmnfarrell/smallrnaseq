@@ -544,7 +544,7 @@ def print_read_stack(reads, refseq=None, outfile=None, cutoff=0, by=None, label=
     else:
         seqlen = reads.end.max()
     f = None
-    reads = reads[reads.reads>cutoff]
+    reads = reads[reads.reads>=cutoff]
     if by is not None:
         reads = reads.sort_values(by, ascending=False)
 

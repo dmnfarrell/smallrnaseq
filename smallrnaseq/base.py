@@ -557,7 +557,7 @@ def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
         df['sequence'] = df.sequence.str.replace('U','T')
     return df
 
-def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5):
+def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5, kind='mature'):
     """Build species-specific mirbase bowtie index
        Args:
            species: 3-letter code for species
@@ -565,12 +565,20 @@ def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5):
            n: bases to extend around ends of mature sequence
     """
 
-    mirs = get_mirbase_sequences(species, pad5, pad3)
-    print ('got %s sequences' %len(mirs))
-    idxname = 'mirbase-'+species
-    outfile = '%s.fa' %idxname
-    utils.dataframe_to_fasta(mirs, seqkey='sequence', idkey='name',
-                            outfile=outfile)
+    if kind == 'mature':
+        mirs = get_mirbase_sequences(species, pad5, pad3)
+        idxname = 'mirbase-'+species
+        outfile = '%s.fa' %idxname
+        utils.dataframe_to_fasta(mirs, seqkey='sequence', idkey='name',
+                                outfile=outfile)
+    else:
+        mirs = get_mirbase(species)
+        idxname = 'precursors-'+species
+        outfile = '%s.fa' %idxname
+        utils.dataframe_to_fasta(mirs, seqkey='precursor', idkey='mirbase_id',
+                                outfile=outfile)
+        print ('got %s sequences' %len(mirs))
+
     if aligner == 'bowtie':
         aligners.build_bowtie_index(outfile, 'indexes')
     elif aligner == 'subread':

@@ -37,6 +37,8 @@ def run(opts):
     temp_path = os.path.join(out,'temp') #path for temp files
     indexes = opts['indexes'].split(',')
     species=opts['species']
+    ref_genome = opts['ref_genome']
+    features_file = opts['features']
 
     if path != '':
         files = glob.glob(os.path.join(path,'*.fastq'))
@@ -51,6 +53,7 @@ def run(opts):
     if not os.path.exists(opts['index_path']):
         print ('no such folder for indexes')
         return
+
     if opts['mirbase'] == 1:
         #count with mirbase
         print ('mapping to mirbase')
@@ -64,14 +67,26 @@ def run(opts):
         iso, isocounts = base.map_isomirs(files, temp_path, species)
         iso.to_csv( os.path.join(out, 'isomirs_found.csv'),index=False )
 
-    elif opts['ref_genome'] != '':
+        #novel prediction
+        if ref_genome != '':
+            print ('predicting novel mirnas..')
+            allreads = utils.combine_aligned_reads(temp_path, files, ref_genome)
+            new,cl = novel.find_mirnas(allreads, cow_fasta)
+            new.to_csv(os.path.join(out,'novel.csv'), index=False)
+            novel.create_report(new, cl, species, filename=os.path.join(out, 'novel.html'))
+        else:
+            print ('no reference genome for novel mirna prediction')
+
+    elif ref_genome != '' and features_file != '':
+        #genomic feature counting
         print ('mapping to reference genome')
-        res = base.map_genome_features(files, opts['ref_genome'], opts['features'],
+        res = base.map_genome_features(files, ref_genome, features_file,
                                        outpath=temp_path, aligner=opts['aligner'])
         counts = base.pivot_count_data(res, idxcols=['name','gene_name','gene_biotype'])
         res.to_csv( os.path.join(out, 'features_found.csv'), index=False )
         counts.to_csv( os.path.join(out, 'feature_counts.csv'), index=False)
         print ('results saved to feature_counts.csv')
+
     else:
         #map to provided libraries
         print ('mapping to these libraries: %s' %indexes)

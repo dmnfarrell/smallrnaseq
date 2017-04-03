@@ -1,0 +1,28 @@
+mirbase,common name,scientific name,taxon ID,assembly,accession
+aca,Anole lizard,Anolis_carolinensis,28377,AnoCar2.0,GCA_000090745.1
+cin,C.intestinalis,Ciona_intestinalis,7719,KH,GCA_000224145.1
+csa,C.savignyi,Ciona_savignyi,51511,CSAV 2.0,-
+cel,C. elegans,Caenorhabditis_elegans,6239,WBcel235,GCA_000002985.3
+gga,Chicken,Gallus_gallus,9031,Gallus_gallus-5.0,GCA_000002315.3
+ptr,Chimpanzee,Pan_troglodytes,9598,CHIMP2.1.4,GCA_000001515.4
+cgr,Chinese hamster (Pre),Cricetulus_griseus,10029,-,-
+bta,Cow,Bos_taurus,9913,UMD3.1,GCA_000003055.3
+dme,Fruitfly,Drosophila_melanogaster,7227,BDGP6,GCA_000001215.4
+eca,Horse,Equus_caballus,9796,Equ Cab 2,GCA_000002305.1
+hsa,Human,Homo_sapiens,9606,GRCh38.p10,GCA_000001405.25
+pma,Lamprey,Petromyzon_marinus,7757,Pmarinus_7.0,-
+mml,Macaque,Macaca_mulatta,9544,Mmul_8.0.1,GCA_000772875.3
+ola,Medaka,Oryzias_latipes,8090,HdrR,-
+mmu,Mouse,Mus_musculus,10090,GRCm38.p5,GCA_000001635.7
+mdo,Opossum,Monodelphis_domestica,13616,monDom5,GCF_000002295.2
+ssc,Pig,Sus_scrofa,9823,Sscrofa10.2,GCA_000003025.4
+oan,Platypus,Ornithorhynchus_anatinus,9258,OANA5,GCF_000002275.2
+ocu,Rabbit,Oryctolagus_cuniculus,9986,OryCun2.0,GCA_000003625.1
+rno,Rat,Rattus_norvegicus,10116,Rnor_6.0,GCA_000001895.4
+oar,Sheep,Ovis_aries,9940,Oar_v3.1,GCA_000298735.1
+sha,Tasmanian devil,Sarcophilus_harrisii,9305,Devil_ref v7.0,GCA_000189315.1
+tni,Tetraodon,Tetraodon_nigroviridis,99883,TETRAODON 8.0,-
+meu,Wallaby,Macropus_eugenii,9315,Meug_1.0,GCA_000004035.1
+xtr,Xenopus,Xenopus_tropicalis,8364,JGI 4.2,GCA_000004195.1
+tgu,Zebra Finch,Taeniopygia_guttata,59729,taeGut3.2.4,-
+dre,Zebrafish,Danio_rerio,7955,GRCz10,GCA_000002035.3

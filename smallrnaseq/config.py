@@ -39,6 +39,7 @@ baseoptions = {'base': [('filenames',''),('path',''),('filetype','fastq'),
                     ('aligner','bowtie'),
                     ('aligner_params','-v 1 --best'),
                     ('mirbase',0),('species','hsa'),('pad5',3),('pad3',5)],
+               'novel': [('score_cutoff',.9), ('read_cutoff',50)],
                'de':[('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
                     ('conditions','')

@@ -306,9 +306,9 @@ def precursor_classifier(known=None, neg=None, kind='regressor'):
     X, y = get_training_data(known, neg)
     from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
     if kind == 'classifier':
-        rf = RandomForestClassifier()
+        rf = RandomForestClassifier(n_estimators=50)
     else:
-        rf = RandomForestRegressor()
+        rf = RandomForestRegressor(n_estimators=50)
     #print ('fitting..')
     rf.fit(X,y)
     return rf
@@ -317,7 +317,7 @@ def test_classifier(known=None, neg=None):
 
     from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
     X, y = get_training_data(known, neg)
-    rf = RandomForestClassifier()
+    rf = RandomForestClassifier(n_estimators=50)
     rf.fit(X,y)
     from sklearn.model_selection import train_test_split,cross_val_score
     #X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.4)
@@ -527,7 +527,7 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=.9):
     else:
         return
 
-def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50):
+def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
     """Find novel miRNAs in reference mapped reads. Assumes we have already
         mapped to known miRNAs.
         Args:
@@ -577,6 +577,8 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50):
         a,b = list(r.cluster[:2])
         c1 = rcl[rcl.cluster==a]
         c2 = rcl[rcl.cluster==b]
+        if c1.reads.sum()+c2.reads.sum() < read_cutoff:
+            continue
         p = find_precursor(ref_fasta, c1, c2, step=7)
         if p is None:
             #print ('no precursor predicted')
@@ -591,8 +593,11 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50):
     print ('checking %s unpaired read clusters' %len(singleclusts))
     for i,r in singleclusts.iterrows():
         c = rcl[rcl.cluster==r.cluster]
+        if c.reads.sum() < read_cutoff:
+            continue
         p = find_precursor(ref_fasta, c, step=7, score_cutoff=score_cutoff)
-        #print p
+        #print (c.reads.sum())
+        #print (p)
         if p is None:
             #print ('no precursor predicted')
             continue
@@ -606,13 +611,13 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50):
     new = pd.concat([n1,n2])
     if len(new) == 0:
         print ('no mirnas found!')
-        return
+        return None, None
     #get seed seq and mirbase matches
     new['seed'] = new.apply(lambda x: x.mature[2:8], 1)
     #get coords column
     new['coords'] = new.apply(get_coords,1)
     new = new.reset_index(drop=True)
-    assign_names(new)
+    assign_names(new, species)
     new = new.sort_values(by='mature_reads', ascending=False)
     print ('found %s novel mirnas' %len(new))
     return new, rcl
@@ -622,3 +627,87 @@ def assign_names(df, species=''):
        identification across datasets"""
 
     df['id'] = df.apply( lambda x: species+'_novel_'+x.chrom+'_'+str(x.start),1 )
+
+def forna_url(precursor, mature, star=None, struct=None):
+    """Create link to view mirna structure in forna web app"""
+
+    #print x
+    pd.options.display.max_colwidth = 500
+    #seq = x.precursor
+    #mature = x[col1]
+    mstart = utils.find_subseq(precursor, mature)+1
+    mend = mstart+len(mature)-1
+    if struct==None:
+        struct = utils.rnafold(precursor)[0]
+    colors = '%s-%s:lightgreen\n' %(mstart, mend)
+    if star != None:
+        #print x[maturecol], x[col2]
+        #star = x[col2]
+        if star != None:
+            sstart = utils.find_subseq(precursor, star)+1
+            send = sstart+len(star)-1
+            colors += '%s-%s:pink\n' %(sstart,send)
+    url='http://nibiru.tbi.univie.ac.at/forna/forna.html'\
+        '?id=url/name&sequence=%s&structure=%s&colors=%s' %(precursor,struct,colors)
+    html = '<a href="%s" target="_blank"> view structure </a>' %url
+    return html
+
+def string_to_html(s):
+    """Convert lines of strings for html rendering"""
+
+    html=''
+    x = s.split('\n')
+    for line in x:
+        line = line.replace(' ','&nbsp') #preserve spaces
+        html += line+'<br>'
+    return html
+
+def create_report(df, reads, species='Homo_sapiens', outfile='report.html'):
+    """Novel miRNA predictions html report"""
+
+    pd.options.display.max_colwidth = 500
+    h = '<html><head><meta charset="utf-8">  <title>novel miRNA</title>'
+    h += '<link rel="stylesheet" type="text/css" href="styles.css" media="screen" />'
+    h += '</head>'
+    h += '<body>'
+    h += '<div class="header">'
+    h += '<h3>novel miRNA predictions</h3>'
+    h += '</div>'
+    h += '<div class="sidebar">'
+    links = df[['id','mature_reads']]
+    links['id'] = links.id.apply(lambda x: ('<a href=#%s > %s </a>' %(x,x)))
+    h += links.to_html(escape=False, classes='sidebar', index=False)
+    h += '</div>'
+
+    df = df.copy()
+    df = df.set_index('id')
+
+    ens_sp = pd.read_csv('ensembl_names.csv',index_col=0)
+    if species in ens_sp.index:
+        ensname = ens_sp.ix[species]['scientific name']
+        df['coords'] = df.coords.apply(
+            lambda x: ('<a href=http://www.ensembl.org/%s/Location/View?r=%s target="_blank">%s </a>' %(ensname,x,x)),1)
+    df['link'] = df.apply(lambda x: forna_url(x.precursor, x.mature, x.star, x.struct), 1)
+
+    h += '<div class="content">'
+    for i,r in df.iterrows():
+        #print (r.mature, r.name)
+        h += '<div class="box">'
+        h += '<a name=%s></a>' %i
+        h += r.to_frame().to_html(escape=False)
+        x = reads[reads.cluster==r.cluster]
+        s = utils.print_read_stack(x, r.precursor, by='reads')
+        if s==None:
+            h+='</div>'
+            continue
+        h += '<p>'
+        h += string_to_html(s)
+        h += '</p>'
+        h += '</div>'
+
+    h+='</div>'
+    h += '</body>'
+    f=open('report.html','w')
+    f.write(h)
+    f.close()
+    return h
