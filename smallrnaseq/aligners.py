@@ -105,7 +105,8 @@ def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
     if verbose == True:
         print (cmd)
     try:
-        result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        result = subprocess.check_output(cmd, shell=True, executable='/bin/bash',
+                                         stderr= subprocess.STDOUT)
         if verbose == True:
             print (result)
     except subprocess.CalledProcessError as e:

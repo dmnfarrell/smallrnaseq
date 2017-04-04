@@ -490,6 +490,7 @@ def combine_aligned_reads(path, filenames, idx):
         print(f)
         samfile = os.path.join(path, '%s_%s.sam' %(f,idx))
         countsfile = os.path.join(path, '%s.csv' %f)
+        print (samfile)
         if not os.path.exists(samfile) or not os.path.exists(countsfile):
             print ('no sam file or count data found for this sample')
             continue

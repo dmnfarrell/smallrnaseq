@@ -538,6 +538,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
             dataframes of read clusters and novel mirnas
     """
 
+    print (ref_fasta)
     global CLASSIFIER
     if CLASSIFIER == None:
         print ('getting default classifier')
@@ -662,7 +663,7 @@ def string_to_html(s):
         html += line+'<br>'
     return html
 
-def create_report(df, reads, species='Homo_sapiens', outfile='report.html'):
+def create_report(df, reads, species=None, outfile='report.html'):
     """Novel miRNA predictions html report"""
 
     pd.options.display.max_colwidth = 500
@@ -707,7 +708,7 @@ def create_report(df, reads, species='Homo_sapiens', outfile='report.html'):
 
     h+='</div>'
     h += '</body>'
-    f=open('report.html','w')
+    f=open(outfile,'w')
     f.write(h)
     f.close()
     return h

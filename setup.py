@@ -16,6 +16,7 @@ setup(
                       'pybedtools>=0.7.9',
                       'seaborn>=0.7',
                       'scikit-learn>=0.18',
+                      'bx-python>=0.5',
                       'forgi>=0.4'],
     entry_points = {
         'console_scripts': [

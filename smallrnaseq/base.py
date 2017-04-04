@@ -295,7 +295,7 @@ def deseq_normalize(df):
     return df
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
-             norm_method='quantile', use_remaining=False, overwrite=False,
+             norm_method='quantile', use_remaining=True, overwrite=False,
              outfile='rna_counts.csv', add_labels=False):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
@@ -471,7 +471,7 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     total = 0
     #step over sequences in chunks of size to save memory
     while stop is False:
-        print (fastfile)
+        #print (fastfile)
         sequences = [(s.name, s.seq, s.descr) for s in islice(fastfile, i, i+size)]
         if len(sequences) == 0:
             stop = True
@@ -563,7 +563,8 @@ def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
         df['sequence'] = df.sequence.str.replace('U','T')
     return df
 
-def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5, kind='mature'):
+def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5,
+                        kind='mature', index_path='indexes'):
     """Build species-specific mirbase bowtie index
        Args:
            species: 3-letter code for species
@@ -586,16 +587,20 @@ def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5, kind='mature'
         print ('got %s sequences' %len(mirs))
 
     if aligner == 'bowtie':
-        aligners.build_bowtie_index(outfile, 'indexes')
+        aligners.build_bowtie_index(outfile, index_path)
     elif aligner == 'subread':
-        aligners.build_subread_index(outfile, 'indexes')
+        aligners.build_subread_index(outfile, index_path)
     return idxname
 
-def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
-                 aligner='bowtie', pad5=3, pad=5, **kwargs):
+def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
+                index_path='indexes',
+                overwrite=False, aligner='bowtie',
+                pad5=3, pad=5, **kwargs):
     """Map multiple fastq files to mirbase mature sequences and get
        count results into one file. Used for counting of known miRNAs.
-       Species: three letter name of species using mirbase convention
+       Args:
+           Species: three letter name of species using mirbase convention
+           indexes: other libraries to align to before we count mirnas
     """
 
     if not os.path.exists(outpath):
@@ -604,18 +609,20 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
     #generate new mirbase bowtie index
     if aligner == 'bowtie':
         #global BOWTIE_INDEXES, BOWTIE_PARAMS
-        aligners.BOWTIE_INDEXES = 'indexes'
+        aligners.BOWTIE_INDEXES = index_path
         if aligners.BOWTIE_PARAMS == None:
             aligners.BOWTIE_PARAMS = '-n 1 -l 20'
 
     elif aligner == 'subread':
         #global SUBREAD_INDEXES, SUBREAD_PARAMS
-        aligners.SUBREAD_INDEXES = 'indexes'
+        aligners.SUBREAD_INDEXES = index_path
         #SUBREAD_PARAMS = '-m 2 -M 2'
     idx = build_mirbase_index(species, aligner, pad)
     #hairpin = get_mirbase_sequences(species, )
     #now map to the mirbase index for all files
-    res, counts = map_rnas(files, [idx], outpath, overwrite=overwrite, aligner=aligner,
+    indexes = indexes + [idx]
+    print (indexes )
+    res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite, aligner=aligner,
                     outfile='mirbase_mature_counts.csv', **kwargs)
 
     output_read_stacks(files, outpath, idx)
@@ -624,7 +631,6 @@ def map_mirbase(files, species='bta', outpath='mirna_results', overwrite=False,
 def map_isomirs(files, outpath, species):
     """Count mirna isomirs using previously aligned files"""
 
-    print ('counting isomirs')
     idx = 'mirbase-'+species
     result = []
     for f in files:

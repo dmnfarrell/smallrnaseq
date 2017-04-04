@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    smallrnaseq entry point for command line functions
+    smallrnaseq implementation of command line functionality
     Created November 2016
     Copyright (C) Damien Farrell
 
@@ -24,61 +24,119 @@ from __future__ import absolute_import, print_function
 import sys, os, string, types
 import glob
 import pandas as pd
-from smallrnaseq import config, base, analysis, utils, aligners, plotting, de
+from smallrnaseq import config, base, analysis, utils, aligners, novel, plotting, de
 
-def run(opts):
-    """Run predefined batch mapping routines based on options from
-     a config file"""
-
-    opts = config.check_options(opts)
-    files = opts['filenames'].split(',')
-    path = opts['path']
-    out = opts['output']
-    temp_path = os.path.join(out,'temp') #path for temp files
-    indexes = opts['indexes'].split(',')
-    species=opts['species']
-    ref_genome = opts['ref_genome']
-    features_file = opts['features']
-
-    if path != '':
-        files = glob.glob(os.path.join(path,'*.fastq'))
-    elif len(files) == 0:
-        print ('you should provide at least one file or folder')
+class WorkFlow(object):
+    """Class for implementing a rna/mirna workflow from a set of options"""
+    def __init__(self, opts):
+        for i in opts:
+            self.__dict__[i] = opts[i]
+        self.libraries = self.libraries.split(',')
+        #print (self.__dict__)
         return
 
-    aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = opts['index_path']
-    if opts['aligner_params'] != '':
-        aligners.set_params(opts['aligner'], opts['aligner_params'])
+    def setup(self):
+        """Setup main parameters"""
 
-    if not os.path.exists(opts['index_path']):
-        print ('no such folder for indexes')
+        if self.path != '':
+            self.files = glob.glob(os.path.join(self.path,'*.fastq'))
+        elif len(self.files) == 0:
+            print ('you should provide at least one file or folder')
+            return False
+        aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = self.index_path
+        if self.aligner_params != '':
+            aligners.set_params(self.aligner, self.aligner_params)
+        if not os.path.exists(self.index_path):
+            print ('no such folder for indexes')
+            return False
+        self.temp_path = os.path.join(self.output,'temp')
+        return True
+
+    def run(self):
+        """Execute the workflow"""
+
+        #sys.stdout = open('run.log','w')
+        if self.mirna == 1:
+            self.map_mirnas()
+        else:
+            self.map_libraries()
+        print ('intermediate files saved to %s' %self.temp_path)
         return
 
-    if opts['mirbase'] == 1:
-        #count with mirbase
-        print ('mapping to mirbase')
-        res, counts = base.map_mirbase(files, outpath=temp_path, pad5=3,
-                         aligner=opts['aligner'], species=species,
-                         add_labels=opts['add_labels'])
+    def map_libraries(self):
+        """Map to arbitrary rna sequence libraries"""
+
+        out = self.output
+        libraries = self.libraries
+
+        if libraries != '':
+            #map to provided libraries
+            print ('mapping to these libraries: %s' %libraries)
+            res, counts = base.map_rnas(self.files, libraries, self.temp_path,
+                                        aligner=self.aligner,
+                                        add_labels=self.add_labels)
+            if res is None:
+                print ('empty data returned. did alignments run?')
+                return
+            print ('results saved to rna_counts.csv')
+            res.to_csv( os.path.join(out, 'rna_found.csv'),index=False)
+            counts.to_csv( os.path.join(out, 'rna_counts.csv'), index=False )
+            plot_results(res, out)
+        return
+
+    def map_mirnas(self):
+        """Map to miRNAs using mirbase with isomir counts and novel discovery"""
+
+        out = self.output
+        libraries = self.libraries
+        temp = self.temp_path
+        print ('mapping miRNAs..')
+        res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
+                                        index_path=self.index_path,
+                                        pad5=3, aligner=self.aligner, species=self.species,
+                                        add_labels=self.add_labels)
         res.to_csv( os.path.join(out, 'mirbase_mature_found.csv'),index=False )
         counts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
         plot_results(res, out)
+
         #isomir counting
-        iso, isocounts = base.map_isomirs(files, temp_path, species)
-        iso.to_csv( os.path.join(out, 'isomirs_found.csv'),index=False )
+        print ()
+        print ('counting isomirs..')
+        iso, isocounts = base.map_isomirs(self.files, temp, self.species)
+        iso.to_csv( os.path.join(out, 'isomirs_found.csv'), index=False )
 
         #novel prediction
-        if ref_genome != '':
-            print ('predicting novel mirnas..')
-            allreads = utils.combine_aligned_reads(path, files, ref_genome)
-            new,cl = novel.find_mirnas(allreads, cow_fasta)
-            new.to_csv(os.path.join(out,'novel.csv'), index=False)
-            novel.create_report(new, cl, species, filename=os.path.join(out, 'novel.html'))
+        if self.ref_fasta == '':
+            print ('no reference genome, skipping novel mirna prediction')
+        #elif check_viennarna() == False:
+        #    print ('Vienna RNA package not installed')
+        #    print ('see https://www.tbi.univie.ac.at/RNA/')
         else:
-            print ('no reference genome for novel mirna prediction')
+            print ()
+            print ('predicting novel mirnas..')
+            ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
 
-    elif ref_genome != '' and features_file != '':
+            #check that we have made an index for the reference fasta?
+            #check_index_present(ref_name, self.index_path)
+
+            #change map_rnas so it can use remaining files from previous run....?
+            #for f in self.files:
+            #    print (os.path.join(temp, f+'_r.fa'))
+
+            base.map_rnas(self.files, [ref_name], self.temp_path, aligner=self.aligner)
+
+            allreads = utils.combine_aligned_reads(temp, self.files, ref_name)
+            new,cl = novel.find_mirnas(allreads, self.ref_fasta, species=self.species)
+            new.to_csv(os.path.join(out,'novel_mirna.csv'), index=False)
+            novel.create_report(new, cl, self.species, outfile=os.path.join(out, 'novel.html'))
+        return
+
+    def map_genomic_features(self):
+
+        if ref_genome == '' or features_file == '':
+            return
         #genomic feature counting
+        print ()
         print ('mapping to reference genome')
         res = base.map_genome_features(files, ref_genome, features_file,
                                        outpath=temp_path, aligner=opts['aligner'])
@@ -86,21 +144,14 @@ def run(opts):
         res.to_csv( os.path.join(out, 'features_found.csv'), index=False )
         counts.to_csv( os.path.join(out, 'feature_counts.csv'), index=False)
         print ('results saved to feature_counts.csv')
+        return
 
-    else:
-        #map to provided libraries
-        print ('mapping to these libraries: %s' %indexes)
-        res, counts = base.map_rnas(files, indexes, temp_path, aligner=opts['aligner'],
-                                    add_labels=opts['add_labels'])
-        if res is None:
-            print ('empty data returned. did alignments run?')
-            return
-        print ('results saved to rna_counts.csv')
-        res.to_csv( os.path.join(out, 'rna_found.csv'),index=False)
-        counts.to_csv( os.path.join(out, 'rna_counts.csv'), index=False )
-        plot_results(res, out)
-    print ('intermediate files saved to %s' %out)
-    return
+def check_viennarna():
+    try:
+        import RNA
+        return True
+    except ImportError as e:
+        return False
 
 def plot_results(res, path):
     """Some results plots"""
@@ -197,6 +248,7 @@ def main():
                         default=False, help="run DE analysis")
 
     opts, remainder = parser.parse_args()
+
     if opts.infile != None:
         if opts.trim != None:
             utils.trim_adapters(opts.infile, adapters=opts.trim, outfile='cut.fastq')
@@ -205,13 +257,18 @@ def main():
     elif opts.build != None:
         build_indexes(opts.build)
     elif opts.config != None and os.path.exists(opts.config):
+
         cp = config.parse_config(opts.config)
         options = config.get_options(cp)
+        options = config.check_options(options)
         print ('using the following options:')
         print ('----------------------------')
         config.print_options(options)
+        W = WorkFlow(options)
+        W.setup()
         if opts.run == True:
-            run(options)
+            #run(options)
+            W.run()
         elif opts.de == True:
             diff_expression(options)
         else:
