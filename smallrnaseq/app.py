@@ -32,15 +32,19 @@ class WorkFlow(object):
         for i in opts:
             self.__dict__[i] = opts[i]
         self.libraries = self.libraries.split(',')
-        #print (self.__dict__)
         return
 
     def setup(self):
         """Setup main parameters"""
 
-        if self.path != '':
+        if self.filenames != '':
+            self.files = self.filenames.split(',')
+        elif self.path != '':
             self.files = glob.glob(os.path.join(self.path,'*.fastq'))
-        elif len(self.files) == 0:
+            if len(self.files) == 0:
+                print ('no fastq files found')
+                return False
+        else:
             print ('you should provide at least one file or folder')
             return False
         aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = self.index_path
@@ -55,7 +59,6 @@ class WorkFlow(object):
     def run(self):
         """Execute the workflow"""
 
-        #sys.stdout = open('run.log','w')
         if self.mirna == 1:
             self.map_mirnas()
         else:
@@ -90,11 +93,13 @@ class WorkFlow(object):
         out = self.output
         libraries = self.libraries
         temp = self.temp_path
+        ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
         print ('mapping miRNAs..')
         res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
-                                        index_path=self.index_path,
-                                        pad5=3, aligner=self.aligner, species=self.species,
-                                        add_labels=self.add_labels)
+                                       species=self.species, ref_genome=ref_name,
+                                       index_path=self.index_path,
+                                       pad5=3, aligner=self.aligner,
+                                       add_labels=self.add_labels)
         res.to_csv( os.path.join(out, 'mirbase_mature_found.csv'),index=False )
         counts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
         plot_results(res, out)
@@ -114,19 +119,20 @@ class WorkFlow(object):
         else:
             print ()
             print ('predicting novel mirnas..')
-            ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
 
             #check that we have made an index for the reference fasta?
             #check_index_present(ref_name, self.index_path)
 
             #change map_rnas so it can use remaining files from previous run....?
-            #for f in self.files:
-            #    print (os.path.join(temp, f+'_r.fa'))
 
-            base.map_rnas(self.files, [ref_name], self.temp_path, aligner=self.aligner)
+            #print ('mapping to reference genome..')
+            #base.map_rnas(self.files, [ref_name], self.temp_path, aligner=self.aligner)
 
             allreads = utils.combine_aligned_reads(temp, self.files, ref_name)
             new,cl = novel.find_mirnas(allreads, self.ref_fasta, species=self.species)
+            if new is None or len(new) == 0:
+                print ('could not find any novel mirnas at this score cutoff')
+                return
             new.to_csv(os.path.join(out,'novel_mirna.csv'), index=False)
             novel.create_report(new, cl, self.species, outfile=os.path.join(out, 'novel.html'))
         return
@@ -265,10 +271,12 @@ def main():
         print ('----------------------------')
         config.print_options(options)
         W = WorkFlow(options)
-        W.setup()
+        st = W.setup()
         if opts.run == True:
-            #run(options)
-            W.run()
+            if st == True:
+                W.run()
+            else:
+                print ('check your config file')
         elif opts.de == True:
             diff_expression(options)
         else:

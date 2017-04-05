@@ -32,12 +32,11 @@ datadir = os.path.join(path, 'data')
 
 baseoptions = {'base': [('filenames',''),('path',''),#('filetype','fastq'),
                     ('adapter',''),
-                    #('fasta_path','fasta_files'),
                     ('index_path','indexes'),
                     ('libraries',''),
                     ('ref_fasta',''),('features',''),
                     ('output','smrna_results'),('add_labels',0),
-                    ('read_stack',0),
+                    #('read_stack',0),
                     ('aligner','bowtie'),
                     ('aligner_params','-v 1 --best'),
                     ('mirna',0),('species','hsa'),('pad5',3),('pad3',5)],
@@ -51,7 +50,7 @@ def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
     if not os.path.exists(conffile):
-        cp = create_config_parser_from_dict(defaults, ['base','de'])
+        cp = create_config_parser_from_dict(defaults, ['base','novel','de'])
         cp.write(open(conffile,'w'))
         print ('wrote config file %s' %conffile)
     return conffile
@@ -67,6 +66,7 @@ def create_config_parser_from_dict(data, sections, **kwargs):
         for i in data[s]:
             name,val = i
             cp.set(s, name, val)
+
     #use kwargs to create specific settings in the appropriate section
     for s in cp.sections():
         opts = cp.options(s)

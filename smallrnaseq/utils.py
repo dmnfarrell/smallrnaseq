@@ -401,6 +401,9 @@ def sequence_from_coords(fastafile, coords):
 
     from pybedtools import BedTool
     chrom,start,end,strand = coords
+    if not os.path.exists(fastafile):
+        print ('no such file')
+        return
     try:
         if strand == '+':
             seq = str(BedTool.seq(coords, fastafile))

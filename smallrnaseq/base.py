@@ -593,7 +593,7 @@ def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5,
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
-                index_path='indexes',
+                index_path='indexes', ref_genome=None,
                 overwrite=False, aligner='bowtie',
                 pad5=3, pad=5, **kwargs):
     """Map multiple fastq files to mirbase mature sequences and get
@@ -620,8 +620,11 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
     idx = build_mirbase_index(species, aligner, pad)
     #hairpin = get_mirbase_sequences(species, )
     #now map to the mirbase index for all files
-    indexes = indexes + [idx]
-    print (indexes )
+    indexes.append(idx)
+    #we map to the reference genome last if provided
+    if ref_genome != None:
+        indexes.append(ref_genome)
+  
     res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite, aligner=aligner,
                     outfile='mirbase_mature_counts.csv', **kwargs)
 

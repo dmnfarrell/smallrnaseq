@@ -1,0 +1,171 @@
+
+body
+{
+	margin: 10;
+	padding: 10;
+	color: #333;
+	background-color: white;
+	font: 1em/1.2 "Helvetica Neue", Helvetica, Arial, Geneva, sans-serif;
+}
+
+h1,h2,h3,h4,h5,h6
+{
+	margin: 0 0 .5em;
+	font-weight: 500;
+	line-height: 1.1;
+	color: DodgerBlue;
+}
+
+h1 { font-size: 2.25em; } /* 36px */
+h2 { font-size: 1.75em; } /* 28px */
+h3 { font-size: 1.375em; } /* 22px */
+h4 { font-size: 1.125em; } /* 18px */
+h5 { font-size: 1em; } /* 16px */
+h6 { font-size: .875em; } /* 14px */
+
+p
+{
+	margin: 0 0 1.5em;
+	line-height: 1.5;
+}
+
+blockquote
+{
+	padding: 1em 2em;
+	margin: 0 0 2em;
+	border-left: 5px solid #eee;
+}
+
+hr
+{
+	height: 0;
+	margin-top: 1em;
+	margin-bottom: 2em;
+	border: 0;
+	border-top: 1px solid #ddd;
+}
+
+.header {
+	margin: auto;
+	padding: 1em 1em;
+	width: 100%;
+	height: 40px;
+	position: fixed;
+	z-index: 100;
+}
+
+.content div {
+	margin-top: 30px;
+	padding: 1em 1.25em;
+	background-color: #fff;
+	width: 70%;
+	float: right;
+	overflow: hidden;
+}
+
+.content table {
+	color: #333;
+	font-family: monospace, sans-serif;
+	border-collapse:
+	collapse; border-spacing: 0;
+	width: 90%;
+	/*table-layout: fixed; */
+}
+
+.content td, th {
+	border: 1px solid transparent; /* No more visible border */
+	height: 26px;
+	transition: all 0.3s; /* Simple transition for hover effect */
+	font-size: 14px;
+	word-wrap: break-word;
+	overflow: hidden;
+	width: 500px;
+	max-width: 600px;
+}
+
+.content th {
+	/*background: #DFDFDF; /* Darken header a bit */
+	font-weight: bold;
+	text-align: left;
+	width: 100px;
+	max-width: 200px;
+}
+
+.content td {
+	background: #FAFAFA;
+	text-align: left;
+	min-width: 200px;
+}
+
+.content p {
+	background-color: #f9f9f4;
+	font-family: monospace, sans-serif;
+	font-size: 11px;
+  width: 100%;
+	margin-top: 1em;
+	padding: 2px;
+}
+
+
+.content tr:nth-child(even) td { background: #F1F1F1; }
+.content tr:nth-child(odd) td { background: #FEFEFE; }
+
+a:link { color: royalblue; }
+a:visited { color: purple; }
+a:focus { color: black; }
+a:hover { color: green; }
+a:active { color: red; }
+
+
+.container
+{
+	max-width: 70em;
+	margin: 0 auto;
+}
+
+.sidebar {
+	background: white;
+	padding: 5px;
+	margin-top: 30px;
+	margin-right: 5px;
+	float: right;
+	height: 650px;
+	width: 20%;
+	position: fixed;
+	overflow-y: scroll;
+	top: 30;
+	bottom: 30;
+	display: table;
+}
+
+.sidebar table {
+	border: 0px solid transparent;
+	font-family: arial, sans-serif;
+	font-size: 14px;
+  height: 600px;
+	max-height: 600px;
+}
+
+.sidebar td, th {
+  text-align: left;
+	height: 8px;
+}
+
+.main, .aside
+{
+	margin-bottom: 1em;
+}
+
+.footer
+{
+	color: #fff;
+	background: #000;
+	padding: 1em 1.25em;
+}
+
+.box
+{
+	background: white;
+	padding: 1.25em;
+	border: 1px solid gray;
+}

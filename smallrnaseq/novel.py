@@ -306,9 +306,9 @@ def precursor_classifier(known=None, neg=None, kind='regressor'):
     X, y = get_training_data(known, neg)
     from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
     if kind == 'classifier':
-        rf = RandomForestClassifier(n_estimators=50)
+        rf = RandomForestClassifier(n_estimators=100)
     else:
-        rf = RandomForestRegressor(n_estimators=50)
+        rf = RandomForestRegressor(n_estimators=100)
     #print ('fitting..')
     rf.fit(X,y)
     return rf
@@ -538,7 +538,6 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
             dataframes of read clusters and novel mirnas
     """
 
-    print (ref_fasta)
     global CLASSIFIER
     if CLASSIFIER == None:
         print ('getting default classifier')
@@ -608,7 +607,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
         p['cluster'] = r.cluster
         n2.append(p)
     n2 = pd.DataFrame(n2)
-
+    #print(n2)
     new = pd.concat([n1,n2])
     if len(new) == 0:
         print ('no mirnas found!')
@@ -667,15 +666,16 @@ def create_report(df, reads, species=None, outfile='report.html'):
     """Novel miRNA predictions html report"""
 
     pd.options.display.max_colwidth = 500
+    css = get_css()
     h = '<html><head><meta charset="utf-8">  <title>novel miRNA</title>'
-    h += '<link rel="stylesheet" type="text/css" href="styles.css" media="screen" />'
+    h += '<style media="screen" type="text/css"> %s </style>' %css
     h += '</head>'
     h += '<body>'
     h += '<div class="header">'
     h += '<h3>novel miRNA predictions</h3>'
     h += '</div>'
     h += '<div class="sidebar">'
-    links = df[['id','mature_reads']]
+    links = df[['id','mature_reads']].copy()
     links['id'] = links.id.apply(lambda x: ('<a href=#%s > %s </a>' %(x,x)))
     h += links.to_html(escape=False, classes='sidebar', index=False)
     h += '</div>'
@@ -712,3 +712,11 @@ def create_report(df, reads, species=None, outfile='report.html'):
     f.write(h)
     f.close()
     return h
+
+def get_css():
+
+    fname = os.path.join(datadir, 'styles.css')
+    with open(fname) as f:
+        content = f.readlines()
+        content = ''.join(content)
+    return content
