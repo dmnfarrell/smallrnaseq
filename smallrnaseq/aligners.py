@@ -35,7 +35,7 @@ SUBREAD_INDEXES = None
 SUBREAD_PARAMS = '-m 2 -M 2'
 
 def set_params(aligner, params):
-    print (aligner, params)
+    #print (aligner, params)
     if aligner == 'bowtie':
         global BOWTIE_PARAMS
         BOWTIE_PARAMS = params

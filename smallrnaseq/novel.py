@@ -622,11 +622,23 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
     print ('found %s novel mirnas' %len(new))
     return new, rcl
 
+def check_known(new, species):
+    """Check novel results against known precursors for which the mature arm is not in mirbase"""
+
+    df = base.get_mirbase(species)
+    fastafile = 'precursors.fa'
+    #utils.dataframe_to_fasta(df, seqkey='precursor', idkey='mirbase_id',
+    #                            outfile=fastafile)
+    #utils.make_blastdb(fastafile)
+    #utils.local_blast()
+    return new
+
 def assign_names(df, species=''):
     """Assign name to novel mirna, precursor/mature ids should allow consistent
        identification across datasets"""
 
     df['id'] = df.apply( lambda x: species+'_novel_'+x.chrom+'_'+str(x.start),1 )
+    return
 
 def forna_url(precursor, mature, star=None, struct=None):
     """Create link to view mirna structure in forna web app"""

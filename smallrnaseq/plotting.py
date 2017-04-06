@@ -147,7 +147,7 @@ def plot_read_count_dists(counts, h=8):
     w=int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
     if len(t.columns) > 1:
-        sns.boxplot(t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
+        sns.boxplot(data=t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
     else:
         df.plot(kind='bar',ax=ax)
     sns.despine(trim=True)
@@ -169,4 +169,3 @@ def expression_clustermap(counts, freq=0.8):
     mt = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, fontsize=9)
     mt = plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
     return cg
-

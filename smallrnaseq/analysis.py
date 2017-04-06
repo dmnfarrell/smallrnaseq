@@ -34,7 +34,7 @@ try:
     import HTSeq
 except:
     'HTSeq not present'
-from . import srnabench as srb
+
 from . import mirdeep2 as mdp
 from . import base, utils
 
@@ -154,11 +154,11 @@ def mirna_discovery_test(sourcefile):
     k1=k1.set_index('#miRNA')
     k1 = k1[k1.s16>5]
     mp1 = mdp.get_file_ids(outpath)
-    cols,ncols=mdp.get_column_names(k1)
+    cols,ncols = mdp.get_column_names(k1)
     #srnabench
     outpath = 'benchmarking/srnabench'
-    k2,n,iso = srb.get_results(outpath)
-    k2=k2.set_index('name')
+    #k2,n,iso = srb.get_results(outpath)
+    k2 = k2.set_index('name')
     k2 = k2[k2.s16>5]
     mp2 = srb.getFileIDs(outpath).sort('filename')
 

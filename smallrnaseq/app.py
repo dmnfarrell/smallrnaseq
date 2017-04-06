@@ -21,7 +21,7 @@
 """
 
 from __future__ import absolute_import, print_function
-import sys, os, string, types
+import sys, os, string, types, shutil
 import glob
 import pandas as pd
 from smallrnaseq import config, base, analysis, utils, aligners, novel, plotting, de
@@ -54,7 +54,19 @@ class WorkFlow(object):
             print ('no such folder for indexes')
             return False
         self.temp_path = os.path.join(self.output,'temp')
+        self.remove_output()
+        print ('found %s input files' %len(self.files))
         return True
+
+    def check_index(self, name):
+
+        fname = os.path.join(self.index_path, name+'*.ebwt')
+        print (fname)
+        x = (glob.glob(fname))
+        if len(x) == 0:
+            return False
+        else:
+            return True
 
     def run(self):
         """Execute the workflow"""
@@ -64,6 +76,17 @@ class WorkFlow(object):
         else:
             self.map_libraries()
         print ('intermediate files saved to %s' %self.temp_path)
+        return
+
+    def remove_output(self):
+        """Remove previous output files"""
+
+        if self.overwrite == True:
+            print ('removing temp folder')
+            if os.path.exists(self.temp_path):
+                shutil.rmtree(self.temp_path)
+        for ext in ['*.csv','*.png','*.html','*.fa']:
+            utils.remove_files(self.output, ext)
         return
 
     def map_libraries(self):
@@ -94,12 +117,18 @@ class WorkFlow(object):
         libraries = self.libraries
         temp = self.temp_path
         ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
+        if self.check_index(ref_name) == False:
+            print ('no index for reference genome')
+            ref_name = None
         print ('mapping miRNAs..')
         res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
                                        species=self.species, ref_genome=ref_name,
                                        index_path=self.index_path,
                                        pad5=3, aligner=self.aligner,
                                        add_labels=self.add_labels)
+
+        #seperate out mature and precursor counts here...
+
         res.to_csv( os.path.join(out, 'mirbase_mature_found.csv'),index=False )
         counts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
         plot_results(res, out)
@@ -111,22 +140,17 @@ class WorkFlow(object):
         iso.to_csv( os.path.join(out, 'isomirs_found.csv'), index=False )
 
         #novel prediction
-        if self.ref_fasta == '':
-            print ('no reference genome, skipping novel mirna prediction')
-        #elif check_viennarna() == False:
-        #    print ('Vienna RNA package not installed')
-        #    print ('see https://www.tbi.univie.ac.at/RNA/')
+        if self.ref_fasta == '' or not os.path.exists(self.ref_fasta):
+            print ('no reference genome file, skipping novel mirna step')
+        elif ref_name == None:
+            print ('no index for ref genome, required for novel mirna step')
+        elif check_viennarna() == False:
+            print ('Vienna RNA package not installed')
+            print ('see https://www.tbi.univie.ac.at/RNA/')
         else:
             print ()
             print ('predicting novel mirnas..')
-
-            #check that we have made an index for the reference fasta?
-            #check_index_present(ref_name, self.index_path)
-
             #change map_rnas so it can use remaining files from previous run....?
-
-            #print ('mapping to reference genome..')
-            #base.map_rnas(self.files, [ref_name], self.temp_path, aligner=self.aligner)
 
             allreads = utils.combine_aligned_reads(temp, self.files, ref_name)
             new,cl = novel.find_mirnas(allreads, self.ref_fasta, species=self.species)
@@ -134,7 +158,16 @@ class WorkFlow(object):
                 print ('could not find any novel mirnas at this score cutoff')
                 return
             new.to_csv(os.path.join(out,'novel_mirna.csv'), index=False)
+            utils.dataframe_to_fasta(new,os.path.join(out,'novel.fa'),
+                                     seqkey='mature', idkey='id')
             novel.create_report(new, cl, self.species, outfile=os.path.join(out, 'novel.html'))
+
+            #now count novel mirnas for all samples
+            build_indexes(os.path.join(out,'novel.fa'), self.index_path)
+            r,nc = base.map_rnas(self.files, ['novel'], self.temp_path,
+                                 aligner=self.aligner,
+                                 add_labels=self.add_labels)
+            nc.to_csv( os.path.join(out, 'novel_mirna_counts.csv'), index=False )
         return
 
     def map_genomic_features(self):
@@ -179,8 +212,7 @@ def plot_results(res, path):
         fig.savefig(os.path.join(path,'expr_map.png'))
     return
 
-def build_indexes(filename):
-    path = 'indexes'
+def build_indexes(filename, path):
     aligners.build_bowtie_index(filename, path)
     aligners.build_subread_index(filename, path)
     return
@@ -261,7 +293,7 @@ def main():
         if opts.collapse == True:
             base.collapse_reads(opts.infile)
     elif opts.build != None:
-        build_indexes(opts.build)
+        build_indexes(opts.build, opts.index_path)
     elif opts.config != None and os.path.exists(opts.config):
 
         cp = config.parse_config(opts.config)

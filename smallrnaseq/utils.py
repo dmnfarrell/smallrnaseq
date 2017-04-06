@@ -46,6 +46,14 @@ def move_files(files, path):
         shutil.move(f, os.path.join(path,os.path.basename(f)))
     return
 
+def remove_files(path, wildcard=''):
+    """remove files from a folder"""
+
+    files = glob.glob(os.path.join(path, wildcard))
+    for f in files:
+        os.remove(f)
+    return
+
 def gzipfile(filename, remove=False):
     """Compress a file with gzip"""
 
@@ -70,6 +78,14 @@ def create_html(df,name,path='.'):
     body = '\n'.join(s)
     f = open(os.path.join(path,name)+'.html','w')
     f.write(body)
+    return
+
+def make_blastdb(fastafile, title=None):
+    """Make local blast db"""
+
+    if title==None: title=os.path.splitext(fastafile)[0]
+    cmd = 'makeblastdb -in %s -dbtype nucl -out %s' % (fastafile, title)
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     return
 
 def run_blastn(database, query, params='-e .1 -G 10'):

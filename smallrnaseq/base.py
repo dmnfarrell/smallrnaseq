@@ -311,8 +311,8 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         os.mkdir(outpath)
     if overwrite == True:
         print ('removing old temp files')
-        remove_files(outpath,'*_mapped.sam')
-        remove_files(outpath, '*_r.fa')
+        utils.remove_files(outpath,'*_mapped.sam')
+        utils.remove_files(outpath, '*_r.fa')
     cfiles = collapse_files(files, outpath)
     if len(cfiles)==0:
         print ('WARNING no files to align')
@@ -377,8 +377,8 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
 
     if overwrite == True:
         print ('removing old temp files')
-        remove_files(outpath,'*_mapped.sam')
-        remove_files(outpath, '*_r.fa')
+        utils.remove_files(outpath,'*_mapped.sam')
+        utils.remove_files(outpath, '*_r.fa')
 
     ext = os.path.splitext(gtf_file)[1]
     if ext == '.gtf' or ext == '.gff':
@@ -430,12 +430,6 @@ def assign_sample_ids(names):
     l.columns = ['id']; l.index.name='filename'
     l.to_csv('sample_labels.csv')
     return labels
-
-def remove_files(path, wildcard=''):
-    files = glob.glob(os.path.join(path, wildcard))
-    for f in files:
-        os.remove(f)
-    return
 
 def trim_files(files, outpath, adapters):
     """Trim adapters from fastq files"""
@@ -608,27 +602,24 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
 
     #generate new mirbase bowtie index
     if aligner == 'bowtie':
-        #global BOWTIE_INDEXES, BOWTIE_PARAMS
         aligners.BOWTIE_INDEXES = index_path
         if aligners.BOWTIE_PARAMS == None:
             aligners.BOWTIE_PARAMS = '-n 1 -l 20'
-
     elif aligner == 'subread':
-        #global SUBREAD_INDEXES, SUBREAD_PARAMS
         aligners.SUBREAD_INDEXES = index_path
         #SUBREAD_PARAMS = '-m 2 -M 2'
-    idx = build_mirbase_index(species, aligner, pad)
-    #hairpin = get_mirbase_sequences(species, )
-    #now map to the mirbase index for all files
-    indexes.append(idx)
-    #we map to the reference genome last if provided
+    midx = build_mirbase_index(species, aligner, pad)
+    pidx = build_mirbase_index(species, aligner, kind='precursor')
+
+    indexes.extend([midx, pidx])
+    #add the reference genome to be aligned last if provided
     if ref_genome != None:
         indexes.append(ref_genome)
-  
+    #now map to the mirbase index for all files
     res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite, aligner=aligner,
                     outfile='mirbase_mature_counts.csv', **kwargs)
-
-    output_read_stacks(files, outpath, idx)
+    
+    output_read_stacks(files, outpath, midx)
     return res, counts
 
 def map_isomirs(files, outpath, species):
