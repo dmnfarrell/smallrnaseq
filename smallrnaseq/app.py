@@ -53,6 +53,11 @@ class WorkFlow(object):
         if not os.path.exists(self.index_path):
             print ('no such folder for indexes')
             return False
+        #make sample ids to replace filenames
+        if self.add_labels == True:
+            names = base.get_base_names(self.files)
+            self.labels = base.assign_sample_ids(names,
+                                                 outfile=os.path.join(self.output, 'sample_labels.csv'))
         self.temp_path = os.path.join(self.output,'temp')
         self.remove_output()
         print ('found %s input files' %len(self.files))
@@ -100,7 +105,7 @@ class WorkFlow(object):
             print ('mapping to these libraries: %s' %libraries)
             res, counts = base.map_rnas(self.files, libraries, self.temp_path,
                                         aligner=self.aligner,
-                                        add_labels=self.add_labels)
+                                        samplelabels=self.labels)
             if res is None:
                 print ('empty data returned. did alignments run?')
                 return
@@ -111,7 +116,8 @@ class WorkFlow(object):
         return
 
     def map_mirnas(self):
-        """Map to miRNAs using mirbase with isomir counts and novel discovery"""
+        """Map miRNAs using mirbase with isomir counts and do novel prediction
+           if a reference genome and index is provided"""
 
         out = self.output
         libraries = self.libraries
@@ -125,19 +131,23 @@ class WorkFlow(object):
                                        species=self.species, ref_genome=ref_name,
                                        index_path=self.index_path,
                                        pad5=3, aligner=self.aligner,
-                                       add_labels=self.add_labels)
+                                       samplelabels=self.labels)
 
-        #seperate out mature and precursor counts here...
+        #seperate out mature counts and save
+        matname = 'mirbase-%s' %self.species
+        matcounts = counts[counts.ref==matname]
 
-        res.to_csv( os.path.join(out, 'mirbase_mature_found.csv'),index=False )
-        counts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
+        res.to_csv( os.path.join(out, 'results.csv'),index=False )
+        matcounts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
+        counts.to_csv( os.path.join(out, 'all_counts.csv'), index=False )
         plot_results(res, out)
 
         #isomir counting
         print ()
         print ('counting isomirs..')
-        iso, isocounts = base.map_isomirs(self.files, temp, self.species)
-        iso.to_csv( os.path.join(out, 'isomirs_found.csv'), index=False )
+        iso, isocounts = base.map_isomirs(self.files, temp, self.species,
+                                          samplelabels=self.labels)
+        isocounts.to_csv( os.path.join(out, 'isomir_counts.csv'), index=False )
 
         #novel prediction
         if self.ref_fasta == '' or not os.path.exists(self.ref_fasta):
@@ -293,7 +303,7 @@ def main():
         if opts.collapse == True:
             base.collapse_reads(opts.infile)
     elif opts.build != None:
-        build_indexes(opts.build, opts.index_path)
+        build_indexes(opts.build, 'indexes')
     elif opts.config != None and os.path.exists(opts.config):
 
         cp = config.parse_config(opts.config)

@@ -618,20 +618,17 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
     new['coords'] = new.apply(get_coords,1)
     new = new.reset_index(drop=True)
     assign_names(new, species)
+    kp = base.get_mirbase('bta')
+    #check if any seqs still seen in known precursors
+    new['known_id'] = new.apply( lambda x: find_from_known_prec(x, kp), 1)
     new = new.sort_values(by='mature_reads', ascending=False)
     print ('found %s novel mirnas' %len(new))
     return new, rcl
 
-def check_known(new, species):
-    """Check novel results against known precursors for which the mature arm is not in mirbase"""
-
-    df = base.get_mirbase(species)
-    fastafile = 'precursors.fa'
-    #utils.dataframe_to_fasta(df, seqkey='precursor', idkey='mirbase_id',
-    #                            outfile=fastafile)
-    #utils.make_blastdb(fastafile)
-    #utils.local_blast()
-    return new
+def find_from_known_prec(x, prec):
+    for i,r in prec.iterrows():
+        if r.precursor.find(x.mature[:-1]) != -1:
+            return r.mirbase_id
 
 def assign_names(df, species=''):
     """Assign name to novel mirna, precursor/mature ids should allow consistent

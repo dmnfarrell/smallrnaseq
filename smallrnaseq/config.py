@@ -31,16 +31,15 @@ datadir = os.path.join(path, 'data')
 
 
 baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
-                    ('adapter',''),
+                    #('adapter',''),
                     ('index_path','indexes'),
                     ('libraries',''),
                     ('ref_fasta',''),('features',''),
-                    ('output','results'),('add_labels',0),
-                    #('read_stack',0),
+                    ('output','results'),('add_labels',1),
                     ('aligner','bowtie'),
                     ('aligner_params','-v 1 --best'),
                     ('mirna',0),('species','hsa'),('pad5',3),('pad3',5)],
-               'novel': [('score_cutoff',.9), ('read_cutoff',50)],
+               'novel': [('score_cutoff',.8), ('read_cutoff',50)],
                'de':[('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
                     ('conditions','')

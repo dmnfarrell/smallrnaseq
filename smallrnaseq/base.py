@@ -296,7 +296,7 @@ def deseq_normalize(df):
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
              norm_method='quantile', use_remaining=True, overwrite=False,
-             outfile='rna_counts.csv', add_labels=False):
+             outfile='rna_counts.csv', samplelabels=None):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
         files: input fastq read files
@@ -319,11 +319,6 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         return
     print (cfiles)
     result = []
-
-    #make sample ids
-    if add_labels == True:
-        names = get_base_names(files)
-        labels = assign_sample_ids(names)
 
     for cfile in cfiles:
         rem = None
@@ -349,8 +344,8 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             if len(counts) == 0:
                 print ('WARNING: no counts found for %s.' %idx)
                 continue
-            if add_labels == True:
-                counts['label'] = labels[filename]
+            if samplelabels != None:
+                counts['label'] = samplelabels[filename]
             else:
                 counts['label'] = filename
             counts['ref'] = idx
@@ -414,7 +409,7 @@ def get_base_names(files):
     names = [os.path.splitext(os.path.basename(f))[0] for f in files]
     return names
 
-def assign_sample_ids(names):
+def assign_sample_ids(names, outfile='sample_labels.csv'):
     """Assign new ids for sample filenames e.g. files. Useful for
        replacing long file names with short ids.
        Returns: dict of filename/id values
@@ -428,7 +423,7 @@ def assign_sample_ids(names):
         i+=1
     l = pd.DataFrame.from_dict(labels,orient='index')
     l.columns = ['id']; l.index.name='filename'
-    l.to_csv('sample_labels.csv')
+    l.to_csv(outfile)
     return labels
 
 def trim_files(files, outpath, adapters):
@@ -618,11 +613,11 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
     #now map to the mirbase index for all files
     res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite, aligner=aligner,
                     outfile='mirbase_mature_counts.csv', **kwargs)
-    
+
     output_read_stacks(files, outpath, midx)
     return res, counts
 
-def map_isomirs(files, outpath, species):
+def map_isomirs(files, outpath, species, samplelabels=None):
     """Count mirna isomirs using previously aligned files"""
 
     idx = 'mirbase-'+species
@@ -632,7 +627,10 @@ def map_isomirs(files, outpath, species):
         samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
         countsfile = os.path.join(outpath, '%s.csv' %filename)
         c = count_isomirs(samfile, countsfile, species)
-        c['label'] = f
+        if samplelabels != None:
+            c['label'] = samplelabels[filename]
+        else:
+            c['label'] = filename
         result.append(c)
     result = pd.concat(result)
     counts = pivot_count_data(result, idxcols=['name'])
@@ -650,11 +648,6 @@ def count_isomirs(samfile, countsfile, species):
     reads = utils.get_aligned_reads(samfile, truecounts)
     reads = reads.drop(['read_id','start','end'],1)
     return reads
-
-def find_novel_mirnas(samfile, ref_fasta):
-    """Find novel mirnas in reference mapped reads"""
-
-    return
 
 def output_read_stacks(files, outpath, idx):
     """Output read stack files from sam alignment files and a ref sequence"""
