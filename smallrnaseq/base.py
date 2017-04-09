@@ -168,10 +168,11 @@ def count_aligned(samfile, readcounts=None, by='name'):
     sam = HTSeq.SAM_Reader(samfile)
     f=[]
     for a in sam:
+        seq = a.read.seq.decode() #for python 3
         if a.aligned == True:
-            f.append((a.read.seq,a.read.name,a.iv.chrom))
+            f.append((seq,a.read.name,a.iv.chrom))
         else:
-            f.append((a.read.seq,a.read.name,'_unmapped'))
+            f.append((seq,a.read.name,'_unmapped'))
 
     counts = pd.DataFrame(f, columns=['seq','read','name'])
     if readcounts is not None:
@@ -461,7 +462,8 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     #step over sequences in chunks of size to save memory
     while stop is False:
         #print (fastfile)
-        sequences = [(s.name, s.seq, s.descr) for s in islice(fastfile, i, i+size)]
+        sequences = [(s.name, s.seq.decode(), s.descr) for s in islice(fastfile, int(i), int(i+size))]
+        #print (sequences[:10])
         if len(sequences) == 0:
             stop = True
         x = pd.DataFrame(sequences, columns=['id','seq','descr'])
@@ -614,7 +616,7 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
     res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite, aligner=aligner,
                     outfile='mirbase_mature_counts.csv', **kwargs)
 
-    output_read_stacks(files, outpath, midx)
+    #output_read_stacks(files, midx)
     return res, counts
 
 def map_isomirs(files, outpath, species, samplelabels=None):
@@ -649,21 +651,21 @@ def count_isomirs(samfile, countsfile, species):
     reads = reads.drop(['read_id','start','end'],1)
     return reads
 
-def output_read_stacks(files, outpath, idx):
+def output_read_stacks(files, ref_fasta, outfile='read_stacks.txt'):
     """Output read stack files from sam alignment files and a ref sequence"""
 
-    ref_fasta = idx+'.fa'
-    original = sys.stdout
-    out = open(os.path.join(outpath, '%s_read_stacks.txt' %idx), 'w')
-    sys.stdout = out
+    out = open(outfile, 'w')
+    s=''
     for f in files:
         filename = os.path.splitext(os.path.basename(f))[0]
         samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
         countfile = os.path.join(outpath, '%s.csv' %filename)
         readcounts = pd.read_csv(countfile)
         reads = utils.get_aligned_reads(samfile, readcounts)
-        utils.print_read_stacks(reads, fastafile='mirbase-bta.fa')
-    sys.stdout = original
+        s += filename+'\n'
+        s += utils.print_read_stacks(reads, fastafile='mirbase-bta.fa')
+    #print (s)
+    out.write(s)
     out.close()
     return
 

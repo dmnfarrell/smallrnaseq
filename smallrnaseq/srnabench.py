@@ -336,7 +336,7 @@ def analyse_isomirs(iso,outpath=None):
     try:
         base.sns.distplot(top.domisoperc,bins=15,ax=ax,kde_kws={"lw": 2})
     except:
-        print 'no seaborn'
+        pass
     fig.suptitle('distribution of dominant isomiR share of reads')
     fig.savefig('srnabench_isomir_domperc.png')
 

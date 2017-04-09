@@ -57,7 +57,7 @@ class WorkFlow(object):
         if self.add_labels == True:
             names = base.get_base_names(self.files)
             self.labels = base.assign_sample_ids(names,
-                                                 outfile=os.path.join(self.output, 'sample_labels.csv'))
+                                  outfile=os.path.join(self.output, 'sample_labels.csv'))
         self.temp_path = os.path.join(self.output,'temp')
         self.remove_output()
         print ('found %s input files' %len(self.files))
@@ -176,7 +176,7 @@ class WorkFlow(object):
             build_indexes(os.path.join(out,'novel.fa'), self.index_path)
             r,nc = base.map_rnas(self.files, ['novel'], self.temp_path,
                                  aligner=self.aligner,
-                                 add_labels=self.add_labels)
+                                 samplelabels=self.labels)
             nc.to_csv( os.path.join(out, 'novel_mirna_counts.csv'), index=False )
         return
 
@@ -218,7 +218,7 @@ def plot_results(res, path):
     fig.savefig(os.path.join(path,'distr_per_sample.png'))
     scols,ncols = base.get_column_names(counts)
     if len(scols)>1:
-        fig=plotting.expression_clustermap(counts)
+        fig = plotting.expression_clustermap(counts)
         fig.savefig(os.path.join(path,'expr_map.png'))
     return
 

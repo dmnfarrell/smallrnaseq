@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function
 import sys, os
 import pandas as pd
 import unittest
-from . import config, base, analysis, mirdeep2, srnabench, aligners
+from . import config, base, utils, analysis, mirdeep2, aligners, novel
 
 class BasicTests(unittest.TestCase):
     """Basic tests for mirnaseq"""
@@ -20,18 +20,61 @@ class BasicTests(unittest.TestCase):
         self.testdir = 'testing'
         if not os.path.exists(self.testdir):
             os.mkdir(self.testdir)
-        aligners.BOWTIE_INDEXES = 'indexes'
+        aligners.BOWTIE_INDEXES = 'testing/indexes'
         return
 
     def test_collapse_reads(self):
+        """collapse reads test"""
+
         f = os.path.join(base.datadir, 'bovine_serum_sample.fastq')
         base.collapse_reads(f)
         return
 
     def test_build_index(self):
         filename = os.path.join(base.datadir, 'bosTau8-tRNAs.fa')
-        aligners.build_bowtie_index(filename, 'indexes')
-        aligners.build_subread_index(filename, 'indexes')
+        aligners.build_bowtie_index(filename, 'testing/indexes')
+        #aligners.build_subread_index(filename, 'testing/indexes')
+        return
+
+    def test_htseq(self):
+        """htseq basic test for sam file reading"""
+
+        import HTSeq
+        samfile = os.path.join(base.datadir, 'test.sam')
+        sam = HTSeq.SAM_Reader(samfile)
+        f=[]
+        for a in sam:
+            if a.aligned == True:
+                seq = a.read.seq.decode()
+                f.append((seq,a.read.name,a.iv.chrom))
+        df = pd.DataFrame(f, columns=['seq','read','name'])
+        #print (df)
+        return
+
+    def test_pandas(self):
+
+        f = os.path.join(base.datadir, 'test_counts.csv')
+        df = pd.read_csv(f)
+        utils.dataframe_to_fasta(df)
+        return
+
+    def test_read_aligned(self):
+        """read in alignment/counts test"""
+
+        samfile = os.path.join(base.datadir, 'test.sam')
+        countsfile = os.path.join(base.datadir, 'test_counts.csv')
+        truecounts = pd.read_csv(countsfile)
+        reads = utils.get_aligned_reads(samfile, truecounts)
+        return
+
+    def test_count_aligned(self):
+        """count aligned test"""
+
+        samfile = os.path.join(base.datadir, 'test.sam')
+        countsfile = os.path.join(base.datadir, 'test_counts.csv')
+        truecounts = pd.read_csv(countsfile)
+        counts = base.count_aligned(samfile, truecounts)
+        #print (counts)
         return
 
     def test_count_features(self):
@@ -43,25 +86,23 @@ class BasicTests(unittest.TestCase):
         return
 
     def test_map_rnas(self):
-        """Generic mapping to rna annotations"""
+        """mapping to libraries"""
 
         aligners.BOWTIE_PARAMS = '-v 0 --best'
         fastafile = os.path.join(base.datadir, 'bosTau8-tRNAs.fa')
-        aligners.build_bowtie_index(fastafile, path='indexes')
+        aligners.build_bowtie_index(fastafile, path='testing/indexes')
         path = os.path.join(self.testdir, 'ncrna_map')
         f = os.path.join(base.datadir, 'bovine_serum_sample.fastq')
         res = base.map_rnas([f], ['bosTau8-tRNAs'], path, overwrite=True, aligner='bowtie')
         return
 
     def test_map_mirnas(self):
-        """mirna counting"""
+        """mirna counting test"""
 
         f = os.path.join(base.datadir, 'bovine_plasma_sample.fastq')
         path = os.path.join(self.testdir, 'ncrna_map')
-        res = base.map_mirbase(files=[f], overwrite=True, outpath=path,
-                               aligner='bowtie', species='bta')
-        res = base.map_mirbase(files=[f], overwrite=True, outpath=path,
-                               aligner='subread', species='bta')
+        #res = base.map_mirbase(files=[f], overwrite=True, outpath=path,
+        #                       aligner='bowtie', species='bta')
         return
 
     def test_map_features(self):
@@ -72,7 +113,6 @@ class BasicTests(unittest.TestCase):
         #base.build_bowtie_index(fastafile)
         path = os.path.join(self.testdir, 'ncrna_map')
         f = os.path.join(base.datadir, 'bovine_serum_sample.fastq')
-
         return
 
     def test_mirdeep(self):

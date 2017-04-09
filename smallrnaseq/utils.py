@@ -143,18 +143,22 @@ def dataframe_to_fasta(df, outfile='out.fa', seqkey='seq', idkey='id'):
         df = df.reset_index()
     fastafile = open(outfile, "w")
     for i,row in df.iterrows():
-        if type(row[seqkey]) is not str:
+        try:
+            seq = row[seqkey]
+        except:
             continue
-        seq = row[seqkey].upper().replace('U','T')
+        seq = seq.upper().replace('U','T')
         if idkey in row:
             d = str(row[idkey])
         else:
             d = row.name
-        myseq = HTSeq.Sequence(seq, d)
+        seq = seq.encode()
+        myseq = HTSeq.Sequence(seq, str(d))
         myseq.write_to_fasta_file(fastafile)
+    fastafile.close()
     return
 
-def fasta_to_dataframe(infile,idindex=0):
+def fasta_to_dataframe(infile, idindex=0):
     """Get fasta proteins into dataframe"""
 
     keys = ['name','sequence','description']
@@ -479,7 +483,6 @@ def get_csv_files(path, filename, names, **kwargs):
 def get_aligned_reads(samfile, truecounts=None):
     """Get all aligned reads from a sam file into a pandas dataframe"""
 
-    import HTSeq
     sam = HTSeq.SAM_Reader(samfile)
     f=[]
     for a in sam:

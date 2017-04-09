@@ -124,31 +124,29 @@ a:active { color: red; }
 }
 
 .sidebar {
-	background: white;
 	padding: 5px;
-	margin-top: 30px;
+	margin-top: 40px;
 	margin-right: 5px;
 	float: right;
 	height: 650px;
 	width: 20%;
 	position: fixed;
-	overflow-y: scroll;
+	overflow:hidden;
 	top: 30;
-	bottom: 30;
-	display: table;
 }
 
 .sidebar table {
 	border: 0px solid transparent;
-	font-family: arial, sans-serif;
-	font-size: 14px;
-  height: 600px;
-	max-height: 600px;
+	font-family: monospace, sans-serif;
+	overflow-y: auto;
+	height: 600px;
+	width: 400px;
+   display:block;
 }
 
 .sidebar td, th {
   text-align: left;
-	height: 8px;
+	font-size: 14px;
 }
 
 .main, .aside
