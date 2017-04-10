@@ -158,12 +158,12 @@ def get_top_genes(counts):
 
 def count_aligned(samfile, collapsed=None, readcounts=None, by='name'):
     """Count short read alignments from a sam or bam file. Mainly designed to be used with
-       collapsed reads with original read counts passed in as dataframe.
+       collapsed reads with original read counts.
        Args:
            samfile: mapped sam file
-           collapsed: collapsed fasta with original counts in names
-           readcounts: dataframe with original read counts
-           by: whether to group the counts by name (default) or sequence - 'seq'
+           collapsed: collapsed fasta with original read counts in name
+           readcounts: dataframe with original read counts, optional
+           by: whether to group the counts by 'name' (default) or 'seq'
     """
 
     if collapsed != None:
@@ -182,6 +182,9 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name'):
     if readcounts is not None:
         #assumes we are using collapsed reads
         counts = counts.merge(readcounts, on='seq')
+
+        print('unmapped',counts[counts.name=='_unmapped'].reads.sum())
+        print(counts.reads.sum())
         counts = ( counts.groupby('name')
                   .agg({'reads':np.sum, 'seq':first}) )
     else:
@@ -193,6 +196,7 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name'):
     mapped = float(counts[counts.name!='_unmapped'].reads.sum())
     total = counts.reads.sum()
     if len(counts) > 0:
+        print(readcounts.reads.sum())
         print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
     else:
         print ('no counts found')
@@ -318,7 +322,10 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         print ('removing old temp files')
         utils.remove_files(outpath,'*_mapped.sam')
         utils.remove_files(outpath, '*_r.fa')
-    cfiles = collapse_files(files, outpath)
+    if collapse == True:
+        cfiles = collapse_files(files, outpath)
+    else:
+        cfiles = files
     if len(cfiles)==0:
         print ('WARNING no files to align')
         return
@@ -328,8 +335,6 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     for cfile in cfiles:
         rem = None
         filename = os.path.splitext(os.path.basename(cfile))[0]
-        #countfile = os.path.join(outpath, '%s.csv' %filename)
-        #readcounts = pd.read_csv(countfile)
         readcounts = utils.read_collapsed_file(cfile)
         total = readcounts.reads.sum()
         print (filename)
@@ -356,8 +361,9 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
                 counts['label'] = filename
             counts['ref'] = idx
             counts['fraction'] = counts.reads/total
+            #print (counts.reads.sum(), total)
             result.append(counts)
-
+            print()
         print()
     if len(result) == 0:
         return
@@ -586,7 +592,7 @@ def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5,
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
-                index_path='indexes', ref_genome=None,
+                index_path='indexes', ref_genome='',
                 overwrite=False, aligner='bowtie',
                 pad5=3, pad=5, **kwargs):
     """Map multiple fastq files to mirbase mature sequences and get
@@ -612,7 +618,7 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
 
     indexes.extend([midx, pidx])
     #add the reference genome to be aligned last if provided
-    if ref_genome != None:
+    if ref_genome != '':
         indexes.append(ref_genome)
     #now map to the mirbase index for all files
     res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite, aligner=aligner,

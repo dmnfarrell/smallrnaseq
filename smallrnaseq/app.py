@@ -56,8 +56,10 @@ class WorkFlow(object):
         #make sample ids to replace filenames
         if self.add_labels == True:
             #names = base.get_base_names(self.files)
-            self.labels = base.assign_sample_ids(names,
+            self.labels = base.assign_sample_ids(self.files,
                                   outfile=os.path.join(self.output, 'sample_labels.csv'))
+        else:
+            self.labels = None
         self.temp_path = os.path.join(self.output,'temp')
         self.remove_output()
         print ('found %s input files' %len(self.files))
