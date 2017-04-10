@@ -55,7 +55,7 @@ class WorkFlow(object):
             return False
         #make sample ids to replace filenames
         if self.add_labels == True:
-            names = base.get_base_names(self.files)
+            #names = base.get_base_names(self.files)
             self.labels = base.assign_sample_ids(names,
                                   outfile=os.path.join(self.output, 'sample_labels.csv'))
         self.temp_path = os.path.join(self.output,'temp')

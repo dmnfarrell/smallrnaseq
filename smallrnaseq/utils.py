@@ -163,7 +163,7 @@ def fasta_to_dataframe(infile, idindex=0):
 
     keys = ['name','sequence','description']
     fastafile = HTSeq.FastaReader(infile)
-    data = [(s.name, s.seq, s.descr) for s in fastafile]
+    data = [(s.name, s.seq.decode(), s.descr) for s in fastafile]
     df = pd.DataFrame(data,columns=(keys))
     df.set_index(['name'],inplace=True)
     return df
@@ -480,18 +480,33 @@ def get_csv_files(path, filename, names, **kwargs):
         res.append(data)
     return pd.concat(res)
 
-def get_aligned_reads(samfile, truecounts=None):
+def read_collapsed_file(collapsed):
+    """Read seqs/counts from a collapsed file"""
+
+    #original read counts are encoded in fasta names
+    df = fasta_to_dataframe(collapsed).reset_index()
+    df['read_id'], df['reads'] = df.name.str.split('_', 1).str
+    df['reads'] = df.reads.astype(int)
+    df['read_id'] = df.reads.astype(int)
+    df = df.drop(['name','description'],1)
+    df = df.rename(columns={'sequence':'seq'})
+    #print (df[:4])
+    return df
+
+def get_aligned_reads(samfile, collapsed=None):
     """Get all aligned reads from a sam file into a pandas dataframe"""
 
     sam = HTSeq.SAM_Reader(samfile)
     f=[]
     for a in sam:
         if a.aligned == True:
-            f.append((a.read.seq,a.read.name,a.iv.chrom,a.iv.start,a.iv.end,a.iv.strand))
+            seq = a.read.seq.decode()
+            f.append((seq,a.read.name,a.iv.chrom,a.iv.start,a.iv.end,a.iv.strand))
     counts = pd.DataFrame(f, columns=['seq','read','name','start','end','strand'])
     counts['length'] = counts.seq.str.len()
     counts = counts.drop(['read'],1)
-    if truecounts is not None:
+    if collapsed is not None:
+        truecounts = read_collapsed_file(collapsed)
         counts = counts.merge(truecounts, on='seq')
     return counts
 
@@ -509,15 +524,13 @@ def combine_aligned_reads(path, filenames, idx):
     #remove extenstions if present
     filenames = [os.path.splitext(os.path.basename(f))[0] for f in filenames]
     for f in filenames:
-        print(f)
+        #print(f)
         samfile = os.path.join(path, '%s_%s.sam' %(f,idx))
-        countsfile = os.path.join(path, '%s.csv' %f)
-        print (samfile)
-        if not os.path.exists(samfile) or not os.path.exists(countsfile):
+        cfile = os.path.join(path, '%s.fa' %f)
+        if not os.path.exists(samfile) or not os.path.exists(cfile):
             print ('no sam file or count data found for this sample')
             continue
-        readcounts = pd.read_csv(countsfile)
-        reads = get_aligned_reads(samfile, readcounts)
+        reads = get_aligned_reads(samfile, collapsed=cfile)
         a.append(reads)
     if len(a) == 0:
         return

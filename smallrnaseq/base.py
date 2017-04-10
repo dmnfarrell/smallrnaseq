@@ -156,14 +156,18 @@ def get_top_genes(counts):
                 .sort_values('reads',ascending=False)
     return df
 
-def count_aligned(samfile, readcounts=None, by='name'):
+def count_aligned(samfile, collapsed=None, readcounts=None, by='name'):
     """Count short read alignments from a sam or bam file. Mainly designed to be used with
        collapsed reads with original read counts passed in as dataframe.
        Args:
            samfile: mapped sam file
-           readcounts: original read counts if used collapsed reads
+           collapsed: collapsed fasta with original counts in names
+           readcounts: dataframe with original read counts
            by: whether to group the counts by name (default) or sequence - 'seq'
     """
+
+    if collapsed != None:
+        readcounts = utils.read_collapsed_file(collapsed)
 
     sam = HTSeq.SAM_Reader(samfile)
     f=[]
@@ -173,8 +177,8 @@ def count_aligned(samfile, readcounts=None, by='name'):
             f.append((seq,a.read.name,a.iv.chrom))
         else:
             f.append((seq,a.read.name,'_unmapped'))
-
     counts = pd.DataFrame(f, columns=['seq','read','name'])
+
     if readcounts is not None:
         #assumes we are using collapsed reads
         counts = counts.merge(readcounts, on='seq')
@@ -324,8 +328,9 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     for cfile in cfiles:
         rem = None
         filename = os.path.splitext(os.path.basename(cfile))[0]
-        countfile = os.path.join(outpath, '%s.csv' %filename)
-        readcounts = pd.read_csv(countfile)
+        #countfile = os.path.join(outpath, '%s.csv' %filename)
+        #readcounts = pd.read_csv(countfile)
+        readcounts = utils.read_collapsed_file(cfile)
         total = readcounts.reads.sum()
         print (filename)
         for idx in indexes:
@@ -341,7 +346,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
                                       remaining=rem, verbose=True)
             elif aligner == 'subread':
                 aligners.subread_align(query, idx, samfile)
-            counts = count_aligned(samfile, readcounts)
+            counts = count_aligned(samfile, readcounts=readcounts)
             if len(counts) == 0:
                 print ('WARNING: no counts found for %s.' %idx)
                 continue
@@ -418,7 +423,9 @@ def assign_sample_ids(names, outfile='sample_labels.csv'):
 
     i=1
     labels = {}
-    for n in names:
+    for fname in names:
+        n = os.path.splitext(os.path.basename(fname))[0]
+        print (n)
         sid = 's%02d' %i
         labels[n] = sid
         i+=1
@@ -438,7 +445,9 @@ def trim_files(files, outpath, adapters):
 
 def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     """Collapse identical reads, retaining copy number in a csv file
-       and writing collapsed reads to a new fasta file"""
+       and writing collapsed reads to a new fasta file.
+       Creates a collapsed fasta file of unique reads and a csv
+       file with the """
 
     from itertools import islice
     if outfile == None:
@@ -452,42 +461,35 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     else:
         print ('not fasta or fastq')
         return False
-    chunks = np.arange(0,10e6,1e5)
 
-    size=2e5
-    grps=[]
-    stop=False
     i=0
     total = 0
-    #step over sequences in chunks of size to save memory
-    while stop is False:
-        #print (fastfile)
-        sequences = [(s.name, s.seq.decode(), s.descr) for s in islice(fastfile, int(i), int(i+size))]
-        #print (sequences[:10])
-        if len(sequences) == 0:
-            stop = True
-        x = pd.DataFrame(sequences, columns=['id','seq','descr'])
-        x['length'] = x.seq.str.len()
-        x = x[x.length>=min_length]
-        g = x.groupby('seq').agg({'seq':np.size})
-        grps.append(g)
-        i+=size
-        total += len(x)
-        if progress == True:
-            print (total)
-    df = pd.concat(grps, 1)
-    df = pd.DataFrame(df.sum(1).astype(int),columns=['reads'])
-    df.index.name='seq'
-    df = df.sort_values(by='reads',ascending=False).reset_index()
-    #df['id'] = df.apply(lambda x: 'seq_'+str(x.name), axis=1)
+    f = {}
+    for s in fastfile:
+        seq = s.seq.decode()
+        if seq in f:
+            f[seq]['reads'] += 1
+        else:
+            f[seq] = {'name':s.name, 'reads':1}
+        total += 1
+
+    df = pd.DataFrame.from_dict(f, orient='index')
+    df.index.name = 'seq'
+    df = df.reset_index()
+    l = df.seq.str.len()
+    df = df[l>=min_length]
+    df = df.drop(['name'], 1)
+    df = df.sort_values(by='reads', ascending=False).reset_index()
     df['read_id'] = df.index.copy()
+    df['read_id'] = df.apply( lambda x: str(x.read_id)+'_'+str(x.reads), 1 )
+    #print df[:10]
     utils.dataframe_to_fasta(df, idkey='read_id', outfile=outfile)
-    df.to_csv(os.path.splitext(outfile)[0]+'.csv', index=False)
+    #df.to_csv(os.path.splitext(outfile)[0]+'.csv', index=False)
     print ('collapsed %s reads to %s' %(total,len(df)))
     return True
 
 def collapse_files(files, outpath, **kwargs):
-    """Collapse reads and save counts as csv
+    """Collapse reads and save counts
         min_length: min length of reads to include
     """
 
@@ -495,8 +497,8 @@ def collapse_files(files, outpath, **kwargs):
     for f in files:
         label = os.path.splitext(os.path.basename(f))[0]
         collapsedfile = os.path.join(outpath, label+'.fa')
-        countsfile = os.path.join(outpath, label+'.csv')
-        if not os.path.exists(collapsedfile) or not os.path.exists(countsfile):
+        #countsfile = os.path.join(outpath, label+'.csv')
+        if not os.path.exists(collapsedfile):# or not os.path.exists(countsfile):
             res = collapse_reads(f, outfile=collapsedfile, **kwargs)
             if res == False:
                 continue
@@ -627,8 +629,9 @@ def map_isomirs(files, outpath, species, samplelabels=None):
     for f in files:
         filename = os.path.splitext(os.path.basename(f))[0]
         samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
-        countsfile = os.path.join(outpath, '%s.csv' %filename)
-        c = count_isomirs(samfile, countsfile, species)
+        #countsfile = os.path.join(outpath, '%s.csv' %filename)
+        collapsed = os.path.join(outpath, '%s.fa' %filename)
+        c = count_isomirs(samfile, collapsed, species)
         if samplelabels != None:
             c['label'] = samplelabels[filename]
         else:
@@ -638,16 +641,15 @@ def map_isomirs(files, outpath, species, samplelabels=None):
     counts = pivot_count_data(result, idxcols=['name'])
     return result, counts
 
-def count_isomirs(samfile, countsfile, species):
+def count_isomirs(samfile, collapsed, species):
     """Count miRNA isomirs using aligned reads from a samfile and actual
        read counts from a csv file"""
 
-    truecounts = pd.read_csv(countsfile)
-    print (samfile, countsfile)
+    print (samfile, collapsed)
     canonical = get_mirbase_sequences(species, dna=True).set_index('name')
     #padded sequences so we can see where each read landed relative to canonical
     mirs = get_mirbase_sequences(species, pad5=6, pad3=6, dna=True).set_index('name')
-    reads = utils.get_aligned_reads(samfile, truecounts)
+    reads = utils.get_aligned_reads(samfile, collapsed)
     reads = reads.drop(['read_id','start','end'],1)
     return reads
 

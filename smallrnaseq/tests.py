@@ -52,28 +52,27 @@ class BasicTests(unittest.TestCase):
         return
 
     def test_pandas(self):
+        """dataframe-fasta tests"""
 
-        f = os.path.join(base.datadir, 'test_counts.csv')
-        df = pd.read_csv(f)
-        utils.dataframe_to_fasta(df)
+        f = os.path.join(base.datadir, 'test_collapsed.fa')
+        df = utils.fasta_to_dataframe(f)
+        #utils.dataframe_to_fasta(df)
         return
 
     def test_read_aligned(self):
         """read in alignment/counts test"""
 
         samfile = os.path.join(base.datadir, 'test.sam')
-        countsfile = os.path.join(base.datadir, 'test_counts.csv')
-        truecounts = pd.read_csv(countsfile)
-        reads = utils.get_aligned_reads(samfile, truecounts)
+        cfile = os.path.join(base.datadir, 'test_collapsed.fa')
+        reads = utils.get_aligned_reads(samfile, cfile)
         return
 
     def test_count_aligned(self):
         """count aligned test"""
 
         samfile = os.path.join(base.datadir, 'test.sam')
-        countsfile = os.path.join(base.datadir, 'test_counts.csv')
-        truecounts = pd.read_csv(countsfile)
-        counts = base.count_aligned(samfile, truecounts)
+        cfile = os.path.join(base.datadir, 'test_collapsed.fa')
+        counts = base.count_aligned(samfile, cfile)
         #print (counts)
         return
 
