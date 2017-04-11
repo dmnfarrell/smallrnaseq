@@ -79,7 +79,7 @@ def gtf_to_dataframe(gtf=None, gtf_file=None, index='transcript_id'):
         print ('no exon_id field')
     return df
 
-def count_features(samfile, features=None, gtffile=None, truecounts=None, merge=False):
+def count_features(samfile, features=None, gtffile=None, readcounts=None, merge=False):
     """Count reads in features from an alignment, if no truecounts we
        assume a non-collapsed file was used to map
        Args:
@@ -95,14 +95,14 @@ def count_features(samfile, features=None, gtffile=None, truecounts=None, merge=
         gtf = HTSeq.GFF_Reader(gtffile)
         features = get_exons(gtf)
     sam = HTSeq.SAM_Reader(samfile)
-    if type(truecounts) is pd.DataFrame:
-        truecounts = {r.seq: r['reads'] for i,r in truecounts.iterrows()}
+    if type(readcounts) is pd.DataFrame:
+        readcounts = {r.seq: r['reads'] for i,r in readcounts.iterrows()}
     import collections
     counts = collections.Counter()
     for almnt in sam:
         seq = str(almnt.read)
-        if truecounts is not None and seq in truecounts:
-            c = truecounts[seq]
+        if readcounts is not None and seq in readcounts:
+            c = readcounts[seq]
         else:
             c = 1
         if not almnt.aligned:
@@ -156,9 +156,9 @@ def get_top_genes(counts):
                 .sort_values('reads',ascending=False)
     return df
 
-def count_aligned(samfile, collapsed=None, readcounts=None, by='name'):
-    """Count short read alignments from a sam or bam file. Mainly designed to be used with
-       collapsed reads with original read counts.
+def count_aligned(samfile, collapsed=None, readcounts=None, by='name', duplicates=False):
+    """Count short read alignments from a sam or bam file. Designed to be used with
+       collapsed reads with original read counts in fasta id.
        Args:
            samfile: mapped sam file
            collapsed: collapsed fasta with original read counts in name
@@ -169,38 +169,16 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name'):
     if collapsed != None:
         readcounts = utils.read_collapsed_file(collapsed)
 
-    sam = HTSeq.SAM_Reader(samfile)
-    f=[]
-    for a in sam:
-        seq = a.read.seq.decode() #for python 3
-        if a.aligned == True:
-            f.append((seq,a.read.name,a.iv.chrom))
-        else:
-            f.append((seq,a.read.name,'_unmapped'))
-    counts = pd.DataFrame(f, columns=['seq','read','name'])
-
-    if readcounts is not None:
-        #assumes we are using collapsed reads
-        counts = counts.merge(readcounts, on='seq')
-
-        print('unmapped',counts[counts.name=='_unmapped'].reads.sum())
-        print(counts.reads.sum())
-        counts = ( counts.groupby('name')
-                  .agg({'reads':np.sum, 'seq':first}) )
-    else:
-        counts = ( counts.groupby('name')
-                  .agg({'seq':first,'read':np.size}) )
-        counts = counts.rename(columns={'read':'reads'})
-
-    counts = counts.reset_index().sort_values('reads',ascending=False)
-    mapped = float(counts[counts.name!='_unmapped'].reads.sum())
-    total = counts.reads.sum()
+    counts = utils.get_aligned_reads(samfile, readcounts=readcounts)
+    if duplicates == False:
+        counts = counts.drop_duplicates('seq')
+    total = readcounts.reads.sum()
+    counts = counts.groupby('name').agg({'reads':np.sum}).reset_index()
+    mapped = float(counts.reads.sum())
     if len(counts) > 0:
-        print(readcounts.reads.sum())
         print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
     else:
         print ('no counts found')
-    counts = counts[counts.name!='_unmapped']
     return counts
 
 def pivot_count_data(counts, idxcols='name', norm_method='library'):
@@ -305,7 +283,7 @@ def deseq_normalize(df):
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
              norm_method='quantile', use_remaining=True, overwrite=False,
-             outfile='rna_counts.csv', samplelabels=None):
+             outfile='rna_counts.csv', samplelabels=None, params={}):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
         files: input fastq read files
@@ -339,6 +317,10 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         total = readcounts.reads.sum()
         print (filename)
         for idx in indexes:
+            print (idx)
+            #if idx in params:
+            #    aligners.set_params(aligner, params[idx])
+
             if use_remaining == True and rem != None:
                 query = rem
             else:
@@ -351,6 +333,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
                                       remaining=rem, verbose=True)
             elif aligner == 'subread':
                 aligners.subread_align(query, idx, samfile)
+
             counts = count_aligned(samfile, readcounts=readcounts)
             if len(counts) == 0:
                 print ('WARNING: no counts found for %s.' %idx)

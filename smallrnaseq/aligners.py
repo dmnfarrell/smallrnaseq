@@ -32,7 +32,7 @@ from . import utils
 BOWTIE_INDEXES = None
 BOWTIE_PARAMS = '-v 1 --best'
 SUBREAD_INDEXES = None
-SUBREAD_PARAMS = '-m 2 -M 2'
+SUBREAD_PARAMS = '-m 2 -M 1'
 
 def set_params(aligner, params):
     #print (aligner, params)
@@ -42,20 +42,6 @@ def set_params(aligner, params):
     elif aligner == 'subread':
         global SUBREAD_PARAMS
         SUBREAD_PARAMS = params
-
-def bwa_align(infile, ref=None, bowtie_index=None, outfile=None):
-    """Align reads with bwa"""
-
-    if bwa_index == None:
-        bwa_index = BWA_INDEXES
-    ref = os.path.join(bwaindexes, ref)
-    label = os.path.splitext(os.path.basename(infile))[0]
-    outfile = label+'_'+ref+'_bwa.sam'
-    cmd1 = 'bwa aln -n 0 -t 2 %s %s > out.sai' %(ref,infile)
-    cmd2 = 'bwa samse %s out.sai %s > %s' %(ref,infile,outfile)
-    result = subprocess.check_output(cmd1, shell=True, executable='/bin/bash')
-    result = subprocess.check_output(cmd2, shell=True, executable='/bin/bash')
-    return
 
 def build_bowtie_index(fastafile, path):
     """Build a bowtie index"""

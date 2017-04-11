@@ -481,19 +481,21 @@ def get_csv_files(path, filename, names, **kwargs):
     return pd.concat(res)
 
 def read_collapsed_file(collapsed):
-    """Read seqs/counts from a collapsed file"""
+    """Read seqs/counts from a collapsed file using values in the
+       fasta id to get original counts"""
 
     #original read counts are encoded in fasta names
     df = fasta_to_dataframe(collapsed).reset_index()
+    #original count stored in id as second value
     df['read_id'], df['reads'] = df.name.str.split('_', 1).str
     df['reads'] = df.reads.astype(int)
-    df['read_id'] = df.reads.astype(int)
+    df['read_id'] = df.read_id.astype(int)
     df = df.drop(['name','description'],1)
     df = df.rename(columns={'sequence':'seq'})
     #print (df[:4])
     return df
 
-def get_aligned_reads(samfile, collapsed=None):
+def get_aligned_reads(samfile, collapsed=None, readcounts=None):
     """Get all aligned reads from a sam file into a pandas dataframe"""
 
     sam = HTSeq.SAM_Reader(samfile)
@@ -502,12 +504,15 @@ def get_aligned_reads(samfile, collapsed=None):
         if a.aligned == True:
             seq = a.read.seq.decode()
             f.append((seq,a.read.name,a.iv.chrom,a.iv.start,a.iv.end,a.iv.strand))
+        #else:
+        #    f.append((seq,a.read.name,'_unmapped'))
     counts = pd.DataFrame(f, columns=['seq','read','name','start','end','strand'])
     counts['length'] = counts.seq.str.len()
     counts = counts.drop(['read'],1)
     if collapsed is not None:
-        truecounts = read_collapsed_file(collapsed)
-        counts = counts.merge(truecounts, on='seq')
+        readcounts = read_collapsed_file(collapsed)
+    if readcounts is not None:
+        counts = counts.merge(readcounts, on='seq')
     return counts
 
 def combine_aligned_reads(path, filenames, idx):

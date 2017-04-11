@@ -127,7 +127,7 @@ class WorkFlow(object):
         ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
         if self.check_index(ref_name) == False:
             print ('no index for reference genome')
-            ref_name = None
+            ref_name = ''
         print ('mapping miRNAs..')
         res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
                                        species=self.species, ref_genome=ref_name,
