@@ -282,18 +282,22 @@ def deseq_normalize(df):
     return df
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
-             norm_method='quantile', use_remaining=True, overwrite=False,
-             outfile='rna_counts.csv', samplelabels=None, params={}):
+             norm_method='library', use_remaining=True, overwrite=False,
+             samplelabels=None, params={}):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
         files: input fastq read files
         indexes: bowtie indexes of annotations/genomes
         adapters: if adapters need to be trimmed
-        overwrite: whether to overwrite temp files
         use_remaining: only align to remaining reads after each index
-        add_labels: replace file names with short ids for columns
+        overwrite: whether to overwrite temp files
+        samplelabels: mapping of file names to short ids
+        params: index specific aligner parameters
     """
 
+    if not os.path.exists(aligners.BOWTIE_INDEXES):
+        print ('index folder does not exist!')
+        return
     if not os.path.exists(outpath):
         os.mkdir(outpath)
     if overwrite == True:
@@ -309,6 +313,8 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         return
     print (cfiles)
     result = []
+    #store current aligner parameters as default
+    default_params = aligners.get_current_params(aligner)
 
     for cfile in cfiles:
         rem = None
@@ -318,9 +324,12 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
         print (filename)
         for idx in indexes:
             print (idx)
-            #if idx in params:
-            #    aligners.set_params(aligner, params[idx])
-
+            if idx in params:
+                align_params = params[idx]
+            else:
+                align_params = default_params
+            aligners.set_params(aligner, align_params)
+            #print (align_params)
             if use_remaining == True and rem != None:
                 query = rem
             else:
@@ -351,7 +360,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     if len(result) == 0:
         return
     result = pd.concat(result)
-    counts = pivot_count_data(result, idxcols=['name','ref'])
+    counts = pivot_count_data(result, idxcols=['name','ref'], norm_method=norm_method)
     print ('done')
     return result, counts
 
@@ -604,9 +613,8 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
     if ref_genome != '':
         indexes.append(ref_genome)
     #now map to the mirbase index for all files
-    res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite, aligner=aligner,
-                    outfile='mirbase_mature_counts.csv', **kwargs)
-
+    res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite,
+                           aligner=aligner, **kwargs)
     #output_read_stacks(files, midx)
     return res, counts
 

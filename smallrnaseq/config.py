@@ -37,14 +37,14 @@ baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
                     ('ref_fasta',''),('features',''),
                     ('output','results'),('add_labels',1),
                     ('aligner','bowtie'),
-                    ('aligner_params','-v 1 --best'),
-                    ('mirna_params','-n 1 -l 20'),
                     ('mirna',0),('species','hsa'),('pad5',3),('pad3',5)],
+               'aligner': [('default_params','-v 1 --best'),
+                    ('mirna_params','-n 1 -l 20')],
                'novel': [('score_cutoff',.8), ('read_cutoff',50)],
-               'de':[('sample_labels',''),('sep',','),
+               'de': [('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
-                    ('conditions','')
-                    ]}
+                    ('conditions','')]
+                    }
 
 def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""

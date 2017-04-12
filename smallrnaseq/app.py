@@ -48,8 +48,8 @@ class WorkFlow(object):
             print ('you should provide at least one file or folder')
             return False
         aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = self.index_path
-        if self.aligner_params != '':
-            aligners.set_params(self.aligner, self.aligner_params)
+        if self.default_params != '':
+            aligners.set_params(self.aligner, self.default_params)
         if not os.path.exists(self.index_path):
             print ('no such folder for indexes')
             return False
@@ -125,20 +125,21 @@ class WorkFlow(object):
         libraries = self.libraries
         temp = self.temp_path
         ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
+        mat_name = 'mirbase-%s' %self.species
         if self.check_index(ref_name) == False:
             print ('no index for reference genome')
             ref_name = ''
+
         print ('mapping miRNAs..')
         res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
                                        species=self.species, ref_genome=ref_name,
                                        index_path=self.index_path,
                                        pad5=3, aligner=self.aligner,
-                                       samplelabels=self.labels)
+                                       samplelabels=self.labels,
+                                       params={mat_name:self.mirna_params})
 
         #seperate out mature counts and save
-        matname = 'mirbase-%s' %self.species
-        matcounts = counts[counts.ref==matname]
-
+        matcounts = counts[counts.ref==mat_name]
         res.to_csv( os.path.join(out, 'results.csv'),index=False )
         matcounts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
         counts.to_csv( os.path.join(out, 'all_counts.csv'), index=False )
@@ -164,7 +165,7 @@ class WorkFlow(object):
             print ('predicting novel mirnas..')
             #change map_rnas so it can use remaining files from previous run....?
 
-            allreads = utils.combine_aligned_reads(temp, self.files, ref_name)
+            allreads = utils.combine_aligned_reads(temp, idx=ref_name)
             new,cl = novel.find_mirnas(allreads, self.ref_fasta, species=self.species)
             if new is None or len(new) == 0:
                 print ('could not find any novel mirnas at this score cutoff')

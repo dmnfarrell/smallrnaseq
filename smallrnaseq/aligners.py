@@ -34,8 +34,13 @@ BOWTIE_PARAMS = '-v 1 --best'
 SUBREAD_INDEXES = None
 SUBREAD_PARAMS = '-m 2 -M 1'
 
-def set_params(aligner, params):
-    #print (aligner, params)
+def get_current_params(aligner):
+    if aligner == 'bowtie':
+        global BOWTIE_PARAMS
+        return BOWTIE_PARAMS
+
+def set_params(aligner, params=None):
+    """set aligner parameters"""
     if aligner == 'bowtie':
         global BOWTIE_PARAMS
         BOWTIE_PARAMS = params

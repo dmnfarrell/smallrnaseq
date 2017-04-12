@@ -492,7 +492,7 @@ def read_collapsed_file(collapsed):
     df['read_id'] = df.read_id.astype(int)
     df = df.drop(['name','description'],1)
     df = df.rename(columns={'sequence':'seq'})
-    #print (df[:4])
+    #print (df[:5])
     return df
 
 def get_aligned_reads(samfile, collapsed=None, readcounts=None):
@@ -515,27 +515,29 @@ def get_aligned_reads(samfile, collapsed=None, readcounts=None):
         counts = counts.merge(readcounts, on='seq')
     return counts
 
-def combine_aligned_reads(path, filenames, idx):
+def combine_aligned_reads(path, idx, filenames=None):
     """Combine reads from mapping of multiple samples to a genome/library.
     Args:
         path: folder with sam files and collapsed counts from mapping, should
         contain results corresponding to filenames
-        filenames: names of files with or without extensions
         idx: name of index mapped to
+        filenames: names of files
     Returns: pandas dataframe with all read counts summed
     """
 
     a = []
-    #remove extenstions if present
-    filenames = [os.path.splitext(os.path.basename(f))[0] for f in filenames]
+    #files are collapsed files
+    if filenames == None:
+        filenames = glob.glob(os.path.join(path, '*[!_r].fa'))
+    #print (filenames)
     for f in filenames:
         #print(f)
-        samfile = os.path.join(path, '%s_%s.sam' %(f,idx))
-        cfile = os.path.join(path, '%s.fa' %f)
-        if not os.path.exists(samfile) or not os.path.exists(cfile):
-            print ('no sam file or count data found for this sample')
+        name = os.path.splitext(os.path.basename(f))[0]
+        samfile = os.path.join(path, '%s_%s.sam' %(name,idx))
+        if not os.path.exists(samfile):
+            print ('no sam file')
             continue
-        reads = get_aligned_reads(samfile, collapsed=cfile)
+        reads = get_aligned_reads(samfile, collapsed=f)
         a.append(reads)
     if len(a) == 0:
         return
