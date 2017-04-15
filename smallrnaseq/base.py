@@ -505,12 +505,13 @@ def collapse_files(files, outpath, **kwargs):
         outfiles.append(collapsedfile)
     return outfiles
 
-def _get_mature(r, key='mature1', pad5=0, pad3=0):
-    """get mature sequences from mirbase file, row-based dataframe function"""
+def _get_mature(r, idkey='mature1', seqkey='mature1_seq', pad5=0, pad3=0):
+    """Get mature sequences from mirbase file,
+      this is a row-based dataframe function"""
 
     p = r.precursor
-    name = r[key]
-    m = r[key+'_seq']
+    name = r[idkey]
+    m = r[seqkey]
     if pd.isnull(m):
         s = np.nan
     else:
@@ -519,6 +520,11 @@ def _get_mature(r, key='mature1', pad5=0, pad3=0):
         if start < 0: start = 0
         s = p[start:i+len(m)+pad3]
     return pd.Series([name,s],index=['name','sequence'])
+
+def get_mature_padded(df, **kwargs):
+
+    m = df.apply(lambda x: _get_mature(x,**kwargs), 1)
+    return m
 
 def get_mirbase(species=None):
     """Get mirbase sequences"""
@@ -545,8 +551,8 @@ def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
         df = df[df.species==species]
 
     #get both 5p and 3p seqs for each mirna
-    m1 = df.apply(lambda x: _get_mature(x, 'mature1', pad5, pad3), 1)
-    m2 = df.apply(lambda x: _get_mature(x, 'mature2', pad5, pad3), 1)
+    m1 = df.apply(lambda x: _get_mature(x, 'mature1', 'mature1_seq', pad5, pad3), 1)
+    m2 = df.apply(lambda x: _get_mature(x, 'mature2', 'mature2_seq', pad5, pad3), 1)
     df = pd.concat([m1,m2]).dropna().reset_index(drop=True)
     df = df[df.sequence.str.len()>2]
     df = df.drop_duplicates('name')

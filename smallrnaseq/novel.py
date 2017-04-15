@@ -208,8 +208,9 @@ def check_mature(seq, struct, mature):
         return False
     p = list(bg.stem_bp_iterator('s0'))[0]
     #print (p[0], p[1], start, end)
-    #if start == -1:
+    if start == 0:
         #print ('mature not found')
+        return False
     if end>p[1]+2:
         #print ('3p mature outside')
         return False
@@ -282,7 +283,7 @@ def get_training_data(known=None, neg=None):
         #known = get_positives()
     if neg is None:
         neg = pd.read_csv(os.path.join(datadir, 'training_negatives.csv'))
-    print (len(known), len(neg))
+    #print (len(known), len(neg))
     known['target'] = 1
     neg['target'] = 0
     data = pd.concat([known,neg]).reset_index(drop=True)
@@ -372,12 +373,18 @@ def build_cluster_trees(alnmt, cluster_distance=10, min_size=2, key='read_id'):
     return dict(cluster_trees)
 
 def get_read_clusters(reads):
-    """Get clusters of reads from a dataframe with alignment fields
-      i.e. from a sam file"""
+    """Get clusters of reads from a dataframe with alignment information
+      (from a sam/bam file)
+      Args:
+        reads: pandas dataframe of reads with start, end, read_id fields
+      Returns:
+        the dataframe with cluster numbers assigned
+    """
 
-    #get clusters of reads and store by read_id
+    #build clustertrees per chromosome of reads and store by read_id
     clustertrees = build_cluster_trees(reads, cluster_distance=10, min_size=2)
-    reads.set_index('read_id',inplace=True)
+    if 'read_id' in reads.columns:
+        reads.set_index('read_id',inplace=True)
 
     groups = []
     i=1
@@ -389,8 +396,9 @@ def get_read_clusters(reads):
             c['cl_start'] = start
             c['cl_end'] = end
             c['cluster'] = i
+            #remove wrongly added opposite strand reads
+            c = c.groupby(['strand']).filter(lambda x: len(x) > 1)
             groups.append(c)
-            #print (c)
             i+=1
     df = pd.concat(groups)
     return df
@@ -425,6 +433,7 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         struct,sc = utils.rnafold(prseq)
         prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
+        #print (mstatus)
         #print (i)
         #print (prseq)
         #print (struct)
@@ -444,6 +453,7 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         struct,sc = utils.rnafold(prseq)
         prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
+        #print (mstatus)
         #print (prseq)
         #print (struct)
         if mstatus == False:
@@ -480,6 +490,30 @@ def score_precursors(N):
     #print (N)
     return N
 
+def get_consensus_read(ref, df):
+    """Get consensus read from cluster of aligned reads"""
+
+    strand = df.iloc[0].strand
+    if strand == '+':
+        s='start'
+    else:
+        s='end'
+    g = df.groupby([s,'length']).agg({'reads':np.sum})\
+        .sort_values(by='reads',ascending=False)\
+        .reset_index()
+    #print g
+    x = g.iloc[0]
+    cons = df[(df[s]==x[s]) & (df.length==x.length)].sort_values(by='reads',ascending=False)
+    #print cons
+    mature = None
+    for i,r in cons.iterrows():
+        if r.seq in ref:
+            mature = r.seq
+            break
+    if mature==None:
+        mature = cons.iloc[0].seq
+    return mature
+
 def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=.9):
     """Find the most likely precursor from a genomic sequence and
        one or two mapped read clusters.
@@ -493,57 +527,66 @@ def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=.9):
            the top precursor
     """
 
-    x = cluster.iloc[0]
+    x=cluster.iloc[0]
+    rcoords = (x['name'], x.start-10, x.end+10, x.strand)
+    refseq = utils.sequence_from_coords(ref_fasta, rcoords)
+    #get a consensus mature sequence
+    mature = get_consensus_read(refseq, cluster)
+
     coords = (x['name'], x.start, x.start, x.strand)
-    N = generate_precursors(ref_fasta, coords, mature=x.seq, step=step)
+    N = generate_precursors(ref_fasta, coords, mature=mature, step=step)
     if len(N)==0:
         return
     N = score_precursors(N)
     N = N[N.score>=score_cutoff]
 
     maturecounts = reads1 = cluster.reads.sum()
-    mature = x.seq
     star = None
     starcounts = 0
+
+    if mature != 'GCCCAGTGCTCTGAATGTC':
+        return
     #determine mature/star if two clusters present
     if cluster2 is not None:
         reads2 = cluster2.reads.sum()
-        y = cluster2.iloc[0]
-        if reads2>reads1:
-            mature = y.seq
-            maturecounts = reads2
-            star = x.seq
-            starcount = reads1
-    #print (mature, star, maturecounts, starcounts)
+        print (reads1,reads2,mature)
+        y = cluster2.iloc[0] #need to check the star seq
+        star = get_consensus_read(refseq, cluster2)
+        starcounts = reads2
+        #print(cluster)
+        #print (cluster2)
+
     N['mature_reads'] = maturecounts
     N['star_reads'] = starcounts
-    if cluster2 is not None:
-        N['star'] = cluster2.iloc[0].seq
-        #'check star for non templated additions?
-
+    N['star'] = star
+    print (mature, star, maturecounts, starcounts)
+    print ('')
     if len(N)>0:
         found = N.iloc[0]
         return found
     else:
         return
 
-def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
+def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species='',
+                max_length=25, min_length=18):
     """Find novel miRNAs in reference mapped reads. Assumes we have already
         mapped to known miRNAs.
         Args:
             reads: unique aligned reads with counts in a dataframe
             ref_fasta: reference genome fasta file
-            rf: precursor classifier, optional
+            score_cutoff: max score to keep for precursors
+            species: three letter mirbase code for species, optional
         Returns:
-            dataframes of read clusters and novel mirnas
+            tuple of dataframes: novel mirnas and the read clusters
     """
 
+    #this method needs to be broken up more logically
     global CLASSIFIER
     if CLASSIFIER == None:
         print ('getting default classifier')
         CLASSIFIER = precursor_classifier(kind='regressor')
 
-    reads = reads[(reads.length<=25) & (reads.length>=18)]
+    reads = reads[(reads.length<=max_length) & (reads.length>=min_length)]
     rcl = get_read_clusters(reads)
     clusts = rcl.groupby(['name','cluster','cl_start','cl_end','strand'])\
                             .agg({'reads':np.sum,'length':np.max})\
@@ -552,62 +595,66 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
     print ('%s read clusters in %s unique reads' %(len(clusts),len(rcl)))
 
     #find pairs of read clusters - likely to be mature/star sequences
-    clustpairs = build_cluster_trees(clusts, 120, min_size=2, key='cluster')
+    clustpairs = build_cluster_trees(clusts, 60, min_size=2, key='cluster')
 
     def get_pairs(r):
         #get ids for corresponding pairs
         id = r.cluster
         pairs = clustpairs[r['name']].getregions()
+
         if len(pairs)>0 and id in pairs[0][2]:
             x = pairs[0][2]
             return x[0]
         return
 
-    def get_coords(r):
-        return r['chrom']+':'+str(r.start)+'..'+str(r.end)+':'+r.strand
-
     clusts['pair'] = clusts.apply(get_pairs, 1)
-    #print (clusts[-clusts.pair.isnull()])
+    #filter clusters here?
 
     n1 = []
-    pairs = clusts.groupby('pair')
-    print ('%s paired clusters found' %len(pairs.groups))
-    for i,r in pairs:
-        #need to handle >2 clusters cases
+    paired = clusts.groupby('pair')
+    print ('%s paired clusters found' %len(paired.groups))
+    for i,r in paired:
+        #need to handle >2 clusters cases?
+        print (r.sort_values(by='start'))
         a,b = list(r.cluster[:2])
+        #print (a,b)
         c1 = rcl[rcl.cluster==a]
         c2 = rcl[rcl.cluster==b]
         if c1.reads.sum()+c2.reads.sum() < read_cutoff:
             continue
-        p = find_precursor(ref_fasta, c1, c2, step=7)
+        if c1.reads.sum()>c2.reads.sum():
+            p = find_precursor(ref_fasta, c1, c2, step=7)
+        else:
+            p = find_precursor(ref_fasta, c2, c1, step=7)
         if p is None:
             #print ('no precursor predicted')
             continue
+        p['cluster'] = a
+        p['cluster2'] = b
+        #print (p)
         n1.append(p)
     n1 = pd.DataFrame(n1)
 
     n2 = []
     #guess precursors for single clusters
-    singleclusts = clusts[clusts.pair.isnull()]
-    #print ()
-    print ('checking %s unpaired read clusters' %len(singleclusts))
-    for i,r in singleclusts.iterrows():
+    singles = pd.DataFrame()
+    #single = clusts[clusts.pair.isnull()]
+
+    print ('checking %s unpaired read clusters' %len(singles))
+    for i,r in singles.iterrows():
         c = rcl[rcl.cluster==r.cluster]
         if c.reads.sum() < read_cutoff:
             continue
         p = find_precursor(ref_fasta, c, step=7, score_cutoff=score_cutoff)
-        #print (c.reads.sum())
-        #print (p)
         if p is None:
-            #print ('no precursor predicted')
             continue
         #estimate star sequence
         #p['star'] = get_star(p.precursor, p.mature)
-        p['star'] = None
+        #p['star'] = None
         p['cluster'] = r.cluster
         n2.append(p)
     n2 = pd.DataFrame(n2)
-    #print(n2)
+
     new = pd.concat([n1,n2])
     if len(new) == 0:
         print ('no mirnas found!')
@@ -615,7 +662,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
     #get seed seq and mirbase matches
     new['seed'] = new.apply(lambda x: x.mature[2:8], 1)
     #get coords column
-    new['coords'] = new.apply(get_coords,1)
+    new['coords'] = new.apply(get_coords_string,1)
     new = new.reset_index(drop=True)
     assign_names(new, species)
     kp = base.get_mirbase('bta')
@@ -624,6 +671,12 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species=''):
     new = new.sort_values(by='mature_reads', ascending=False)
     print ('found %s novel mirnas' %len(new))
     return new, rcl
+
+def get_coords_string(r):
+    """coords string from fields"""
+    if 'chrom' not in r:
+        r['chrom']=r['name']
+    return r['chrom']+':'+str(r.start)+'..'+str(r.end)+':'+r.strand
 
 def find_from_known_prec(x, prec):
     for i,r in prec.iterrows():
@@ -701,11 +754,11 @@ def create_report(df, reads, species=None, outfile='report.html'):
 
     h += '<div class="content">'
     for i,r in df.iterrows():
-        #print (r.mature, r.name)
+        print (r.name, r.mature, r.star)
         h += '<div class="box">'
         h += '<a name=%s></a>' %i
         h += r.to_frame().to_html(escape=False)
-        x = reads[reads.cluster==r.cluster]
+        x = reads[(reads.cluster==r.cluster) | (reads.cluster==r.cluster2)]
         s = utils.print_read_stack(x, r.precursor, by='reads')
         if s==None:
             h+='</div>'
@@ -729,3 +782,4 @@ def get_css():
         content = f.readlines()
         content = ''.join(content)
     return content
+

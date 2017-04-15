@@ -424,14 +424,14 @@ def sequence_from_coords(fastafile, coords):
     if not os.path.exists(fastafile):
         print ('no such file')
         return
-    try:
-        if strand == '+':
-            seq = str(BedTool.seq(coords, fastafile))
-        else: #reverse strand
-            seq = str(BedTool.seq(coords, fastafile))
-            seq = str(HTSeq.Sequence(seq).get_reverse_complement())
-    except Exception as e:
-        return
+    #try:
+    if strand == '+':
+        seq = str(BedTool.seq(coords, fastafile))
+    else: #reverse strand
+        seq = str(BedTool.seq(coords, fastafile))
+        seq = str(HTSeq.Sequence(seq).get_reverse_complement())
+    #except Exception as e:
+    #    return
     return seq
 
 def sequence_from_bedfile(fastafile, features=None, bedfile=None, pad5=0, pad3=0):
@@ -573,13 +573,15 @@ def print_read_stacks(reads, fastafile, outfile=None, name=None, by=None):
     #    f.close()
     return s
 
-def print_read_stack(reads, refseq=None, outfile=None, cutoff=0, by=None, label=''):
+def print_read_stack(reads, refseq=None, cutoff=0, by=None, label=''):
     """Print local read alignments from a sam file against the mapped sequence.
        Args:
         reads: dataframe of read counts with position info
         refseq: sequence segment or gene that reads are mapped to
-        outfile: file name to write output, else send to stdout
-        cutoff: don't display read with <cutoff counts
+        cutoff: don't display read with <=cutoff counts
+        by: column to sort reads by, e.g. 'reads', 'start' or 'end'
+       Returns:
+        string of printed read stacks to display or write to a file
     """
 
     if refseq != None:

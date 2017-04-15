@@ -40,7 +40,7 @@ baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
                     ('mirna',0),('species','hsa'),('pad5',3),('pad3',5)],
                'aligner': [('default_params','-v 1 --best'),
                     ('mirna_params','-n 1 -l 20')],
-               'novel': [('score_cutoff',.8), ('read_cutoff',50)],
+               'novel': [('score_cutoff',.8), ('read_cutoff',100)],
                'de': [('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
                     ('conditions','')]
