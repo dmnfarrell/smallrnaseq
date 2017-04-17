@@ -350,7 +350,7 @@ def score_features(data, rf):
     #data['score'] = rf.predict(X)
     return rf.predict(X)
 
-def build_cluster_trees(alnmt, cluster_distance=10, min_size=2, key='read_id'):
+def build_cluster_trees(reads, cluster_distance=2, min_size=2, key='read_id'):
     """Build cluster tree of reads from a dataframe of locations e.g from
         a set of aligned reads from a sam file.
     Args:
@@ -366,23 +366,23 @@ def build_cluster_trees(alnmt, cluster_distance=10, min_size=2, key='read_id'):
     from bx.intervals.cluster import ClusterTree
     cluster_trees = collections.defaultdict(lambda:
             ClusterTree(cluster_distance, min_size))
-    for i, row in alnmt.iterrows():
+    for i, row in reads.iterrows():
         chrom = row['name']
         #print chrom, row.read_id, row.start, row.end
         cluster_trees[chrom].insert(row.start, row.end, row[key])
     return dict(cluster_trees)
 
-def get_read_clusters(reads):
-    """Get clusters of reads from a dataframe with alignment information
-      (from a sam/bam file)
+def get_read_clusters(reads, cluster_distance=0, min_size=3):
+    """Assign reads to clusters from a dataframe from an alignment
       Args:
         reads: pandas dataframe of reads with start, end, read_id fields
       Returns:
         the dataframe with cluster numbers assigned
     """
 
+    reads = reads.copy()
     #build clustertrees per chromosome of reads and store by read_id
-    clustertrees = build_cluster_trees(reads, cluster_distance=10, min_size=2)
+    clustertrees = build_cluster_trees(reads, cluster_distance, min_size)
     if 'read_id' in reads.columns:
         reads.set_index('read_id',inplace=True)
 
@@ -431,7 +431,7 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         if prseq == None:
             continue
         struct,sc = utils.rnafold(prseq)
-        prseq, struct = check_hairpin(prseq, struct)
+        #prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
         #print (mstatus)
         #print (i)
@@ -451,7 +451,7 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         if prseq == None:
             continue
         struct,sc = utils.rnafold(prseq)
-        prseq, struct = check_hairpin(prseq, struct)
+        #prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
         #print (mstatus)
         #print (prseq)
@@ -514,7 +514,7 @@ def get_consensus_read(ref, df):
         mature = cons.iloc[0].seq
     return mature
 
-def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=.9):
+def find_precursor(ref_fasta, cluster, cluster2=None, step=5, score_cutoff=.8):
     """Find the most likely precursor from a genomic sequence and
        one or two mapped read clusters.
        Args:
@@ -608,7 +608,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species='',
         return
 
     clusts['pair'] = clusts.apply(get_pairs, 1)
-    #filter clusters here?
+    #print (clusts[-clusts.pair.isnull()])
 
     n1 = []
     paired = clusts.groupby('pair')
@@ -638,7 +638,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species='',
     n2 = []
     #guess precursors for single clusters
     singles = pd.DataFrame()
-    #single = clusts[clusts.pair.isnull()]
+    #singles = clusts[clusts.pair.isnull()]
 
     print ('checking %s unpaired read clusters' %len(singles))
     for i,r in singles.iterrows():
@@ -660,12 +660,12 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.9, read_cutoff=50, species='',
         print ('no mirnas found!')
         return None, None
     #get seed seq and mirbase matches
-    new['seed'] = new.apply(lambda x: x.mature[2:8], 1)
+    new['seed'] = new.apply(lambda x: x.mature[1:7], 1)
     #get coords column
     new['coords'] = new.apply(get_coords_string,1)
     new = new.reset_index(drop=True)
     assign_names(new, species)
-    kp = base.get_mirbase('bta')
+    kp = base.get_mirbase(species)
     #check if any seqs still seen in known precursors
     new['known_id'] = new.apply( lambda x: find_from_known_prec(x, kp), 1)
     new = new.sort_values(by='mature_reads', ascending=False)
@@ -758,7 +758,7 @@ def create_report(df, reads, species=None, outfile='report.html'):
         h += '<div class="box">'
         h += '<a name=%s></a>' %i
         h += r.to_frame().to_html(escape=False)
-        x = reads[(reads.cluster==r.cluster) | (reads.cluster==r.cluster2)]
+        x = reads[(reads.cluster==r.cluster)]
         s = utils.print_read_stack(x, r.precursor, by='reads')
         if s==None:
             h+='</div>'
@@ -782,4 +782,3 @@ def get_css():
         content = f.readlines()
         content = ''.join(content)
     return content
-

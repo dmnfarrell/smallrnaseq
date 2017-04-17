@@ -612,6 +612,7 @@ def print_read_stack(reads, refseq=None, cutoff=0, by=None, label=''):
 def plot_read_stack(reads, refseq=None, by=None, cutoff=0, ax=None):
     """Plot read stack using coverage at each position"""
 
+    reads = reads.copy()
     if by != None:
         reads = reads.sort_values(by)
     else:
@@ -619,10 +620,14 @@ def plot_read_stack(reads, refseq=None, by=None, cutoff=0, ax=None):
     if refseq != None:
         seqlen = len(refseq)
     else:
+        offset = reads.start.min()
+        reads.start = reads.start-offset
+        reads.end = reads.end-offset
         seqlen = reads.end.max()
     reads = reads[reads.reads>cutoff]
     if len(reads)==0:
         return
+
     def pos_coverage(r, p):
         x = [r.reads if (i>=r.start and i<=r.end) else 0 for i in p]
         return pd.Series(x,index=p)
@@ -631,8 +636,8 @@ def plot_read_stack(reads, refseq=None, by=None, cutoff=0, ax=None):
     p = range(1,seqlen+1)
     m = reads.apply( lambda x: pos_coverage(x,p), 1 )
     m = m.replace(0,1)
-    from matplotlib.colors import LogNorm
 
+    from matplotlib.colors import LogNorm
     if ax == None:
         h = 12*len(m)/80+1
         fig,ax = plt.subplots(1,1,figsize=(12,h))
