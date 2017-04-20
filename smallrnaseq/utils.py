@@ -513,6 +513,7 @@ def get_aligned_reads(samfile, collapsed=None, readcounts=None):
         readcounts = read_collapsed_file(collapsed)
     if readcounts is not None:
         counts = counts.merge(readcounts, on='seq')
+        counts['align_id'] = counts.index
     return counts
 
 def combine_aligned_reads(path, idx, filenames=None):

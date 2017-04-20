@@ -677,7 +677,7 @@ def forna_url(precursor, mature, star=None, struct=None):
     if star != None:
         #print x[maturecol], x[col2]
         #star = x[col2]
-        if star != None and not np.isnan(star):
+        if star != None and not pd.isnull(star):
             sstart = utils.find_subseq(precursor, star)+1
             send = sstart+len(star)-1
             colors += '%s-%s:pink' %(sstart,send)
