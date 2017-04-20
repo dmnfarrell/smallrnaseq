@@ -672,3 +672,18 @@ def featurecounts(samfile, gtffile):
     counts = counts.rename(columns={samfile:'reads'})
     counts = counts.sort('reads', ascending=False)
     return counts
+
+def get_bg(seq, struct=None):
+    """Get bulgegraph object from sequence/struct, requires
+    the forgi package to be installed
+    Returns:
+        a BulgeGraph object
+    """
+
+    import forgi.graph.bulge_graph as cgb
+    if struct == None:
+        struct,sc = utils.rnafold(seq)
+    bg = cgb.BulgeGraph()
+    bg.from_dotbracket(struct)
+    bg.seq = seq
+    return bg

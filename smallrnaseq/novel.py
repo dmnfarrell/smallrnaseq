@@ -74,17 +74,6 @@ def get_stem_matches(bg):
     matches = [True if i[1]==wc[i[0]] else False for i in pairs]
     return matches
 
-def get_bg(seq, struct=None):
-    """get bulgegraph object from sequence/struct"""
-
-    import forgi.graph.bulge_graph as cgb
-    if struct == None:
-        struct,sc = utils.rnafold(seq)
-    bg = cgb.BulgeGraph()
-    bg.from_dotbracket(struct)
-    bg.seq = seq
-    return bg
-
 def build_rna_features(seq, struct=None, sc=None, mature=None):
     """Get features for mirna sequence"""
 
@@ -101,9 +90,7 @@ def build_rna_features(seq, struct=None, sc=None, mature=None):
     #print seq
     #print struct
 
-    bg = cgb.BulgeGraph()
-    bg.from_dotbracket(struct)
-    bg.seq = seq
+    bg = utils.get_bg(seq, struct)
     try:
         h0seq = bg.get_define_seq_str('h0')[0]
         feats['loops'] = len(list(bg.hloop_iterator()))
@@ -142,51 +129,36 @@ def build_rna_features(seq, struct=None, sc=None, mature=None):
     feats.update(tr)
     return feats
 
-def get_star(seq, mature, struct=None):
+def find_star_sequence(seq, mature, struct=None):
     """Estimate the star sequence from a given mature and precursor."""
 
-    bg = get_bg(seq, struct)
+    bg = utils.get_bg(seq, struct)
     start = utils.find_subseq(seq, mature)+1
     end = start + len(mature)
-    stempairs = []
-    for s in bg.sorted_stem_iterator():
-        stempairs.extend( list(bg.stem_bp_iterator(s)) )
-    m = zip(*stempairs)
-    stem1 = list(m[0])
-    stem2 = list(m[1])
-    matidx = range(start, end)
-    #print stem1
-    #print start, end
-    #is mature on 5' or 3' end?
-    if start < max(stem1):
-        #print ('5p')
-        matidx = [i for i in matidx if i in stem1]
-        staridx = [i[1] for i in stempairs if i[0] in matidx]
-        gaps = [abs(t-s) for s, t in zip(staridx, staridx[1:])]
-        for i in range(len(gaps)):
-            if gaps[i]>3 and i>=len(gaps)-5:
-                staridx = staridx[:i+1]
-        offset = len(matidx)-len(staridx)+2
-        starseq = seq[staridx[-1]:staridx[0]+offset]
-    else:
-        #print ('3p')
-        matidx = [i for i in matidx if i in stem2]
-        staridx = [i[0] for i in stempairs if i[1] in matidx]
-        offset = len(matidx)-len(staridx)+2
-        #print matidx
-        #print staridx
-        starseq = seq[staridx[0]+offset:staridx[-1]]
-
-    #print matidx
-    #print staridx
-    #print mature
-    #print starseq
-    return starseq
+    #print (start, end)
+    #find end of mature to estimate start of star
+    for p in bg.adjacent_stem_pairs_iterator():
+        #print (p)
+        for s in p:
+            #print (s)
+            x = list(bg.stem_bp_iterator(s))
+            #print (x)
+            for i in x:
+                if start == i[0]:
+                    #print ('found start', i )
+                    star = seq[i[1]-len(mature):i[1]+2]
+                    return star
+                elif start == i[1]:
+                    #print ('found start', i )
+                    star = seq[i[0]-len(mature)+1:i[0]]
+                    return star
+    print ('star not found')
+    return
 
 def check_hairpin(seq, struct):
     """Remove free ends of hairpin"""
 
-    bg = get_bg(seq, struct)
+    bg = utils.get_bg(seq, struct)
     loops = list(bg.hloop_iterator())
     if len(loops) != 1:
         return seq, struct
@@ -197,7 +169,7 @@ def check_hairpin(seq, struct):
 def check_mature(seq, struct, mature):
     """Check if the mature sequence is not in hairpin loop and inside stem"""
 
-    bg = get_bg(seq, struct)
+    bg = utils.get_bg(seq, struct)
     start = utils.find_subseq(seq, mature)+1
     end = start + len(mature)
     loops = list(bg.hloop_iterator())
@@ -701,14 +673,14 @@ def forna_url(precursor, mature, star=None, struct=None):
     mend = mstart+len(mature)-1
     if struct==None:
         struct = utils.rnafold(precursor)[0]
-    colors = '%s-%s:lightgreen\n' %(mstart, mend)
+    colors = '%s-%s:lightgreen\\n' %(mstart, mend)
     if star != None:
         #print x[maturecol], x[col2]
         #star = x[col2]
-        if star != None:
+        if star != None and not np.isnan(star):
             sstart = utils.find_subseq(precursor, star)+1
             send = sstart+len(star)-1
-            colors += '%s-%s:pink\n' %(sstart,send)
+            colors += '%s-%s:pink' %(sstart,send)
     url='http://nibiru.tbi.univie.ac.at/forna/forna.html'\
         '?id=url/name&sequence=%s&structure=%s&colors=%s' %(precursor,struct,colors)
     html = '<a href="%s" target="_blank"> view structure </a>' %url
