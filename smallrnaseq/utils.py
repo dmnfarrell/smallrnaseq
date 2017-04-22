@@ -424,14 +424,15 @@ def sequence_from_coords(fastafile, coords):
     if not os.path.exists(fastafile):
         print ('no such file')
         return
-    #try:
-    if strand == '+':
-        seq = str(BedTool.seq(coords, fastafile))
-    else: #reverse strand
-        seq = str(BedTool.seq(coords, fastafile))
-        seq = str(HTSeq.Sequence(seq).get_reverse_complement())
-    #except Exception as e:
-    #    return
+    try:
+        if strand == '+':
+            seq = str(BedTool.seq(coords, fastafile))
+        else: #reverse strand
+            seq = str(BedTool.seq(coords, fastafile))
+            seq = str(HTSeq.Sequence(seq).get_reverse_complement())
+    except Exception as e:
+        print (e)
+        return
     return seq
 
 def sequence_from_bedfile(fastafile, features=None, bedfile=None, pad5=0, pad3=0):
@@ -655,11 +656,26 @@ def plot_read_stack(reads, refseq=None, by=None, cutoff=0, ax=None):
     #m.plot(kind='bar',width=.8,figsize=(12,2))
     return ax
 
+def close_match(ref, seq, mm=1):
+    """Find string inside another with single mismatch"""
+
+    sr = re.compile('|'.join(seq[:i]+'.'+seq[i+1:] for i in range(len(seq))))
+    m = sr.findall(ref)
+    if len(m)==0: return -1
+    idx = ref.find(m[0])
+    return idx
+
 def find_subseq(seq, s):
+    """Find a sub sequence inside another
+    Returns:
+        index inside seq or -1 if not found
+    """
+
     for i in range(16,4,-4):
         c = seq.find(s[:i])
         if c != -1: return c
-    return -1
+    #if above fails try to find single mismatches
+    return close_match(seq, s)
 
 def featurecounts(samfile, gtffile):
     """Count aligned features with the featureCounts program.

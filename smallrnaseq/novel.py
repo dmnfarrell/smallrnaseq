@@ -169,25 +169,22 @@ def check_hairpin(seq, struct):
 def check_mature(seq, struct, mature):
     """Check if the mature sequence is not in hairpin loop and inside stem"""
 
-    bg = get_bg(seq, struct)
+    bg = utils.get_bg(seq, struct)
     start = utils.find_subseq(seq, mature)+1
     end = start + len(mature)
     loops = list(bg.hloop_iterator())
-    if len(loops)==0: return False
+    if len(loops)==0:
+        return 'too many loops'
     l = list(bg.define_range_iterator('h0'))[0]
     if (start<l[0] and end>l[0]) or (start<l[1] and end>l[1]):
-        #print ('mature in loop')
-        return False
+        return 'mature in loop'
     p = list(bg.stem_bp_iterator('s0'))[0]
     #print (p[0], p[1], start, end)
     if start == 0:
-        #print ('mature not found')
-        return False
+        return 'mature not found'
     if end>p[1]+2:
-        #print ('3p mature outside')
-        return False
-    #print ('ok')
-    return True
+        return '3p mature outside'
+    return 'ok'
 
 def get_positives(species='hsa'):
     """Get known mirbase hairpins for training precursor classifier. """
@@ -410,11 +407,9 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         #print (i)
         #print (prseq)
         #print (struct)
-        #if mstatus == False:
-        #    continue
         N.append({'precursor':prseq,'struct':struct,'score':sc,
                   'chrom':chrom,'start':start5,'end':end5,
-                  'mature':mature,'strand':strand})
+                  'mature':mature,'strand':strand, 'mature_check': mstatus})
     for i in range(2,40,step):
         #3' side
         start3 = start - (loop + seqlen + i)
@@ -426,14 +421,9 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         struct,sc = utils.rnafold(prseq)
         #prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
-        #print (mstatus)
-        #print (prseq)
-        #print (struct)
-        #if mstatus == False:
-        #    continue
         N.append({'precursor':prseq,'struct':struct,'score':sc,
                   'chrom':chrom,'start':start3,'end':end3,
-                  'mature':mature,'strand':strand})
+                  'mature':mature,'strand':strand,'mature_check': mstatus})
     N = pd.DataFrame(N)
     return N
 
@@ -511,28 +501,34 @@ def find_precursor(ref_fasta, m, o=None, step=5, score_cutoff=.7):
     if len(N)==0:
         return
     N = score_precursors(N)
-    print ('%s candidates' %len(N))
+    #print ('%s candidates' %len(N))
     N = N[N.score>=score_cutoff]
     if len(N)>0:
-        P = N.iloc[0]
+        P = N.iloc[0].copy()
+        #print(P)
     else:
         return
 
+    #print (o)
     maturecounts = m.reads.sum()
     star = find_star_sequence(P.precursor, mature, P.struct)
     starcounts = 0
     if o is not None and star != None:
         #check reads from local cluster that are inside star seq?
         s = utils.find_subseq(P.precursor, star)
-        print (P.start, P.end)
+        #if P.strand == '+':
         ss = P.start+s; se = ss+len(star)
-        sreads = o[(o.start>=ss-2) | (o.end<=se+3)]
+            #sreads = o[(o.start>=ss-2) & (o.end<=se+3)]
+        #else:
+            #se = P.end-s; ss = se-len(star)
+        sreads = o[(o.start>=ss-2) & (o.end<=se+3)]
         starcounts = sreads.reads.sum()
-        print (mature, maturecounts, star, starcounts)
-        print (ss, se)
-        print (o)
+        #print (ss, se)
+        #print (sreads)
         #print display(HTML(forna_url(P.precursor, mature, star)))
 
+    print (P.start, P.end, P.strand)
+    print (mature, maturecounts, star, starcounts)
     P['mature_reads'] = maturecounts
     P['star_reads'] = starcounts
     P['star'] = star
@@ -566,7 +562,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
                             .agg({'reads':np.sum,'length':np.max})\
                             .reset_index()\
                             .rename(columns={'cl_start':'start','cl_end':'end'})
-    print ('%s read clusters in %s unique reads' %(len(clusts),len(rcl)))
+    print ('%s read clusters in %s reads' %(len(clusts),len(rcl)))
     clusts['clust_size'] = clusts.end-clusts.start
     clusts = clusts[clusts.reads>=read_cutoff]
     print ('%s clusters above reads cutoff' %len(clusts))
@@ -578,6 +574,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
         if df.reads.sum() < read_cutoff:
             continue
         df = df.sort_values('reads',ascending=False)
+        #small clusters should belong to a single mature
         if c.clust_size<28:
             df['mature'] = True
             X.append(df)
@@ -585,7 +582,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
             #print p
             if p is not None:
                 N.append(p)
-                print (p.mature)
+                #print (p.mature)
             continue
 
         #for larger clusters choose most likely mature reads
@@ -621,7 +618,8 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
     new = new.sort_values(by='mature_reads', ascending=False)
 
     print ('found %s novel mirnas' %len(new))
-    #also return reads in clusters
+    print ('%s with known mature sequences' %len(new[-new.known_id.isnull()]))
+    #also return all the reads found in clusters
     found = pd.concat(X)
     return new, found
 
@@ -707,11 +705,13 @@ def create_report(df, reads, species=None, outfile='report.html'):
 
     h += '<div class="content">'
     for i,r in df.iterrows():
-        print (r.name, r.mature, r.star)
+        #print (r.name, r.mature, r.star)
         h += '<div class="box">'
         h += '<a name=%s></a>' %i
         h += r.to_frame().to_html(escape=False)
         x = reads[(reads.cluster==r.cluster)]
+        #print (x)
+        #print (x.reads.sum())
         s = utils.print_read_stack(x, r.precursor, by='reads')
         if s==None:
             h+='</div>'
@@ -729,6 +729,7 @@ def create_report(df, reads, species=None, outfile='report.html'):
     return h
 
 def get_css():
+    """Get css style for embedding in html page"""
 
     fname = os.path.join(datadir, 'styles.css')
     with open(fname) as f:

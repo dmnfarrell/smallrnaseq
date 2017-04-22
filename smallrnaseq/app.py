@@ -60,6 +60,11 @@ class WorkFlow(object):
                                   outfile=os.path.join(self.output, 'sample_labels.csv'))
         else:
             self.labels = None
+        if self.ref_fasta != None:
+            self.ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
+        else:
+            self.ref_name = None
+        self.get_aligner_params()
         self.temp_path = os.path.join(self.output,'temp')
         self.remove_output()
         print ('found %s input files' %len(self.files))
@@ -96,6 +101,19 @@ class WorkFlow(object):
             utils.remove_files(self.output, ext)
         return
 
+    def get_aligner_params(self):
+
+        ap = self.aligner_params = {}
+        for i in self.libraries:
+            n=i.lower()
+            if hasattr(self, n):
+                ap[i] = self.__dict__[n]
+        n = self.ref_name
+        if n != None and hasattr(self, n):
+            ap[n] = self.__dict__[n]
+        #print (self.aligner_params)
+        return
+
     def map_libraries(self):
         """Map to arbitrary rna sequence libraries"""
 
@@ -107,7 +125,8 @@ class WorkFlow(object):
             print ('mapping to these libraries: %s' %libraries)
             res, counts = base.map_rnas(self.files, libraries, self.temp_path,
                                         aligner=self.aligner,
-                                        samplelabels=self.labels)
+                                        samplelabels=self.labels,
+                                        params=self.aligner_params)
             if res is None:
                 print ('empty data returned. did alignments run?')
                 return
@@ -124,8 +143,10 @@ class WorkFlow(object):
         out = self.output
         libraries = self.libraries
         temp = self.temp_path
-        ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
+        ref_name = self.ref_name
         mat_name = 'mirbase-%s' %self.species
+        self.aligner_params[mat_name] = self.mirna_params
+
         if self.check_index(ref_name) == False:
             print ('no index for reference genome')
             ref_name = ''
@@ -136,7 +157,7 @@ class WorkFlow(object):
                                        index_path=self.index_path,
                                        pad5=3, aligner=self.aligner,
                                        samplelabels=self.labels,
-                                       params={mat_name:self.mirna_params})
+                                       params=self.aligner_params)
 
         #seperate out mature counts and save
         matcounts = counts[counts.ref==mat_name]
