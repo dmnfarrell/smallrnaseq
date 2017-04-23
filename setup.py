@@ -22,8 +22,7 @@ setup(
     entry_points = {
         'console_scripts': [
             'smallrnaseq=smallrnaseq.app:main',
-            'mirdeep2=smallrnaseq.mirdeep2:main',
-            'srnabench=smallrnaseq.srnabench:main']
+            'mirdeep2=smallrnaseq.mirdeep2:main']
             },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 3.4',
@@ -34,5 +33,5 @@ setup(
             'License :: OSI Approved :: Apache Software License',
             'Development Status :: 4 - Beta',
             'Intended Audience :: Science/Research'],
-    keywords = ['mirna','sequencing','mirdeep2','biology'],
+    keywords = ['rna','sequencing','mirdeep2','biology','scientific'],
 )
