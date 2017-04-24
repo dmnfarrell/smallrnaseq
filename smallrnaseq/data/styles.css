@@ -129,7 +129,7 @@ a:active { color: red; }
 	margin-right: 5px;
 	float: right;
 	height: 650px;
-	width: 20%;
+	width: 15%;
 	position: fixed;
 	overflow:hidden;
 	top: 30;
@@ -139,14 +139,15 @@ a:active { color: red; }
 	border: 0px solid transparent;
 	font-family: monospace, sans-serif;
 	overflow-y: auto;
-	height: 600px;
-	width: 400px;
-   display:block;
+	overflow-x: auto;
+	height: 640px;
+	width: 300px;
+    display: block;
 }
 
 .sidebar td, th {
   text-align: left;
-	font-size: 14px;
+	font-size: 12px;
 }
 
 .main, .aside

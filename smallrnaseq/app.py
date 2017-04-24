@@ -193,7 +193,8 @@ class WorkFlow(object):
                 return
             new.to_csv(os.path.join(out,'novel_mirna.csv'), index=False)
             #pad mature novel and write to fasta for counting
-            novpad = base.get_mature_padded(new, idkey='id', seqkey='mature')
+            novpad = base.get_mature_padded(new, idkey='mature_id', seqkey='mature')
+            novpad = novpad.drop_duplicates('name')
             utils.dataframe_to_fasta(novpad,os.path.join(out,'novel.fa'),
                                      seqkey='sequence', idkey='name')
             novel.create_report(new, cl, self.species, outfile=os.path.join(out, 'novel.html'))

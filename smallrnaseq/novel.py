@@ -589,11 +589,11 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
         anchor = df.iloc[0]
         st = anchor.start
         end = anchor.end
-        m = df.loc[(abs(df.start-st)<=3) & (abs(df.end-end)<=5)]
+        m = df.loc[(abs(df.start-st)<=3) & (abs(df.end-end)<=5)].copy()
         m['mature'] = True
         X.append(m)
         #remainder of reads assigned as non-mature
-        o = df.loc[-df.index.isin(m.index)]
+        o = df.loc[-df.index.isin(m.index)].copy()
         o['mature'] = False
         X.append(o)
 
@@ -638,8 +638,18 @@ def assign_names(df, species=''):
     """Assign name to novel mirna, precursor/mature ids should allow consistent
        identification across datasets"""
 
-    df['id'] = df.apply( lambda x: species+'_novel_'+x.chrom+'_'+str(x.start),1 )
+    df['precursor_id'] = df.apply( lambda x: species+'_novel_'+x.chrom+'_'+str(x.start),1 )
+    df['mature_id'] = df.apply( lambda x: species+'_'+encode_name(x.mature), 1 )
     return
+
+def encode_name(s):
+    """hash a sequence into a short string"""
+
+    import hashlib
+    h = hashlib.md5(s.encode())
+    s = h.digest().encode('base64')[:8]
+    s.replace('/','x')
+    return s
 
 def forna_url(precursor, mature, star=None, struct=None):
     """Create link to view mirna structure in forna web app"""
@@ -688,13 +698,13 @@ def create_report(df, reads, species=None, outfile='report.html'):
     h += '<h3>novel miRNA predictions</h3>'
     h += '</div>'
     h += '<div class="sidebar">'
-    links = df[['id','mature_reads']].copy()
-    links['id'] = links.id.apply(lambda x: ('<a href=#%s > %s </a>' %(x,x)))
+    links = df[['mature_id','mature_reads','chrom']].copy()
+    links['mature_id'] = links.mature_id.apply(lambda x: ('<a href=#%s > %s </a>' %(x,x)))
     h += links.to_html(escape=False, classes='sidebar', index=False)
     h += '</div>'
 
     df = df.copy()
-    df = df.set_index('id')
+    df = df.set_index('mature_id')
 
     ens_sp = pd.read_csv(os.path.join(datadir, 'ensembl_names.csv'), index_col=0)
     if species in ens_sp.index:
