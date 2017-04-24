@@ -23,22 +23,13 @@
 from __future__ import absolute_import, print_function
 import sys, os, string, time
 import types, re, subprocess, glob, shutil
-import pylab as plt
 import numpy as np
 import pandas as pd
-
 try:
     import HTSeq
 except:
     'HTSeq not present'
-
 from . import utils, aligners
-import matplotlib as mpl
-import seaborn as sns
-sns.set_style("ticks", {'axes.facecolor': '#F7F7F7',
-                        'axes.grid': False,'legend.frameon':True})
-sns.set_context("notebook", font_scale=1.3)
-mpl.rcParams['savefig.dpi'] = 90
 
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')

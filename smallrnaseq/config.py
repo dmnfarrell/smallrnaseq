@@ -24,7 +24,10 @@ from __future__ import absolute_import, print_function
 import sys, os, string, time
 import types, re, subprocess, glob, shutil
 import pandas as pd
-import configparser
+try:
+    import configparser
+except:
+    import ConfigParser as configparser
 
 path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')

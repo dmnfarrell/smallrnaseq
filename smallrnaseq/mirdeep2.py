@@ -24,7 +24,7 @@ import sys, os, string, types, re
 import shutil, glob, collections
 import itertools
 import subprocess
-import pylab as plt
+#import pylab as plt
 import numpy as np
 import pandas as pd
 from . import base, utils

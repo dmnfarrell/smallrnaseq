@@ -24,10 +24,15 @@ from __future__ import absolute_import, print_function
 import sys, os, string, types
 import itertools
 import matplotlib
+matplotlib.use('agg')
 import pylab as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+sns.set_style("ticks", {'axes.facecolor': '#F7F7F7',
+                        'axes.grid': False,'legend.frameon':True})
+sns.set_context("notebook", font_scale=1.3)
+
 from . import base, utils, analysis
 
 def venn_diagram(names,labels,ax=None,**kwargs):

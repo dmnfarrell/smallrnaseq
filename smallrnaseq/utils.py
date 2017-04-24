@@ -26,11 +26,8 @@ import shutil, glob, collections
 import itertools
 from itertools import islice
 import subprocess
-import matplotlib
-import pylab as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 try:
     import HTSeq
 except:
@@ -638,7 +635,10 @@ def plot_read_stack(reads, refseq=None, by=None, cutoff=0, ax=None):
     p = range(1,seqlen+1)
     m = reads.apply( lambda x: pos_coverage(x,p), 1 )
     m = m.replace(0,1)
-
+    import matplotlib
+    matplotlib.use('agg')
+    import pylab as plt
+    import seaborn as sns
     from matplotlib.colors import LogNorm
     if ax == None:
         h = 12*len(m)/80+1

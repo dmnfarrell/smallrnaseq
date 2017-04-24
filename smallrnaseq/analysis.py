@@ -25,17 +25,13 @@ import sys, os, string, types, re, csv
 import shutil, glob, collections
 import itertools
 import subprocess
-import matplotlib
-import pylab as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 try:
     import HTSeq
 except:
     'HTSeq not present'
 
-from . import mirdeep2 as mdp
 from . import base, utils
 
 def read_length_dist(df):
