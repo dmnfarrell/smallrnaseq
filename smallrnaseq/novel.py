@@ -373,6 +373,17 @@ def get_read_clusters(reads, cluster_distance=0, min_size=3, key='align_id'):
     df = pd.concat(groups)
     return df
 
+def get_cluster_groups(rcl):
+    """Get the clusters from reads with assigned cluster numbers"""
+
+    clusts = rcl.groupby(['name','cluster','cl_start','cl_end','strand'])\
+                            .agg({'reads':np.sum,'length':np.max})\
+                            .reset_index()\
+                            .rename(columns={'cl_start':'start','cl_end':'end'})
+    print ('%s read clusters in %s reads' %(len(clusts),len(rcl)))
+    clusts['clust_size'] = clusts.end-clusts.start
+    return clusts
+
 def generate_precursors(ref_fasta, coords, mature=None, step=5):
     """Create a set of possible precursor sequences from flanking sequence given
        genomic coordinates and the reference genome sequence.
@@ -558,12 +569,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
     reads = reads[(reads.length<=max_length) & (reads.length>=min_length)]
     #assign reads to clusters
     rcl = get_read_clusters(reads, 10, min_size)
-    clusts = rcl.groupby(['name','cluster','cl_start','cl_end','strand'])\
-                            .agg({'reads':np.sum,'length':np.max})\
-                            .reset_index()\
-                            .rename(columns={'cl_start':'start','cl_end':'end'})
-    print ('%s read clusters in %s reads' %(len(clusts),len(rcl)))
-    clusts['clust_size'] = clusts.end-clusts.start
+    clusts = get_cluster_groups(rcl)
     clusts = clusts[clusts.reads>=read_cutoff]
     print ('%s clusters above reads cutoff' %len(clusts))
 
@@ -648,7 +654,7 @@ def encode_name(s):
     import hashlib
     h = hashlib.md5(s.encode())
     s = h.digest().encode('base64')[:8]
-    s.replace('/','x')
+    s = s.replace('/','x')
     return s
 
 def forna_url(precursor, mature, star=None, struct=None):
@@ -700,7 +706,8 @@ def create_report(df, reads, species=None, outfile='report.html'):
     h += '<div class="sidebar">'
     links = df[['mature_id','mature_reads','chrom']].copy()
     links['mature_id'] = links.mature_id.apply(lambda x: ('<a href=#%s > %s </a>' %(x,x)))
-    h += links.to_html(escape=False, classes='sidebar', index=False)
+    links = links.set_index(['mature_id','chrom'])
+    h += links.to_html(escape=False, classes='sidebar', sparsify=True)#, index=False)
     h += '</div>'
 
     df = df.copy()
