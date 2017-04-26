@@ -244,9 +244,9 @@ def plot_results(res, path):
     fig = plotting.plot_read_count_dists(counts)
     fig.savefig(os.path.join(path,'distr_per_sample.png'))
     scols,ncols = base.get_column_names(counts)
-    if len(scols)>1:
-        fig = plotting.expression_clustermap(counts)
-        fig.savefig(os.path.join(path,'expr_map.png'))
+    #if len(scols)>1:
+    #    fig = plotting.expression_clustermap(counts)
+    #    fig.savefig(os.path.join(path,'expr_map.png'))
     return
 
 def build_indexes(filename, path):

@@ -74,10 +74,15 @@ def get_stem_matches(bg):
     matches = [True if i[1]==wc[i[0]] else False for i in pairs]
     return matches
 
+def GC(seq):
+    target_count = sum(1 for x in seq if x in ['G','C'])
+    if len(seq) == 0:
+        return 0
+    return float(target_count) / len(seq) * 100
+
 def build_rna_features(seq, struct=None, sc=None, mature=None):
     """Get features for mirna sequence"""
 
-    from Bio.SeqUtils import GC
     import forgi.graph.bulge_graph as cgb
 
     if struct == None:
@@ -610,7 +615,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
 
         if p is not None:
             N.append(p)
-            print (p.mature)
+            #print (p.mature)
 
     new = pd.DataFrame(N)
     new['seed'] = new.apply(lambda x: x.mature[1:7], 1)
@@ -623,7 +628,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
     new['known_id'] = new.apply( lambda x: find_from_known_prec(x, kp), 1)
     new = new.sort_values(by='mature_reads', ascending=False)
 
-    print ('found %s novel mirnas' %len(new))
+    print ('found %s novel mirnas' %len(new.groupby('mature_id')))
     print ('%s with known mature sequences' %len(new[-new.known_id.isnull()]))
     #also return all the reads found in clusters
     found = pd.concat(X)
