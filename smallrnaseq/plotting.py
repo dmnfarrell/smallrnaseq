@@ -149,9 +149,9 @@ def plot_read_count_dists(counts, h=8):
     df = counts.sort_values(by='mean_norm',ascending=False)[:80]
     df = df.set_index('name')[ncols]
     t = df.T
-    w=int(h*(len(df)/60.0))+4
+    w = int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
-    if len(t.columns) > 1:
+    if len(scols) > 1:
         sns.boxplot(data=t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
     else:
         df.plot(kind='bar',ax=ax)

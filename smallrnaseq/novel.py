@@ -582,8 +582,6 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
     N = []
     for i,c in clusts.iterrows():
         df = rcl[rcl.cluster==c.cluster]
-        if df.reads.sum() < read_cutoff:
-            continue
         df = df.sort_values('reads',ascending=False)
         #small clusters should belong to a single mature
         if c.clust_size<28:
@@ -601,6 +599,8 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
         st = anchor.start
         end = anchor.end
         m = df.loc[(abs(df.start-st)<=3) & (abs(df.end-end)<=5)].copy()
+        if m.reads.sum() < read_cutoff:
+            continue
         m['mature'] = True
         X.append(m)
         #remainder of reads assigned as non-mature
@@ -709,9 +709,9 @@ def create_report(df, reads, species=None, outfile='report.html'):
     h += '<h3>novel miRNA predictions</h3>'
     h += '</div>'
     h += '<div class="sidebar">'
-    links = df[['mature_id','mature_reads','chrom']].copy()
+    links = df[['mature_id','mature_reads','chrom','start']].copy()
     links['mature_id'] = links.mature_id.apply(lambda x: ('<a href=#%s > %s </a>' %(x,x)))
-    links = links.set_index(['mature_id','chrom'])
+    links = links.set_index(['mature_id','chrom','start'])
     h += links.to_html(escape=False, classes='sidebar', sparsify=True)#, index=False)
     h += '</div>'
 

@@ -129,7 +129,7 @@ a:active { color: red; }
 	margin-right: 5px;
 	float: right;
 	height: 650px;
-	width: 15%;
+	width: 20%;
 	position: fixed;
 	overflow:hidden;
 	top: 30;
@@ -141,7 +141,7 @@ a:active { color: red; }
 	overflow-y: auto;
 	overflow-x: auto;
 	height: 640px;
-	width: 300px;
+	width: 350px;
     display: block;
 }
 

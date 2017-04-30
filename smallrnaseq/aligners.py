@@ -60,6 +60,7 @@ def build_bowtie_index(fastafile, path):
         return
     files = glob.glob(name+'*.ebwt')
     utils.move_files(files, path)
+    print ('built bowtie index for %s' %fastafile)
     return
 
 def build_subread_index(fastafile, path):
@@ -70,7 +71,7 @@ def build_subread_index(fastafile, path):
     try:
         result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     except subprocess.CalledProcessError as e:
-        print (str(e.output))
+        #print (str(e.output))
         return
     exts = ['.00.b.array','.00.b.tab','.files','.reads']
     files = [name+i for i in exts]

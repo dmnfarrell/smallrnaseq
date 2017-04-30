@@ -21,7 +21,7 @@
 """
 
 from __future__ import absolute_import, print_function
-import sys, os, string, types, shutil
+import sys, os, string, types, shutil, time
 import glob
 import pandas as pd
 from smallrnaseq import config, base, analysis, utils, aligners, novel, plotting, de
@@ -32,6 +32,8 @@ class WorkFlow(object):
         for i in opts:
             self.__dict__[i] = opts[i]
         self.libraries = self.libraries.split(',')
+        if '' in self.libraries:
+            self.libraries.remove('')
         return
 
     def setup(self):
@@ -53,6 +55,8 @@ class WorkFlow(object):
         if not os.path.exists(self.index_path):
             print ('no such folder for indexes')
             return False
+        if not os.path.exists(self.output):
+            os.mkdir(self.output)
         #make sample ids to replace filenames
         if self.add_labels == True:
             #names = base.get_base_names(self.files)
@@ -87,6 +91,8 @@ class WorkFlow(object):
             self.map_mirnas()
         else:
             self.map_libraries()
+        if self.features != '':
+            self.map_genomic_features()
         print ('intermediate files saved to %s' %self.temp_path)
         return
 
@@ -120,7 +126,7 @@ class WorkFlow(object):
         out = self.output
         libraries = self.libraries
 
-        if libraries != '':
+        if libraries != '' and len(libraries)>0:
             #map to provided libraries
             print ('mapping to these libraries: %s' %libraries)
             res, counts = base.map_rnas(self.files, libraries, self.temp_path,
@@ -162,6 +168,7 @@ class WorkFlow(object):
         #seperate out mature counts and save
         matcounts = counts[counts.ref==mat_name]
         res.to_csv( os.path.join(out, 'results.csv'),index=False )
+        res = res[res.ref!=ref_name]
         matcounts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
         counts.to_csv( os.path.join(out, 'all_counts.csv'), index=False )
         plot_results(res, out)
@@ -184,14 +191,21 @@ class WorkFlow(object):
         else:
             print ()
             print ('predicting novel mirnas..')
+            start = time.time()
             #change map_rnas so it can use remaining files from previous run....?
 
             allreads = utils.combine_aligned_reads(temp, idx=ref_name)
-            new,cl = novel.find_mirnas(allreads, self.ref_fasta, species=self.species)
+            new,cl = novel.find_mirnas(allreads, self.ref_fasta, species=self.species,
+                                       score_cutoff=float(self.score_cutoff),
+                                       read_cutoff=int(self.read_cutoff))
+            if self.strict == True:
+                new = new[new.mature_check=='ok']
+                print ('filtered %s' %len(new))
             if new is None or len(new) == 0:
                 print ('could not find any novel mirnas at this score cutoff')
                 return
             new.to_csv(os.path.join(out,'novel_mirna.csv'), index=False)
+
             #pad mature novel and write to fasta for counting
             novpad = base.get_mature_padded(new, idkey='mature_id', seqkey='mature')
             novpad = novpad.drop_duplicates('name')
@@ -205,21 +219,37 @@ class WorkFlow(object):
                                  aligner=self.aligner,
                                  samplelabels=self.labels)
             nc.to_csv( os.path.join(out, 'novel_mirna_counts.csv'), index=False )
+            end = round(time.time()-start,1)
+            print ('took %s seconds' %str(end))
         return
 
     def map_genomic_features(self):
+        """Map to a single set of features with a reference genome, requires we
+           use ensembl gtf with biotype for best results"""
 
-        if ref_genome == '' or features_file == '':
+        out = self.output
+        temp = self.temp_path
+        ref_name = self.ref_name
+        features = self.features
+        if ref_name in self.aligner_params:
+            params = self.aligner_params[ref_name]
+        else:
+            params = ''
+        if ref_name == '':
+            print ('you need to provide a reference genome')
             return
-        #genomic feature counting
+
         print ()
+        print ('found features files %s' %features)
         print ('mapping to reference genome')
-        res = base.map_genome_features(files, ref_genome, features_file,
-                                       outpath=temp_path, aligner=opts['aligner'])
+        res = base.map_genome_features(self.files, ref_name, features,
+                                       outpath=temp, aligner=self.aligner,
+                                       aligner_params=params)
         counts = base.pivot_count_data(res, idxcols=['name','gene_name','gene_biotype'])
         res.to_csv( os.path.join(out, 'features_found.csv'), index=False )
         counts.to_csv( os.path.join(out, 'feature_counts.csv'), index=False)
         print ('results saved to feature_counts.csv')
+        plot_feature_results(res, out)
         return
 
 def check_viennarna():
@@ -238,20 +268,36 @@ def plot_results(res, path):
     x = base.get_fractions_mapped(res)
     print (x)
     fig = plotting.plot_fractions(x)
-    fig.savefig(os.path.join(path,'fractions_mapped.png'))
+    fig.savefig(os.path.join(path,'libraries_mapped.png'))
     fig = plotting.plot_sample_counts(counts)
     fig.savefig(os.path.join(path,'total_per_sample.png'))
     fig = plotting.plot_read_count_dists(counts)
-    fig.savefig(os.path.join(path,'distr_per_sample.png'))
+    fig.savefig(os.path.join(path,'top_mapped.png'))
     scols,ncols = base.get_column_names(counts)
     #if len(scols)>1:
     #    fig = plotting.expression_clustermap(counts)
     #    fig.savefig(os.path.join(path,'expr_map.png'))
     return
 
+def plot_feature_results(res, path):
+    """plot results from feature counting"""
+
+    if res is None or len(res) == 0:
+        return
+    counts = base.pivot_count_data(res, idxcols=['name','gene_name','gene_biotype'])
+    x = base.get_fractions_mapped(res, by=['gene_biotype','label'])
+    print (x)
+    fig = plotting.plot_fractions(x)
+    fig.savefig(os.path.join(path,'features_mapped.png'))
+    fig = plotting.plot_sample_counts(counts)
+    fig.savefig(os.path.join(path,'total_features_per_sample.png'))
+    fig = plotting.plot_read_count_dists(counts)
+    fig.savefig(os.path.join(path,'top_feature_counts.png'))
+    return
+
 def build_indexes(filename, path):
     aligners.build_bowtie_index(filename, path)
-    aligners.build_subread_index(filename, path)
+    #aligners.build_subread_index(filename, path)
     return
 
 def diff_expression(opts):

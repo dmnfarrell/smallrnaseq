@@ -43,7 +43,8 @@ baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
                     ('mirna',0),('species','hsa'),('pad5',3),('pad3',5)],
                'aligner': [('default_params','-v 1 --best'),
                     ('mirna_params','-n 1 -l 20')],
-               'novel': [('score_cutoff',.8), ('read_cutoff',100)],
+               'novel': [('score_cutoff',.8), ('read_cutoff',100),
+                        ('strict',0)],
                'de': [('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
                     ('conditions','')]
@@ -53,7 +54,7 @@ def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
     if not os.path.exists(conffile):
-        cp = create_config_parser_from_dict(defaults, ['base','novel','de'])
+        cp = create_config_parser_from_dict(defaults, ['base','novel','aligner','de'])
         cp.write(open(conffile,'w'))
         print ('wrote config file %s' %conffile)
     return conffile
@@ -101,10 +102,11 @@ def get_options(cp):
     for section in cp.sections():
         options.update( (cp._sections[section]) )
     for o in options:
-        try:
-            options[o] = cp.getboolean('base', o)
-        except:
-            pass
+        for section in cp.sections():
+            try:
+                options[o] = cp.getboolean(section, o)
+            except:
+                pass
     return options
 
 def print_options(options):

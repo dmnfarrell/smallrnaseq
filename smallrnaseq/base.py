@@ -356,7 +356,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     return result, counts
 
 def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
-                        overwrite=True):
+                        overwrite=True, aligner_params=''):
     """Map multiple files to a genome with features and return/process hits.
        Can be used for miRNA discovery
        Args:
@@ -365,13 +365,15 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
            bowtie _index: path with bowtie indexes
     """
 
+    if aligner_params != '' :
+        aligners.set_params(aligner, aligner_params)
     if overwrite == True:
         print ('removing old temp files')
         utils.remove_files(outpath,'*_mapped.sam')
         utils.remove_files(outpath, '*_r.fa')
 
     ext = os.path.splitext(gtf_file)[1]
-    if ext == '.gtf' or ext == '.gff':
+    if ext == '.gtf' or ext == '.gff' or ext == '.gz':
         features = HTSeq.GFF_Reader(gtf_file)
     elif ext == '.bed':
         features = HTSeq.BED_Reader(gtf_file)
@@ -389,13 +391,14 @@ def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
         elif aligner == 'subread':
             aligners.subread_align(cfile, ref, samfile)
         #get true read counts for collapsed file
-        countfile = os.path.join(outpath, '%s.csv' %label)
-        readcounts = pd.read_csv(countfile, index_col=0)
+        readcounts = utils.read_collapsed_file(cfile)
         #count features
-        hits = count_features(samfile, features=exons, truecounts=readcounts)
-        hits['label'] = label
-        hits['genome'] = ref
-        result.append(hits)
+        counts = count_features(samfile, features=exons, readcounts=readcounts)
+        counts['label'] = label
+        counts['genome'] = ref
+        total = readcounts.reads.sum()
+        counts['fraction'] = counts.reads/total
+        result.append(counts)
     result = pd.concat(result)
     result = merge_features(result, gtf_file)
     return result
@@ -686,11 +689,11 @@ def compare_expression_profiles(df, by='ref', key='reads', threshold=1, path=Non
         plt.savefig(os.path.join(path, 'expr_scatter.png'))
     return
 
-def get_fractions_mapped(df):
+def get_fractions_mapped(df, by=['ref','label']):
     """Process results of multiple mappings to get fractions
     of each annotations mapped"""
 
-    x = df.groupby(['ref','label']).agg({'fraction':np.sum})
+    x = df.groupby(by).agg({'fraction':np.sum})
     x = x.unstack(level=0)
     x.columns = x.columns.droplevel(0)
     x['unmapped'] = 1-x.sum(1)
