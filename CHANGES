@@ -3,6 +3,16 @@ CHANGES
 =======
 
 ------
+0.2.1
+------
+
+Can do feature counting from command line
+Fixed to allow split counts for multi mappers
+Changes to novel report output
+Removed biopython dep
+Removed some mpl imports
+
+------
 0.2.0
 ------
 

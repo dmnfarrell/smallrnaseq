@@ -160,7 +160,7 @@ class WorkFlow(object):
         print ('mapping miRNAs..')
         res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
                                        species=self.species, ref_genome=ref_name,
-                                       index_path=self.index_path,
+                                       #index_path=self.index_path,
                                        pad5=3, aligner=self.aligner,
                                        samplelabels=self.labels,
                                        params=self.aligner_params)

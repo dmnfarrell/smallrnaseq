@@ -551,25 +551,30 @@ def combine_aligned_reads(path, idx, filenames=None):
 def print_read_stacks(reads, fastafile, outfile=None, name=None, by=None):
     """Print multiple read alignments to file or stdout
        Args:
-        reads: dataframe of read counts with position info
-        fastafile: optional fasta file with references sequences mapped to
+        reads: dataframe of read alignments, use get_aligned_reads(samfile) first
+        to get this data
+        fastafile: fasta file with references sequences that have been aligned to
+       Returns:
+        string of printed read stacks for all aligned reads
     """
 
     if name != None:
         names = [name]
     else:
         names = reads.name.unique()
-    if outfile != None:
-        f = open(outfile, 'w')
 
     refs = fasta_to_dataframe(fastafile)
     s = ''
     for n in names:
         x = reads[reads.name==n]
         refseq = refs.ix[n].sequence
+        s += n+'\n'
         s += print_read_stack(x, refseq, by=by, cutoff=0, label=n)
-    #if f != None:
-    #    f.close()
+
+    if outfile != None:
+        f = open(outfile, 'w')
+        f.write(s)
+        f.close()
     return s
 
 def print_read_stack(reads, refseq=None, cutoff=0, by=None, label=''):

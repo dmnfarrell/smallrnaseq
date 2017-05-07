@@ -147,7 +147,8 @@ def get_top_genes(counts):
                 .sort_values('reads',ascending=False)
     return df
 
-def count_aligned(samfile, collapsed=None, readcounts=None, by='name', duplicates=False):
+def count_aligned(samfile, collapsed=None, readcounts=None, by='name',
+                   count_method='split'):
     """Count short read alignments from a sam or bam file. Designed to be used with
        collapsed reads with original read counts in fasta id.
        Args:
@@ -155,14 +156,20 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name', duplicate
            collapsed: collapsed fasta with original read counts in name
            readcounts: dataframe with original read counts, optional
            by: whether to group the counts by 'name' (default) or 'seq'
+           count_method: method to handle multi mapping reads, default is 'split'
+            which divides counts equally over each alignment
     """
 
     if collapsed != None:
         readcounts = utils.read_collapsed_file(collapsed)
 
     counts = utils.get_aligned_reads(samfile, readcounts=readcounts)
-    if duplicates == False:
-        counts = counts.drop_duplicates('seq')
+    if count_method == 'split':
+        #split multi mapped sequence counts evenly
+        counts['reads'] = counts.groupby(['seq'])['reads'].transform(lambda x: x / len(x))
+
+    #if drop_duplicates == True:
+    #    counts = counts.drop_duplicates('seq')
     total = readcounts.reads.sum()
     counts = counts.groupby('name').agg({'reads':np.sum}).reset_index()
     mapped = float(counts.reads.sum())
@@ -274,7 +281,7 @@ def deseq_normalize(df):
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
              norm_method='library', use_remaining=True, overwrite=False,
-             samplelabels=None, params={}):
+             samplelabels=None, params={}, count_method='split'):
     """Map reads to one or more gene annotations, assumes adapters are removed
     Args:
         files: input fastq read files
@@ -334,7 +341,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             elif aligner == 'subread':
                 aligners.subread_align(query, idx, samfile)
 
-            counts = count_aligned(samfile, readcounts=readcounts)
+            counts = count_aligned(samfile, readcounts=readcounts, count_method=count_method)
             if len(counts) == 0:
                 print ('WARNING: no counts found for %s.' %idx)
                 continue
@@ -599,12 +606,12 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
 
     #generate new mirbase bowtie index
     if aligner == 'bowtie':
-        aligners.BOWTIE_INDEXES = index_path
+        #aligners.BOWTIE_INDEXES = index_path
         if aligners.BOWTIE_PARAMS == None:
             aligners.BOWTIE_PARAMS = '-n 1 -l 20'
     elif aligner == 'subread':
-        aligners.SUBREAD_INDEXES = index_path
-        #SUBREAD_PARAMS = '-m 2 -M 2'
+        #aligners.SUBREAD_INDEXES = index_path
+        aligners.SUBREAD_PARAMS = '-m 2 -M 2'
     midx = build_mirbase_index(species, aligner, pad)
     pidx = build_mirbase_index(species, aligner, kind='precursor')
 
@@ -615,7 +622,6 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
     #now map to the mirbase index for all files
     res, counts = map_rnas(files, indexes, outpath, overwrite=overwrite,
                            aligner=aligner, **kwargs)
-    #output_read_stacks(files, midx)
     return res, counts
 
 def map_isomirs(files, outpath, species, samplelabels=None):
