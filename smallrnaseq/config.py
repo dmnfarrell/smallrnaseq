@@ -31,7 +31,7 @@ except:
 
 path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')
-
+from . import aligners
 
 baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
                     #('adapter',''),
@@ -42,7 +42,7 @@ baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
                     ('aligner','bowtie'),
                     ('mirna',0),('species','hsa'),('pad5',3),('pad3',5)],
                'aligner': [('default_params','-v 1 --best'),
-                    ('mirna_params','-n 1 -l 20')],
+                    ('mirna_params',aligners.BOWTIE_MIRBASE_PARAMS)],
                'novel': [('score_cutoff',.7), ('read_cutoff',100),
                         ('strict',0)],
                'de': [('sample_labels',''),('sep',','),

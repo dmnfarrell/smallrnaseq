@@ -31,6 +31,7 @@ from . import utils
 
 BOWTIE_INDEXES = None
 BOWTIE_PARAMS = '-v 1 --best'
+BOWTIE_MIRBASE_PARAMS = '-v 1 -a --best --strata --norc'
 SUBREAD_INDEXES = None
 SUBREAD_PARAMS = '-m 2 -M 1'
 
