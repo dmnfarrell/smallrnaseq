@@ -120,8 +120,10 @@ def check_options(opts):
     """Check for missing default options in dict. Meant to handle
        incomplete config files"""
 
-    defaults = dict(baseoptions['base'])
-    for i in defaults:
-        if i not in opts:
-            opts[i] = defaults[i]
+    sections = baseoptions.keys()
+    for s in sections:
+        defaults = dict(baseoptions[s])
+        for i in defaults:
+            if i not in opts:
+                opts[i] = defaults[i]
     return opts

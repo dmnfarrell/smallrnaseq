@@ -65,6 +65,8 @@ class WorkFlow(object):
         else:
             self.labels = None
         if self.ref_fasta != None:
+            if not os.path.exists(self.ref_fasta):
+                print ('WARNING ref fasta %s not found' %self.ref_fasta)
             self.ref_name = os.path.splitext(os.path.basename(self.ref_fasta))[0]
         else:
             self.ref_name = None
@@ -125,21 +127,23 @@ class WorkFlow(object):
 
         out = self.output
         libraries = self.libraries
+        if libraries == '' or len(libraries) == 0:
+            print ('no libaries to map to')
+            return
 
-        if libraries != '' and len(libraries)>0:
-            #map to provided libraries
-            print ('mapping to these libraries: %s' %libraries)
-            res, counts = base.map_rnas(self.files, libraries, self.temp_path,
-                                        aligner=self.aligner,
-                                        samplelabels=self.labels,
-                                        params=self.aligner_params)
-            if res is None:
-                print ('empty data returned. did alignments run?')
-                return
-            print ('results saved to rna_counts.csv')
-            res.to_csv( os.path.join(out, 'rna_found.csv'),index=False)
-            counts.to_csv( os.path.join(out, 'rna_counts.csv'), index=False )
-            plot_results(res, out)
+        #map to provided libraries
+        print ('mapping to these libraries: %s' %libraries)
+        res, counts = base.map_rnas(self.files, libraries, self.temp_path,
+                                    aligner=self.aligner,
+                                    samplelabels=self.labels,
+                                    params=self.aligner_params)
+        if res is None:
+            print ('empty data returned. did alignments run?')
+            return
+        print ('results saved to rna_counts.csv')
+        res.to_csv( os.path.join(out, 'rna_found.csv'),index=False)
+        counts.to_csv( os.path.join(out, 'rna_counts.csv'), index=False )
+        plot_results(res, out)
         return
 
     def map_mirnas(self):

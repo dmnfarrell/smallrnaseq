@@ -309,7 +309,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     if len(cfiles)==0:
         print ('WARNING no files to align')
         return
-    print (cfiles)
+    print ('')
     result = []
     #store current aligner parameters as default
     default_params = aligners.get_current_params(aligner)
@@ -502,7 +502,7 @@ def collapse_files(files, outpath, **kwargs):
             if res == False:
                 continue
         else:
-            print ('found collapsed file')
+            print ('found collapsed file %s' %collapsedfile)
         outfiles.append(collapsedfile)
     return outfiles
 
