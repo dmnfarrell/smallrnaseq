@@ -1,0 +1,29 @@
+name: smallrnaseq
+version: '0.2'
+summary: small rna seq analysis in Python
+description: |
+  smallrnaseq is a Python package for processing of small RNA seq data.
+  This is used to elucidate the small RNA contents of deep sequencing reads.
+  For non Python users there is a command line interface that is quite simple to use.
+
+grade: stable # must be 'stable' to release into candidate/stable channels
+confinement: strict # use 'strict' once you have the right plugs and slots
+
+apps:
+  smallrnaseq:
+    command: bin/smallrnaseq
+parts:
+  smallrnaseq:
+    plugin: python
+    python-version: python2
+    source: /home/damien/gitprojects/smallrnaseq/
+    #source: https://github.com/dmnfarrell/smallrnaseq.git
+    #source-type: git
+    #source-tag: v0.2.1
+    python-packages:
+      [Cython]
+    stage-packages:
+      [python2.7-dev,bowtie,ncbi-blast+,samtools,bedtools]
+  vienna-rna:
+    plugin: autotools
+    source: https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_3_x/ViennaRNA-2.3.5.tar.gz
