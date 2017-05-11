@@ -317,7 +317,8 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     for cfile in cfiles:
         rem = None
         filename = os.path.splitext(os.path.basename(cfile))[0]
-        readcounts = utils.read_collapsed_file(cfile)
+        print (cfile)
+        readcounts = utils.read_collapsed_file(str(cfile))
         total = readcounts.reads.sum()
         print (filename)
         for idx in indexes:
@@ -332,7 +333,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
                 query = rem
             else:
                 query = cfile
-            samfile = os.path.join(outpath, '%s_%s.sam' %(filename,idx))
+            samfile = str(os.path.join(outpath, '%s_%s.sam' %(filename,idx)))
             rem = os.path.join(outpath, filename+'_r.fa')
 
             if aligner == 'bowtie':
@@ -448,7 +449,7 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
        Creates a collapsed fasta file of unique reads and a csv
        file with the """
 
-    from itertools import islice
+    #from itertools import islice
     if outfile == None:
         outfile = os.path.splitext(infile)[0]+'_collapsed.fa'
     print ('collapsing reads %s' %infile)
@@ -464,6 +465,7 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     i=0
     total = 0
     f = {}
+    #print (fastfile)
     for s in fastfile:
         seq = s.seq.decode()
         if seq in f:
@@ -496,8 +498,7 @@ def collapse_files(files, outpath, **kwargs):
     for f in files:
         label = os.path.splitext(os.path.basename(f))[0]
         collapsedfile = os.path.join(outpath, label+'.fa')
-        #countsfile = os.path.join(outpath, label+'.csv')
-        if not os.path.exists(collapsedfile):# or not os.path.exists(countsfile):
+        if not os.path.exists(collapsedfile):
             res = collapse_reads(f, outfile=collapsedfile, **kwargs)
             if res == False:
                 continue
@@ -644,16 +645,58 @@ def map_isomirs(files, outpath, species, samplelabels=None):
     counts = pivot_count_data(result, idxcols=['name'])
     return result, counts
 
+def _get_iso_class(x, refs, crefs):
+    """Get isomir class using sRNAbench type scheme"""
+
+    name = x['name']
+    ref = refs.ix[name]
+    cseq = crefs.ix[name].sequence
+    cstart = utils.find_subseq(ref.sequence, cseq)
+    cend = cstart+len(cseq)
+    start = utils.find_subseq(ref.sequence, x.seq)
+    end = start+len(x.seq)
+    xs = int(start-cstart)
+    ys = int(end-cend)
+    nuctempl = ref.sequence[end-ys:end]
+    nucend = x.seq[-ys:]
+    subclass=''
+    if start == cstart:
+        if end == cend:
+            isoclass = 'exact'
+            if x.seq == cseq:
+                subclass = 'exact'
+            else:
+                subclass = 'exactnucvar'
+        elif end>cend and nucend != nuctempl:
+            isoclass = 'nta'
+            subclass = 'nta#%s' %nucend
+        else:
+            isoclass = 'lv'
+            subclass = 'lv3p|%s' %ys
+    elif end == cend:
+        isoclass = 'lv'
+        subclass = 'lv5p|%s' %xs
+    else:
+        #print start, cstart
+        #print x.seq, cseq, ref.sequence, name
+        isoclass = 'mv'
+        subclass = 'lv5p|%s|lv3p|%s' %(xs,ys)
+
+    return pd.Series([isoclass,subclass],index=['isoclass','subclass'])
+
 def count_isomirs(samfile, collapsed, species):
     """Count miRNA isomirs using aligned reads from a samfile and actual
        read counts from a csv file"""
 
-    print (samfile, collapsed)
+    #get canonical mirna mature sequences from mirbase
     canonical = get_mirbase_sequences(species, dna=True).set_index('name')
     #padded sequences so we can see where each read landed relative to canonical
     mirs = get_mirbase_sequences(species, pad5=6, pad3=6, dna=True).set_index('name')
     reads = utils.get_aligned_reads(samfile, collapsed)
     reads = reads.drop(['read_id','start','end'],1)
+    x = reads.apply(lambda x: _get_iso_class(x, mirs, canonical),1)
+    reads = reads.join(x)
+    reads['name'] = reads.name + '_' + reads.subclass
     return reads
 
 def output_read_stacks(files, ref_fasta, outfile='read_stacks.txt'):

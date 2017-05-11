@@ -49,6 +49,7 @@ class WorkFlow(object):
         else:
             print ('you should provide at least one file or folder')
             return False
+        self.files = [str(f) for f in self.files]
         aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = self.index_path
         if self.default_params != '':
             aligners.set_params(self.aligner, self.default_params)
@@ -128,7 +129,7 @@ class WorkFlow(object):
         out = self.output
         libraries = self.libraries
         if libraries == '' or len(libraries) == 0:
-            print ('no libaries to map to')
+            print ('no libraries to map to')
             return
 
         #map to provided libraries

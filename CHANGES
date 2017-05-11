@@ -3,6 +3,13 @@ CHANGES
 =======
 
 ------
+0.2.2
+------
+
+Fixed missing isomir code
+Fix for filename types with HTSeq in python2
+
+------
 0.2.1
 ------
 

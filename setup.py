@@ -16,7 +16,7 @@ if major == '2':
 
 setup(
     name = 'smallrnaseq',
-    version = '0.2.1',
+    version = '0.2.2',
     description = 'Python package for micro rna-seq routines ',
     url='https://github.com/dmnfarrell/smallrnaseq',
     license='GPL v3',
