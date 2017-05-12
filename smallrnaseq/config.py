@@ -107,6 +107,10 @@ def get_options(cp):
                 options[o] = cp.getboolean(section, o)
             except:
                 pass
+            try:
+                options[o] = cp.getint(section, o)
+            except:
+                pass
     return options
 
 def print_options(options):

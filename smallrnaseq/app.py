@@ -165,8 +165,7 @@ class WorkFlow(object):
         print ('mapping miRNAs..')
         res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
                                        species=self.species, ref_genome=ref_name,
-                                       #index_path=self.index_path,
-                                       pad5=3, aligner=self.aligner,
+                                       pad5=self.pad5, pad3=self.pad3, aligner=self.aligner,
                                        samplelabels=self.labels,
                                        params=self.aligner_params)
 
@@ -356,6 +355,25 @@ def print_help():
     print ('for further information')
     return
 
+def run_test():
+    """Run mirna test with test files"""
+
+    print ('running mirna counting test')
+    indpath = 'testing/indexes'
+    aligners.BOWTIE_INDEXES = indpath
+    if not os.path.exists(indpath):
+        os.makedirs(indpath)
+    lib1 = os.path.join(base.datadir, 'bosTau8-tRNAs.fa')
+    aligners.build_bowtie_index(lib1, path=indpath)
+    f1 = os.path.join(base.datadir, 'bovine_plasma_sample.fastq')
+    f2 = os.path.join(base.datadir, 'bovine_serum_sample.fastq')
+    path = os.path.join('testing', 'ncrna_map')
+    res,counts = base.map_mirbase(files=[f1,f2], overwrite=True, outpath=path,
+                                  #indexes=['bosTau8-tRNA'],
+                                  aligner='bowtie', species='bta')
+    print (counts[:10])
+    return
+
 def main():
     """Run the application from outside the module - used for
        deploying as frozen app"""
@@ -373,11 +391,12 @@ def main():
                         help="input file", metavar="FILE")
     parser.add_option("-l", "--collapse", dest="collapse", action="store_true",
                         default=False, help="collapse reads in input file")
-    parser.add_option("-t", "--trim", dest="trim",  type='string',
+    parser.add_option("-a", "--trim", dest="trim",  type='string',
                         help="trim given adapter in input file")
     parser.add_option("-d", "--de", dest="de",  action="store_true",
                         default=False, help="run DE analysis")
-
+    parser.add_option("-t", "--tests", dest="tests",  action="store_true",
+                        default=False, help="run tests")
     opts, remainder = parser.parse_args()
 
     if opts.infile != None:
@@ -406,6 +425,8 @@ def main():
             diff_expression(options)
         else:
             print_help()
+    elif opts.tests == True:
+        run_test()
     else:
         if opts.config != None:
             conffile = opts.config

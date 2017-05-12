@@ -595,9 +595,9 @@ def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5,
     return idxname
 
 def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
-                index_path='indexes', ref_genome='',
+                ref_genome='',
                 overwrite=False, aligner='bowtie',
-                pad5=3, pad=5, **kwargs):
+                pad5=3, pad3=5, **kwargs):
     """Map multiple fastq files to mirbase mature sequences and get
        count results into one file. Used for counting of known miRNAs.
        Args:
@@ -607,17 +607,19 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
 
     if not os.path.exists(outpath):
         os.mkdir(outpath)
-
+    index_path = aligners.BOWTIE_INDEXES
+    if index_path == None:
+        index_path = 'indexes'
     #generate new mirbase bowtie index
     if aligner == 'bowtie':
-        #aligners.BOWTIE_INDEXES = index_path
         if aligners.BOWTIE_PARAMS == None:
             aligners.BOWTIE_PARAMS = '-n 1 -l 20'
     elif aligner == 'subread':
         #aligners.SUBREAD_INDEXES = index_path
         aligners.SUBREAD_PARAMS = '-m 2 -M 2'
-    midx = build_mirbase_index(species, aligner, pad)
-    pidx = build_mirbase_index(species, aligner, kind='precursor')
+
+    midx = build_mirbase_index(species, aligner, pad5, pad3, index_path=index_path)
+    pidx = build_mirbase_index(species, aligner, kind='precursor', index_path=index_path)
 
     indexes.extend([midx, pidx])
     #add the reference genome to be aligned last if provided
