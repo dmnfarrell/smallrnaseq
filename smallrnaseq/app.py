@@ -174,7 +174,8 @@ class WorkFlow(object):
         matcounts = counts[counts.ref==mat_name]
         res.to_csv( os.path.join(out, 'results.csv'),index=False )
         res = res[res.ref!=ref_name]
-        matcounts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False )
+        matcounts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False,
+                            float_format='%.1f' )
         counts.to_csv( os.path.join(out, 'all_counts.csv'), index=False )
         plot_results(res, out)
 
@@ -183,7 +184,7 @@ class WorkFlow(object):
         print ('counting isomirs..')
         iso, isocounts = base.map_isomirs(self.files, temp, self.species,
                                           samplelabels=self.labels)
-        isocounts.to_csv( os.path.join(out, 'isomir_counts.csv'), index=False )
+        isocounts.to_csv( os.path.join(out, 'isomir_counts.csv'), index=False, float_format='%.1f')
 
         #novel prediction
         if self.ref_fasta == '' or not os.path.exists(self.ref_fasta):
@@ -279,6 +280,10 @@ def plot_results(res, path):
     fig = plotting.plot_read_count_dists(counts)
     fig.savefig(os.path.join(path,'top_mapped.png'))
     scols,ncols = base.get_column_names(counts)
+    for l,df in counts.groupby('ref'):
+        if 'mirbase' in l:
+            fig = plotting.plot_read_count_dists(df)
+            fig.savefig(os.path.join(path,'top_%s.png' %l))
     #if len(scols)>1:
     #    fig = plotting.expression_clustermap(counts)
     #    fig.savefig(os.path.join(path,'expr_map.png'))

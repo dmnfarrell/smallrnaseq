@@ -16,14 +16,14 @@ parts:
   smallrnaseq:
     plugin: python
     python-version: python2
-    source: /home/damien/gitprojects/smallrnaseq/
+    source: /home/farrell/gitprojects/smallrnaseq/
     #source: https://github.com/dmnfarrell/smallrnaseq.git
     #source-type: git
     #source-tag: v0.2.1
-    python-packages:
-      [Cython]
+    python-packages:      
+      [Cython,scipy,matplotlib]
     stage-packages:
-      [python2.7-dev,bowtie,ncbi-blast+,samtools,bedtools]
+      [python-numpy,swig3.0,bowtie,ncbi-blast+,samtools,bedtools]
   vienna-rna:
     plugin: autotools
     source: https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_3_x/ViennaRNA-2.3.5.tar.gz

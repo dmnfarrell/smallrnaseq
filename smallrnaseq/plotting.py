@@ -142,11 +142,11 @@ def plot_sample_counts(counts):
     plt.tight_layout()
     return fig
 
-def plot_read_count_dists(counts, h=8):
+def plot_read_count_dists(counts, h=8, n=50):
     """Boxplots of read count distributions """
 
     scols,ncols = base.get_column_names(counts)
-    df = counts.sort_values(by='mean_norm',ascending=False)[:80]
+    df = counts.sort_values(by='mean_norm',ascending=False)[:n]
     df = df.set_index('name')[ncols]
     t = df.T
     w = int(h*(len(df)/60.0))+4

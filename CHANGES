@@ -8,6 +8,7 @@ CHANGES
 
 Fixed missing isomir code
 Fix for filename types with HTSeq in python2
+Some changes to output for mirna counting
 
 ------
 0.2.1

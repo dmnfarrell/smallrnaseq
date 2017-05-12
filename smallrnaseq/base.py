@@ -179,7 +179,7 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name',
         print ('no counts found')
     return counts
 
-def pivot_count_data(counts, idxcols='name', norm_method='library'):
+def pivot_count_data(counts, idxcols='name', norm_method='library', sortby=None):
     """Pivot read counts created by count_aligned over multiple samples
        and get normalised read counts.
        Args:
@@ -205,6 +205,8 @@ def pivot_count_data(counts, idxcols='name', norm_method='library'):
     x['total_reads'] = x[scols].sum(1)
     x['mean_norm'] = x[ncols].apply(lambda r: r[r.nonzero()[0]].mean(),1)
     x = x.reset_index()
+    if sortby != None:
+        x = x.sort_values(by=sortby, ascending=False)
     return x
 
 def normalize_samples(counts, norm_method='library', rename=True):
@@ -359,7 +361,8 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     if len(result) == 0:
         return
     result = pd.concat(result)
-    counts = pivot_count_data(result, idxcols=['name','ref'], norm_method=norm_method)
+    counts = pivot_count_data(result, idxcols=['name','ref'], norm_method=norm_method,
+                              sortby='total_reads')
     print ('done')
     return result, counts
 
@@ -642,7 +645,7 @@ def map_isomirs(files, outpath, species, samplelabels=None):
             c['label'] = filename
         result.append(c)
     result = pd.concat(result)
-    counts = pivot_count_data(result, idxcols=['name'])
+    counts = pivot_count_data(result, idxcols=['name'], sortby='total_reads')
     return result, counts
 
 def _get_iso_class(x, refs, crefs):
