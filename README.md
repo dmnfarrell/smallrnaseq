@@ -1,10 +1,10 @@
-<img align="right" src=https://raw.githubusercontent.com/dmnfarrell/smallrnaseq/master/img/logo.png width=150px>
-
 # smallrnaseq -  Python package for analysis of small RNA sequencing data
+
+<img align="right" src=https://raw.githubusercontent.com/dmnfarrell/smallrnaseq/master/img/logo.png width=150px>
 
 #### Background
 
-This package is a collection of Python modules designed for general analysis of small RNA-seq data. The package integrates some of the standard approaches for convenient pre-processing, quantification and analysis of small RNAs. It includes a [command line interface](https://github.com/dmnfarrell/smallrnaseq/wiki/Command-line-interface) used in conjunction with a configuraiton file. Hence knowledge of Python is not a necessity for using this software. The aim is to provide convenience but with enough configuration to allow some flexibility
+This package integrates some of the standard approaches for convenient pre-processing, quantification and analysis of small RNAs. It includes a [command line interface](https://github.com/dmnfarrell/smallrnaseq/wiki/Command-line-interface) used in conjunction with a configuration file. Hence knowledge of Python is not a necessity for using this software. The aim is to provide convenience but with enough configuration to allow some flexibility. Supported on linux and OSX.
 
 Functionality includes:
 
@@ -26,7 +26,7 @@ There is a video tutorial at https://youtu.be/m24cuLyTqg0
 
 pip install smallrnaseq
 
-See the [installation wiki page](https://github.com/dmnfarrell/smallrnaseq/wiki/) for more details 
+See the [installation wiki page](https://github.com/dmnfarrell/smallrnaseq/wiki/Installation) for more details 
 
 ##### Python Dependencies
 
