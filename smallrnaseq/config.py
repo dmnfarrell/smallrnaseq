@@ -69,7 +69,7 @@ def create_config_parser_from_dict(data, sections, **kwargs):
             continue
         for i in data[s]:
             name,val = i
-            cp.set(s, name, val)
+            cp.set(s, name, str(val))
 
     #use kwargs to create specific settings in the appropriate section
     for s in cp.sections():

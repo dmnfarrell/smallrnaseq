@@ -482,6 +482,7 @@ def read_collapsed_file(collapsed):
     """Read seqs/counts from a collapsed file using values in the
        fasta id to get original counts"""
 
+    collapsed = str(collapsed)
     #original read counts are encoded in fasta names
     df = fasta_to_dataframe(collapsed).reset_index()
     #original count stored in id as second value
@@ -496,7 +497,7 @@ def read_collapsed_file(collapsed):
 def get_aligned_reads(samfile, collapsed=None, readcounts=None):
     """Get all aligned reads from a sam file into a pandas dataframe"""
 
-    sam = HTSeq.SAM_Reader(samfile)
+    sam = HTSeq.SAM_Reader(str(samfile))
     f=[]
     for a in sam:
         if a.aligned == True:
