@@ -78,6 +78,7 @@ class WorkFlow(object):
         return True
 
     def check_index(self, name):
+        """check if an index present"""
 
         fname = os.path.join(self.index_path, name+'*.ebwt')
         print (fname)
@@ -111,6 +112,7 @@ class WorkFlow(object):
         return
 
     def get_aligner_params(self):
+        """Get aligner parameters from current options"""
 
         ap = self.aligner_params = {}
         for i in self.libraries:
@@ -358,7 +360,7 @@ def print_help():
 def run_test():
     """Run mirna test with test files"""
 
-    print ('running mirna counting test')
+    print ('running miRNA counting test')
     indpath = 'testing/indexes'
     aligners.BOWTIE_INDEXES = indpath
     if not os.path.exists(indpath):
