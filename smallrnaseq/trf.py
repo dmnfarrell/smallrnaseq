@@ -81,8 +81,8 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
         seq = parent.sequence[start-1:end]
         l = len(seq)
         reads = df[(df['start']>=start-1) & (df.end<=end+1)].reads.sum()
-        #relative abundance
-        #relabun = df.reads.sum()/total * cov.max()
+        #read coverage
+        readcov = round(reads/float(df.reads.sum()),2)
 
         if l<41 and l>=28:
             frtype = 'tRH'
@@ -104,15 +104,15 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
             else:
                 region = 'i'
 
-        f.append( [name, frtype, region, start, end, seq, reads] )
+        f.append( [name, frtype, region, start, end, seq, reads, readcov] )
 
-    f = pd.DataFrame(f, columns=['family','frtype','region','start','end','seq','reads'])
+    f = pd.DataFrame(f, columns=['family','frtype','region','start','end','seq','reads','coverage'])
     f['anticodon'] = f.apply(lambda x: x.family.split('-')[0], 1)
     f['aa'] = f.anticodon.str[:3]
     f['length'] = f.seq.str.len()
     f['id'] = f.apply(lambda x: x.family+'-'+x.frtype+'-'+x.region, 1)
     f['abundance'] = (f.reads/f.reads.sum()*100).round(4)
-    f = f.sort_values('reads',ascending=False)
+    f = f.sort_values('reads',ascending=False).reset_index()
     s = f.groupby('seq').first()
 
     print ('%s primary tdrs, %s unique sequences' %(len(f), len(s)))
