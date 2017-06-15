@@ -61,6 +61,10 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
     if len(a) == 0:
         return
 
+    def overlap(start, end, x1, x2):
+        if ((start<x1) & (end>x1)) or ((start>x1) & (start<x2)):
+            return True
+
     def pos_coverage(r, p):
         x = [r.reads if (i>=r.start and i<=r.end) else 0 for i in p]
         return pd.Series(x,index=p)
@@ -88,21 +92,21 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
             frtype = 'tRH'
         elif l>14 and l<28:
             frtype = 'tRF'
-
+        region = ''
         if start == 1:
             region = '5'
         elif tlen-end < 6:
             region = '3'
         else:
-            region = ''
-            if (start>13 and start<22) or (end>13 and end<22):
+            if overlap(start, end, 13,22) == True:
                 region = 'D'
-            if (start>31 and start<39) or (end>31 and end<39):
+            if overlap(start, end, 31,39) == True:
                 region += 'A'
-            if tlen-start<23 or tlen-end>15:
+            t1=cov.index[-23]; t2=cov.index[-15]
+            if overlap(start, end, t1,t2) == True:
                 region += 'T'
-            else:
-                region = 'i'
+        if region == '':
+            continue
 
         f.append( [name, frtype, region, start, end, seq, reads, readcov] )
 
