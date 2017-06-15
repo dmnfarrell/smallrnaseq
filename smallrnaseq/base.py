@@ -647,7 +647,7 @@ def map_isomirs(files, outpath, species, samplelabels=None):
             c['label'] = filename
         result.append(c)
     result = pd.concat(result)
-    counts = pivot_count_data(result, idxcols=['name'], sortby='total_reads')
+    counts = pivot_count_data(result, idxcols=['name','seq'], sortby='total_reads')
     return result, counts
 
 def _get_iso_class(x, refs, crefs):

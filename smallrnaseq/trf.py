@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    smallrnaseq trna fragments analysis
+    smallrnaseq tRNA fragments analysis
     Created June 2017
     Copyright (C) Damien Farrell
 
@@ -112,7 +112,7 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
     f['length'] = f.seq.str.len()
     f['id'] = f.apply(lambda x: x.family+'-'+x.frtype+'-'+x.region, 1)
     f['abundance'] = (f.reads/f.reads.sum()*100).round(4)
-    f = f.sort_values('reads',ascending=False).reset_index()
+    f = f.sort_values('reads',ascending=False)#.reset_index()
     s = f.groupby('seq').first()
 
     print ('%s primary tdrs, %s unique sequences' %(len(f), len(s)))
