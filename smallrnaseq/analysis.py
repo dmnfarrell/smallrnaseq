@@ -25,6 +25,8 @@ import sys, os, string, types, re, csv
 import shutil, glob, collections
 import itertools
 import subprocess
+import pylab as plt
+import seaborn as sns
 import numpy as np
 import pandas as pd
 try:

@@ -56,6 +56,7 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
     #print samfile, collapsed
     a = utils.get_aligned_reads(samfile, collapsed)
     a = a[a.reads>threshold]
+    a = a[a.length > 15]
     #print a[:10]
     print ('%s total sequences with %s counts' %(len(a),a.reads.sum()))
     if len(a) == 0:
@@ -116,6 +117,8 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
     f['length'] = f.seq.str.len()
     f['id'] = f.apply(lambda x: x.family+'-'+x.frtype+'-'+x.region, 1)
     f['abundance'] = (f.reads/f.reads.sum()*100).round(4)
+
+    f = f[f.length>15]
     f = f.sort_values('reads',ascending=False)#.reset_index()
     s = f.groupby('seq').first()
 
