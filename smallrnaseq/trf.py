@@ -56,8 +56,7 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
     #print samfile, collapsed
     a = utils.get_aligned_reads(samfile, collapsed)
     a = a[a.reads>threshold]
-    a = a[a.length > 15]
-    #print a[:10]
+    total = float(a.drop_duplicates('seq').reads.sum())
     print ('%s total sequences with %s counts' %(len(a),a.reads.sum()))
     if len(a) == 0:
         return
@@ -70,29 +69,31 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
         x = [r.reads if (i>=r.start and i<=r.end) else 0 for i in p]
         return pd.Series(x,index=p)
 
-    total = float(a.reads.sum())
     #find primary trna by getting coverage over each trna, so group by gene
-
     grps = a.groupby('name')
     f = []
-    for name,df in list(grps)[:250]:
+    for name,df in grps:
         parent = refs.ix[name]
         tlen = len(parent.sequence)
         p = range(1,tlen)
         m = df.apply( lambda x: pos_coverage(x,p), 1 )
         cov = m.sum()/df.reads.sum()
         pr = cov[cov>=.5]
+        if len(pr) == 0:
+            continue
         start, end = pr.index[0],pr.index[-1]
         seq = parent.sequence[start-1:end]
         l = len(seq)
         reads = df[(df['start']>=start-1) & (df.end<=end+1)].reads.sum()
-        #read coverage
+        #relative abundance
         readcov = round(reads/float(df.reads.sum()),2)
 
         if l<41 and l>=28:
             frtype = 'tRH'
         elif l>14 and l<28:
             frtype = 'tRF'
+        else:
+            continue
         region = ''
         if start == 1:
             region = '5'
@@ -108,7 +109,6 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
                 region += 'T'
         if region == '':
             continue
-
         f.append( [name, frtype, region, start, end, seq, reads, readcov] )
 
     f = pd.DataFrame(f, columns=['family','frtype','region','start','end','seq','reads','coverage'])
@@ -116,10 +116,10 @@ def tdr_mapper(samfile, collapsed, ref_trnas, threshold=20):
     f['aa'] = f.anticodon.str[:3]
     f['length'] = f.seq.str.len()
     f['id'] = f.apply(lambda x: x.family+'-'+x.frtype+'-'+x.region, 1)
-    f['abundance'] = (f.reads/f.reads.sum()*100).round(4)
-
+    f['abundance'] = (f.reads/total*100).round(4)
+    f = f[f.coverage>=.6]
     f = f[f.length>15]
-    f = f.sort_values('reads',ascending=False)#.reset_index()
+    f = f.sort_values('reads',ascending=False)#.set_index('id')
     s = f.groupby('seq').first()
 
     print ('%s primary tdrs, %s unique sequences' %(len(f), len(s)))
