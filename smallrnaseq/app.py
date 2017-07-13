@@ -319,6 +319,7 @@ def diff_expression(opts):
     path = opts['output']
     labelsfile = opts['sample_labels']
     countsfile = opts['count_file']
+    cutoff = float(opts['cutoff'])
     for f in [labelsfile,countsfile]:
         if not os.path.exists(f) or f == '':
             print ('no such file %s!' %f)
@@ -331,14 +332,16 @@ def diff_expression(opts):
     samplecol = opts['sample_col']
     factorcol = opts['factors_col']
     conds = opts['conditions'].split(',')
-    print ('conditions:', conds)
+    print ('conditions:', ' vs '.join(conds))
     #get the samples needed for the required conditions we want to compare
     data = de.get_factor_samples(counts,
                                  labels, [(factorcol,conds[0]),(factorcol,conds[1])],
                                  samplecol=samplecol, index='name')
     #print (data[:4])
-    res = de.run_edgeR(data=data, cutoff=1.5)
+    res = de.run_edgeR(data=data, cutoff=cutoff)
     res.to_csv(os.path.join(path,'de_genes.csv'))
+    print (os.path.join(path,'de_genes.csv'))
+    print ('genes above log-fold cutoff:')
     print (res)
     names = res.name
 
@@ -412,16 +415,16 @@ def main():
     elif opts.build != None:
         build_indexes(opts.build, 'indexes')
     elif opts.config != None and os.path.exists(opts.config):
-
         cp = config.parse_config(opts.config)
         options = config.get_options(cp)
         options = config.check_options(options)
-        print ('using the following options:')
-        print ('----------------------------')
-        config.print_options(options)
-        W = WorkFlow(options)
-        st = W.setup()
+
         if opts.run == True:
+            print ('using the following options:')
+            print ('----------------------------')
+            config.print_options(options)
+            W = WorkFlow(options)
+            st = W.setup()
             if st == True:
                 W.run()
             else:

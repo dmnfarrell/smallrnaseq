@@ -82,6 +82,7 @@ def get_factor_samples(df, labels, factors, filters=[], samplecol='filename', in
             #no data found warning
             print ('WARNING: no data for %s' %f)
             continue
+        print()
         x.columns = ['s'+str(cols.index(i))+'_'+str(l) for i in x.columns]
         l+=1
         if res is None:

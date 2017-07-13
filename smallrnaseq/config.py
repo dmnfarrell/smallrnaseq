@@ -48,7 +48,7 @@ baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
                         ('strict',0)],
                'de': [('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
-                    ('conditions','')]
+                    ('conditions',''),('cutoff',1.5)]
                     }
 
 def write_default_config(conffile='default.conf', defaults={}):
