@@ -42,7 +42,8 @@ def get_columns_by_label(labels, samplecol, filters=[], querystr=None):
     if querystr == None:
         q=[]
         for f in filters:
-            if type(f[1]) is str:
+            print (f)
+            if type(f[1]) in [str,unicode]:
                 s = "%s=='%s'" %(f[0],f[1])
             else:
                 s = "%s==%s" %(f[0],f[1])
@@ -73,12 +74,13 @@ def get_factor_samples(df, labels, factors, filters=[], samplecol='filename', in
     for f in factors:
         f = filters + [f]
         cols = get_columns_by_label(labels, samplecol, f)
-        #print (cols)
+        print (cols)
         cols = list(set(cols) & set(df.columns))
         x = df[cols]
         print ('%s samples, %s genes' %(len(cols),len(x)))
         if len(x.columns)==0:
-            print ('no data for %s' %f)
+            #no data found warning
+            print ('WARNING: no data for %s' %f)
             continue
         x.columns = ['s'+str(cols.index(i))+'_'+str(l) for i in x.columns]
         l+=1
@@ -141,10 +143,10 @@ def rpyEdgeR(data, groups, sizes, genes):
     pvals = list(tags.r['adj.P.Val'][0])
     return
 
-def melt_samples(df, labels, names, samplecol='filename'):
+def melt_samples(df, labels, names, samplecol='filename', index='name'):
     """Melt sample data by factor labels so we can plot with seaborn"""
 
-    df=df.set_index('name')
+    df=df.set_index(index)
     scols,ncols = base.get_column_names(df)
     df = df.ix[names][ncols]
     t=df.T

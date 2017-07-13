@@ -89,7 +89,7 @@ class WorkFlow(object):
             return True
 
     def run(self):
-        """Execute the workflow"""
+        """Execute the predefined workflows"""
 
         if self.mirna == 1:
             self.map_mirnas()
@@ -314,6 +314,8 @@ def build_indexes(filename, path):
 def diff_expression(opts):
     """Diff expression workflow"""
 
+    print()
+    print ('running differential expression')
     path = opts['output']
     labelsfile = opts['sample_labels']
     countsfile = opts['count_file']
@@ -329,7 +331,7 @@ def diff_expression(opts):
     samplecol = opts['sample_col']
     factorcol = opts['factors_col']
     conds = opts['conditions'].split(',')
-    print (conds)
+    print ('conditions:', conds)
     #get the samples needed for the required conditions we want to compare
     data = de.get_factor_samples(counts,
                                  labels, [(factorcol,conds[0]),(factorcol,conds[1])],
@@ -343,7 +345,8 @@ def diff_expression(opts):
     #plot these genes with seaborn
     xorder=conds
     m = de.melt_samples(counts, labels, names, samplecol=samplecol)
-    g = base.sns.factorplot('age_s','read count', data=m, col='name', kind="point",
+    import seaborn as sns
+    g = sns.factorplot('age_s','read count', data=m, col='name', kind="point",
                             s=10, lw=1, col_wrap=4, size=4, aspect=1.2,
                             legend_out=True,sharey=False, order=xorder)
     g.savefig(os.path.join(path,'de_genes.png'))
