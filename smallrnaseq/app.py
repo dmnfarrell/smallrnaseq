@@ -343,14 +343,18 @@ def diff_expression(opts):
     print (os.path.join(path,'de_genes.csv'))
     print ('genes above log-fold cutoff:')
     print (res)
-    names = res.name
-
-    #plot these genes with seaborn
+    #limit number of plots
+    if len(res)>40:
+        names = res[(res.logFC>1.5) | (res.logFC<-1.5)].name[:50]
+    else:
+        names = res.name
+    #plot these genes with seaborn factor plot
     xorder=conds
     m = de.melt_samples(counts, labels, names, samplecol=samplecol)
     import seaborn as sns
-    g = sns.factorplot('age_s','read count', data=m, col='name', kind="point",
-                            s=10, lw=1, col_wrap=4, size=4, aspect=1.2,
+    kind = opts['de_plot']
+    g = sns.factorplot(factorcol,'read count', data=m, col='name', kind=kind,
+                            col_wrap=5, size=3, aspect=1.2,
                             legend_out=True,sharey=False, order=xorder)
     g.savefig(os.path.join(path,'de_genes.png'))
     return

@@ -46,9 +46,10 @@ baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
                     ('mirna_params',aligners.BOWTIE_MIRBASE_PARAMS)],
                'novel': [('score_cutoff',.7), ('read_cutoff',100),
                         ('strict',0)],
-               'de': [('sample_labels',''),('sep',','),
+               'de': [('count_file',''),('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
-                    ('conditions',''),('cutoff',1.5)]
+                    ('conditions',''),('cutoff',1.5),
+                    ('de_plot','point')]
                     }
 
 def write_default_config(conffile='default.conf', defaults={}):
