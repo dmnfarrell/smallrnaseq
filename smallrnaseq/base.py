@@ -205,6 +205,7 @@ def pivot_count_data(counts, idxcols='name', norm_method='library', sortby=None)
     x['total_reads'] = x[scols].sum(1)
     x['mean_norm'] = x[ncols].apply(lambda r: r[r.nonzero()[0]].mean(),1)
     x = x.reset_index()
+    #print (x[50:])
     if sortby != None:
         x = x.sort_values(by=sortby, ascending=False)
     return x

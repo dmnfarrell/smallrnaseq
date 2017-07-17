@@ -177,7 +177,7 @@ class WorkFlow(object):
         res = res[res.ref!=ref_name]
         matcounts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False,
                             float_format='%.1f' )
-        counts.to_csv( os.path.join(out, 'all_counts.csv'), index=False )
+        counts.to_csv( os.path.join(out, 'all_counts.csv'), index=False, float_format='%.1f')
         plot_results(res, out)
 
         #isomir counting
@@ -321,7 +321,9 @@ def diff_expression(opts):
     countsfile = opts['count_file']
     cutoff = float(opts['cutoff'])
     for f in [labelsfile,countsfile]:
-        if not os.path.exists(f) or f == '':
+        if f.strip() == '':
+            print ('you need to provide a counts_file and sample_labels')
+        if not os.path.exists(f):
             print ('no such file %s!' %f)
             print_help()
             return
@@ -340,8 +342,9 @@ def diff_expression(opts):
     #print (data[:4])
     res = de.run_edgeR(data=data, cutoff=cutoff)
     res.to_csv(os.path.join(path,'de_genes.csv'))
-    print (os.path.join(path,'de_genes.csv'))
+    #print (os.path.join(path,'de_genes.csv'))
     print ('genes above log-fold cutoff:')
+    print ('----------------------------')
     print (res)
     #limit number of plots
     if len(res)>40:
@@ -356,7 +359,9 @@ def diff_expression(opts):
     g = sns.factorplot(factorcol,'read count', data=m, col='name', kind=kind,
                             col_wrap=5, size=3, aspect=1.2,
                             legend_out=True,sharey=False, order=xorder)
-    g.savefig(os.path.join(path,'de_genes.png'))
+    deplot = os.path.join(path,'de_genes.png')
+    g.savefig(deplot)
+    print ('wrote plot to %s' %deplot)
     return
 
 def print_help():

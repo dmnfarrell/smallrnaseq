@@ -101,12 +101,15 @@ def run_edgeR(countsfile=None, data=None, cutoff=1.5):
     path = os.path.dirname(os.path.abspath(__file__)) #path to module
     descript = os.path.join(path, 'DEanalysis.R')
     cmd = 'Rscript %s %s' %(descript, countsfile)
+    print (cmd)
     result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     print (result)
     #read result back in
-    de = pd.read_csv('de_output.csv')
+    de = pd.read_csv('edger_output.csv')
     de.rename(columns={'Unnamed: 0':'name'}, inplace=True)
     de = de[(de.FDR<0.05) & ((de.logFC>cutoff) | (de.logFC<-cutoff))]
+
+    limma = pd.read_csv('limma_output.csv')
     return de
 
 def runEdgeRGLM(countsfile, cutoff=1.5):
