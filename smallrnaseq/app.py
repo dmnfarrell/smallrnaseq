@@ -311,6 +311,9 @@ def build_indexes(filename, path):
     #aligners.build_subread_index(filename, path)
     return
 
+def de_help_link():
+    print ('https://github.com/dmnfarrell/smallrnaseq/wiki/Command-line-interface#differential-expression')
+
 def diff_expression(opts):
     """Diff expression workflow"""
 
@@ -327,13 +330,27 @@ def diff_expression(opts):
             print ('no such file %s!' %f)
             print_help()
             return
-    labels = pd.read_csv(labelsfile, sep=opts['sep'])
+
+    sep = opts['sep']
+    if sep == 'tab':
+        sep = '\t'
+    labels = pd.read_csv(labelsfile, sep=sep)
     counts = pd.read_csv(countsfile)
 
     #define sample/factor cols and conditions for de
     samplecol = opts['sample_col']
     factorcol = opts['factors_col']
     conds = opts['conditions'].split(',')
+    #tell user about possible errors
+    if len(conds) < 2 or conds[0] == '':
+        print ('you need to provide 2 conditions to compare')
+        de_help_link()
+        return
+    elif samplecol == '' or factorcol == '':
+        print ('provide names of factor and sample names columns')
+        de_help_link()
+        return
+
     print ('conditions:', ' vs '.join(conds))
     #get the samples needed for the required conditions we want to compare
     data = de.get_factor_samples(counts,
@@ -341,16 +358,23 @@ def diff_expression(opts):
                                  samplecol=samplecol, index='name')
     #print (data[:4])
     res = de.run_edgeR(data=data, cutoff=cutoff)
-    res.to_csv(os.path.join(path,'de_genes.csv'))
-    #print (os.path.join(path,'de_genes.csv'))
-    print ('genes above log-fold cutoff:')
+    res.to_csv(os.path.join(path,'de_genes_edger.csv'))
+    print ('genes above log-fold cutoff using edgeR:')
     print ('----------------------------')
     print (res)
+    print ()
+    res2 = de.run_limma(data=data, cutoff=cutoff)
+    res2.to_csv(os.path.join(path,'de_genes_limma.csv'))
+    print ('genes above log-fold cutoff using limma:')
+    print ('----------------------------')
+    print (res2)
+
+    both = res[res.name.isin(res2.name)]
     #limit number of plots
-    if len(res)>40:
-        names = res[(res.logFC>1.5) | (res.logFC<-1.5)].name[:50]
+    if len(both)>40:
+        names = both[(both.logFC>1.5) | (both.logFC<-1.5)].name[:50]
     else:
-        names = res.name
+        names = both.name
     #plot these genes with seaborn factor plot
     xorder=conds
     m = de.melt_samples(counts, labels, names, samplecol=samplecol)

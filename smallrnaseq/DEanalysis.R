@@ -6,7 +6,7 @@ library(edgeR)
 
 data <- as.matrix(read.csv(args[1],row.names=1))
 data[is.na(data)] <- 0
-#head(data,4)
+#head(data,5)
 #lirary size for normalisation
 libSizes <- as.vector(colSums(data))
 #libSizes
@@ -20,10 +20,10 @@ g <- (sapply(split,"[", 2))
 
 dge <- DGEList(counts=data,group=g,lib.size=libSizes)
 #deDGE(d, doPoisson=True)
-dge <- calcNormFactors(dge)
+y <- calcNormFactors(dge)
 
 #edgeR
-d <- estimateCommonDisp(dge)
+d <- estimateCommonDisp(y)
 d <- estimateTagwiseDisp(d)
 de.com <- exactTest(d)
 results <- topTags(de.com,n = length(data[,1]))
@@ -36,15 +36,3 @@ write.csv(res, "edger_output.csv")
 #png(filename='smear.png')
 #plotSmear(d , de.tags=de.com)
 #abline(v=c(-2, 2), col=2)
-
-#limma-trend
-design<-g
-design <- model.matrix(~ 0+factor(c(g)))
-#print (design)
-logCPM <- cpm(dge, log=TRUE, prior.count=3)
-fit <- lmFit(logCPM, design)
-fit <- eBayes(fit, trend=TRUE)
-results <- topTable(fit, coef=ncol(design))
-res <- data.frame(results)
-#print (dge)
-write.csv(res, "limma_output.csv")

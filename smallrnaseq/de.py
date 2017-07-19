@@ -43,10 +43,10 @@ def get_columns_by_label(labels, samplecol, filters=[], querystr=None):
         q=[]
         for f in filters:
             print (f)
-            if type(f[1]) in [str,unicode]:
-                s = "%s=='%s'" %(f[0],f[1])
-            else:
+            if type(f[1]) in ['int','float']:
                 s = "%s==%s" %(f[0],f[1])
+            else:
+                s = "%s=='%s'" %(f[0],f[1])
             q.append(s)
         querystr = ' & '.join(q)
     print (querystr)
@@ -108,8 +108,23 @@ def run_edgeR(countsfile=None, data=None, cutoff=1.5):
     de = pd.read_csv('edger_output.csv')
     de.rename(columns={'Unnamed: 0':'name'}, inplace=True)
     de = de[(de.FDR<0.05) & ((de.logFC>cutoff) | (de.logFC<-cutoff))]
+    return de
 
-    limma = pd.read_csv('limma_output.csv')
+def run_limma(countsfile=None, data=None, cutoff=1.5):
+    """Run limma de from R script"""
+
+    if data is not None:
+        countsfile = 'de_counts.csv'
+        data = data.to_csv(countsfile)
+    path = os.path.dirname(os.path.abspath(__file__)) #path to module
+    descript = os.path.join(path, 'Limma.R')
+    cmd = 'Rscript %s %s' %(descript, countsfile)
+    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    #read result back in
+    de = pd.read_csv('limma_output.csv')
+    de.rename(columns={'Unnamed: 0':'name'}, inplace=True)
+    de = de[(de['adj.P.Val']<0.05) & ((de.logFC>cutoff) | (de.logFC<-cutoff))]
+    de = de.sort_values('logFC',ascending=False)
     return de
 
 def runEdgeRGLM(countsfile, cutoff=1.5):

@@ -191,7 +191,8 @@ def pivot_count_data(counts, idxcols='name', norm_method='library', sortby=None)
     """
 
     x = pd.pivot_table(counts, values='reads', index=idxcols, columns='label')
-    #print assign_sample_ids(x.columns)
+    x = x.round(0)
+    #x = x.fillna(0).astype(int)
     if norm_method == 'library':
         n = total_library_normalize(x)
     elif norm_method == 'quantile':
