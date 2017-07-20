@@ -385,7 +385,12 @@ def diff_expression(opts):
                             legend_out=True,sharey=False, order=xorder)
     deplot = os.path.join(path,'de_genes.png')
     g.savefig(deplot)
-    print ('wrote plot to %s' %deplot)
+    res2 = pd.read_csv('limma_output.csv')
+    res2.rename(columns={'Unnamed: 0':'name'}, inplace=True)
+    de.md_plot(data, res2, title=' - '.join(conds))
+    import pylab as plt
+    plt.savefig(os.path.join(path,'MD_plot.png'))
+    print ('wrote plots to %s' %path)
     return
 
 def print_help():

@@ -3,6 +3,24 @@ CHANGES
 =======
 
 ------
+0.4.0
+------
+
+added test trf module for trna fragment counting
+differential expression improved output
+implemented separate limma and edgeR for de analysis
+
+------
+0.3.0
+------
+
+Added missing code for isomir counting
+Fix for problem with treating filenames as strings in python 2 when calling HTSeq
+Some changes to output for mirna counting
+Can run a basic test from cmd line
+Tested to work on OSX
+
+------
 0.2.2
 ------
 

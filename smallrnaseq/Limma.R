@@ -26,7 +26,6 @@ v <- voom(y,design)
 #print (design)
 logcounts <- cpm(y,log=TRUE)
 head(logcounts, 5)
-boxplot(logcounts, xlab="", ylab="Log2 counts per million",las=2,main="Unnormalised logCPM")
 
 fit <- lmFit(logcounts, design)
 #fit <- eBayes(fit, trend=TRUE)
@@ -43,3 +42,5 @@ results <- results[order (results$adj.P.Val), ]
 res <- data.frame(results)
 #print (res)
 write.csv(res, "limma_output.csv")
+#png(filename='limma_md.png', width = 1000, height = 1000, units='px', res=150)
+#plotMD(fit.cont,coef=1,status=summa.fit[,])

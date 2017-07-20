@@ -97,7 +97,7 @@ def run_edgeR(countsfile=None, data=None, cutoff=1.5):
 
     if data is not None:
         countsfile = 'de_counts.csv'
-        data = data.to_csv(countsfile)
+        data.to_csv(countsfile)
     path = os.path.dirname(os.path.abspath(__file__)) #path to module
     descript = os.path.join(path, 'DEanalysis.R')
     cmd = 'Rscript %s %s' %(descript, countsfile)
@@ -115,7 +115,7 @@ def run_limma(countsfile=None, data=None, cutoff=1.5):
 
     if data is not None:
         countsfile = 'de_counts.csv'
-        data = data.to_csv(countsfile)
+        data.to_csv(countsfile)
     path = os.path.dirname(os.path.abspath(__file__)) #path to module
     descript = os.path.join(path, 'Limma.R')
     cmd = 'Rscript %s %s' %(descript, countsfile)
@@ -123,9 +123,27 @@ def run_limma(countsfile=None, data=None, cutoff=1.5):
     #read result back in
     de = pd.read_csv('limma_output.csv')
     de.rename(columns={'Unnamed: 0':'name'}, inplace=True)
+    #md_plot(data, de)
     de = de[(de['adj.P.Val']<0.05) & ((de.logFC>cutoff) | (de.logFC<-cutoff))]
     de = de.sort_values('logFC',ascending=False)
     return de
+
+def md_plot(data, de, title=''):
+    """MD plot"""
+
+    data = data.reset_index()
+    data['mean log expr'] = data.mean(1).apply(np.log)
+    df = data.merge(de,on='name')
+    df['s'] = pd.cut(df.logFC, [-100,-1.5,1.5], labels=[1,0])
+    #print (df[:10])
+    a = df[df['adj.P.Val']<0.05]
+    b = df[-df.name.isin(a.name)]
+    c = a[a.logFC<0]
+    ax=a.plot('mean log expr','logFC',kind='scatter',figsize=(10,10),color='red',s=60)
+    c.plot('mean log expr','logFC',kind='scatter',ax=ax,color='g',s=60)
+    b.plot('mean log expr','logFC',kind='scatter',ax=ax,color='black')
+    ax.set_title(title, fontsize=20)
+    return ax
 
 def runEdgeRGLM(countsfile, cutoff=1.5):
     """Run edgeR from R script"""

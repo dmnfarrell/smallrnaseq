@@ -1,0 +1,13 @@
+sampleFile	diseaseStatus
+SRR1103937.trimmed	CT
+SRR1103938.trimmed	CT
+SRR1103939.trimmed	CT
+SRR1103940.trimmed	CT
+SRR1103941.trimmed	CT
+SRR1103942.trimmed	CT
+SRR1103943.trimmed	AD
+SRR1103944.trimmed	AD
+SRR1103945.trimmed	AD
+SRR1103946.trimmed	AD
+SRR1103947.trimmed	AD
+SRR1103948.trimmed	AD
