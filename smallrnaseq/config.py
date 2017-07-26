@@ -48,7 +48,7 @@ baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
                         ('strict',0)],
                'de': [('count_file',''),('sample_labels',''),('sep',','),
                     ('sample_col',''),('factors_col',''),
-                    ('conditions',''),('cutoff',1.5),
+                    ('conditions',''),('logfc_cutoff',1.5),
                     ('de_plot','point')]
                     }
 

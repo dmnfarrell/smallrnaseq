@@ -134,7 +134,6 @@ def md_plot(data, de, title=''):
     data = data.reset_index()
     data['mean log expr'] = data.mean(1).apply(np.log)
     df = data.merge(de,on='name')
-    df['s'] = pd.cut(df.logFC, [-100,-1.5,1.5], labels=[1,0])
     #print (df[:10])
     a = df[df['adj.P.Val']<0.05]
     b = df[-df.name.isin(a.name)]
@@ -192,3 +191,12 @@ def melt_samples(df, labels, names, samplecol='filename', index='name'):
     m = pd.melt(t,id_vars=list(labels.columns),
                  var_name='name',value_name='read count')
     return m
+
+def cluster_map(data, names):
+    import seaborn as sns
+    import pylab as plt
+    data = data.ix[names]
+    X = np.log(data).fillna(0)
+    cg = sns.clustermap(X,cmap='RdYlBu',figsize=(8,10),lw=1,linecolor='gray')
+    mt=plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+    return cg

@@ -322,7 +322,7 @@ def diff_expression(opts):
     path = opts['output']
     labelsfile = opts['sample_labels']
     countsfile = opts['count_file']
-    cutoff = float(opts['cutoff'])
+    logfccutoff = float(opts['logfc_cutoff'])
     for f in [labelsfile,countsfile]:
         if f.strip() == '':
             print ('you need to provide a counts_file and sample_labels')
@@ -357,13 +357,13 @@ def diff_expression(opts):
                                  labels, [(factorcol,conds[0]),(factorcol,conds[1])],
                                  samplecol=samplecol, index='name')
     #print (data[:4])
-    res = de.run_edgeR(data=data, cutoff=cutoff)
+    res = de.run_edgeR(data=data, cutoff=logfccutoff)
     res.to_csv(os.path.join(path,'de_genes_edger.csv'), float_format='%.4g')
     print ('genes above log-fold cutoff using edgeR:')
     print ('----------------------------')
     print (res)
     print ()
-    res2 = de.run_limma(data=data, cutoff=cutoff)
+    res2 = de.run_limma(data=data, cutoff=logfccutoff)
     res2.to_csv(os.path.join(path,'de_genes_limma.csv'), float_format='%.4g')
     print ('genes above log-fold cutoff using limma:')
     print ('----------------------------')
@@ -390,6 +390,10 @@ def diff_expression(opts):
     de.md_plot(data, res2, title=' - '.join(conds))
     import pylab as plt
     plt.savefig(os.path.join(path,'MD_plot.png'))
+
+    de.cluster_map(data, names)
+    plt.savefig(os.path.join(path,'de_clustermap.png'),bbox_inches='tight')
+
     print ('wrote plots to %s' %path)
     return
 
