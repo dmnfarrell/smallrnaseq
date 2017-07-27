@@ -197,6 +197,8 @@ def cluster_map(data, names):
     import pylab as plt
     data = data.ix[names]
     X = np.log(data).fillna(0)
+    X = X.apply(lambda x: x-x.mean(), 1)
     cg = sns.clustermap(X,cmap='RdYlBu',figsize=(8,10),lw=1,linecolor='gray')
     mt=plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+    mt=plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
     return cg

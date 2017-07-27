@@ -311,9 +311,6 @@ def build_indexes(filename, path):
     #aligners.build_subread_index(filename, path)
     return
 
-def de_help_link():
-    print ('https://github.com/dmnfarrell/smallrnaseq/wiki/Command-line-interface#differential-expression')
-
 def diff_expression(opts):
     """Diff expression workflow"""
 
@@ -344,11 +341,11 @@ def diff_expression(opts):
     #tell user about possible errors
     if len(conds) < 2 or conds[0] == '':
         print ('you need to provide 2 conditions to compare')
-        de_help_link()
+        print_help()
         return
     elif samplecol == '' or factorcol == '':
         print ('provide names of factor and sample names columns')
-        de_help_link()
+        print_help()
         return
 
     print ('conditions:', ' vs '.join(conds))
@@ -391,7 +388,9 @@ def diff_expression(opts):
     import pylab as plt
     plt.savefig(os.path.join(path,'MD_plot.png'))
 
-    de.cluster_map(data, names)
+    scols,ncols = base.get_column_names(counts)
+    c = counts.set_index('name')[ncols]
+    de.cluster_map(c, names)
     plt.savefig(os.path.join(path,'de_clustermap.png'),bbox_inches='tight')
 
     print ('wrote plots to %s' %path)
@@ -401,7 +400,7 @@ def print_help():
     """generic help message"""
 
     print ('to run a workflow use smallrnaseq -c <config> -r')
-    print ('see https://github.com/dmnfarrell/smallrnaseq/wiki')
+    print ('see https://github.com/dmnfarrell/smallrnaseq/wiki/Command-line-interface')
     print ('for further information')
     return
 
