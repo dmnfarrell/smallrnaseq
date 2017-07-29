@@ -43,7 +43,8 @@ def get_columns_by_label(labels, samplecol, filters=[], querystr=None):
         q=[]
         for f in filters:
             print (f)
-            if type(f[1]) in ['int','float']:
+            dtype = labels[f[0]].dtype.kind
+            if dtype in 'bifc':
                 s = "%s==%s" %(f[0],f[1])
             else:
                 s = "%s=='%s'" %(f[0],f[1])
@@ -64,18 +65,21 @@ def get_factor_samples(df, labels, factors, filters=[], samplecol='filename', in
             samplecol: name of column holding sample/file names
        Returns:
             dataframe of data columns with header labels for edgeR script
+            a dict mapping condition to column names
     """
 
     if index != None:
         df=df.set_index(index)
     l=0
     res = None
-
+    samples = []
     for f in factors:
+        cond = f[1]
         f = filters + [f]
         cols = get_columns_by_label(labels, samplecol, f)
         print (cols)
         cols = list(set(cols) & set(df.columns))
+        samples.extend(cols)
         x = df[cols]
         print ('%s samples, %s genes' %(len(cols),len(x)))
         if len(x.columns)==0:
@@ -90,7 +94,7 @@ def get_factor_samples(df, labels, factors, filters=[], samplecol='filename', in
         else:
             res = res.join(x)
     res=res.dropna()
-    return res
+    return res, samples
 
 def run_edgeR(countsfile=None, data=None, cutoff=1.5):
     """Run edgeR from R script"""
@@ -179,26 +183,28 @@ def rpyEdgeR(data, groups, sizes, genes):
     pvals = list(tags.r['adj.P.Val'][0])
     return
 
-def melt_samples(df, labels, names, samplecol='filename', index='name'):
+def melt_samples(df, labels, names, samplecol='filename', index=None):
     """Melt sample data by factor labels so we can plot with seaborn"""
 
-    df=df.set_index(index)
-    scols,ncols = base.get_column_names(df)
-    df = df.ix[names][ncols]
+    if index is not None:
+        df=df.set_index(index)
+    df = df.ix[names]
     t=df.T
-    t.index = scols
+    t.index = df.columns
     t = t.merge(labels,left_index=True,right_on=samplecol)
     m = pd.melt(t,id_vars=list(labels.columns),
                  var_name='name',value_name='read count')
     return m
 
 def cluster_map(data, names):
+    """Cluster map of genes"""
+
     import seaborn as sns
     import pylab as plt
     data = data.ix[names]
     X = np.log(data).fillna(0)
     X = X.apply(lambda x: x-x.mean(), 1)
-    cg = sns.clustermap(X,cmap='RdYlBu',figsize=(8,10),lw=1,linecolor='gray')
+    cg = sns.clustermap(X,cmap='RdYlBu_r',figsize=(8,10),lw=.5,linecolor='gray')
     mt=plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
     mt=plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
     return cg

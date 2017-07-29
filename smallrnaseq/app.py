@@ -333,11 +333,15 @@ def diff_expression(opts):
         sep = '\t'
     labels = pd.read_csv(labelsfile, sep=sep)
     counts = pd.read_csv(countsfile)
+    counts = counts.drop_duplicates('name')
 
     #define sample/factor cols and conditions for de
     samplecol = opts['sample_col']
     factorcol = opts['factors_col']
     conds = opts['conditions'].split(',')
+    print ('using these labels:')
+    print (labels[[samplecol, factorcol]].sort_values(factorcol))
+
     #tell user about possible errors
     if len(conds) < 2 or conds[0] == '':
         print ('you need to provide 2 conditions to compare')
@@ -350,10 +354,11 @@ def diff_expression(opts):
 
     print ('conditions:', ' vs '.join(conds))
     #get the samples needed for the required conditions we want to compare
-    data = de.get_factor_samples(counts,
+    data, samples = de.get_factor_samples(counts,
                                  labels, [(factorcol,conds[0]),(factorcol,conds[1])],
                                  samplecol=samplecol, index='name')
-    #print (data[:4])
+    #print (samples)
+
     res = de.run_edgeR(data=data, cutoff=logfccutoff)
     res.to_csv(os.path.join(path,'de_genes_edger.csv'), float_format='%.4g')
     print ('genes above log-fold cutoff using edgeR:')
@@ -367,13 +372,20 @@ def diff_expression(opts):
     print (res2)
 
     both = res[res.name.isin(res2.name)]
+    if len(both) == 0:
+        print ('no significant genes found above cutoff')
+        return
     #limit number of plots
     if len(both)>40:
         names = both[(both.logFC>1.5) | (both.logFC<-1.5)].name[:50]
     else:
         names = both.name
     #plot these genes with seaborn factor plot
-    xorder=conds
+    xorder = conds
+    counts = counts.set_index('name')[samples]
+    #normalize counts (don't rely on norm cols as they may be missing)
+    counts = base.total_library_normalize(counts)
+
     m = de.melt_samples(counts, labels, names, samplecol=samplecol)
     import seaborn as sns
     kind = opts['de_plot']
@@ -388,9 +400,7 @@ def diff_expression(opts):
     import pylab as plt
     plt.savefig(os.path.join(path,'MD_plot.png'))
 
-    scols,ncols = base.get_column_names(counts)
-    c = counts.set_index('name')[ncols]
-    de.cluster_map(c, names)
+    de.cluster_map(counts, names)
     plt.savefig(os.path.join(path,'de_clustermap.png'),bbox_inches='tight')
 
     print ('wrote plots to %s' %path)
