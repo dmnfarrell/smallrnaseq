@@ -202,7 +202,7 @@ def get_results(path):
     k = k.reset_index()
     k = k.fillna(0)
     k = normalise_cols(k)
-    k = k.sort('mean_norm',ascending=False)
+    k = k.sort_values('mean_norm',ascending=False)
     k.to_csv('srnabench_known_all.csv')
 
     #combine isomir results
@@ -220,7 +220,7 @@ def get_results(path):
         m = normalise_cols(m)
         x = m.apply(parseisoinfo,1)
         m = m.merge(x,left_index=True,right_index=True)
-        m = m.sort(['total'],ascending=False)
+        m = m.sort_values(['total'],ascending=False)
     else:
         m = None
     #novel
@@ -278,8 +278,8 @@ def analyse_results(k,n,outpath=None):
     k.set_index('name')['total'][:10].plot(kind='barh',colormap='Spectral',ax=ax,log=True)
     plt.tight_layout()
     fig.savefig('srnabench_top_known.png')
-    fig = plot_read_count_dists(final)
-    fig.savefig('srnabench_known_counts.png')
+    #fig = plot_read_count_dists(final)
+    #fig.savefig('srnabench_known_counts.png')
     fig,ax = plt.subplots(figsize=(10,6))
     k[idcols].sum().plot(kind='bar',ax=ax)
     fig.savefig('srnabench_total_persample.png')
@@ -302,7 +302,7 @@ def get_top_isomirs(iso):
         t.append((r['name'],r.read,r.mean_norm,r.total,s,perc,np.size(x.total),r.variant,r.pos))
     cols=['name','read','counts','mean_norm','total','domisoperc','isomirs','variant','pos']
     top = pd.DataFrame(t,columns=cols)
-    top = top.sort('counts',ascending=False)
+    top = top.sort_values('counts',ascending=False)
     return top
 
 def analyse_isomirs(iso,outpath=None):
@@ -313,7 +313,7 @@ def analyse_isomirs(iso,outpath=None):
     if outpath != None:
         os.chdir(outpath)
     subcols = ['name','read','isoClass','NucVar','total','freq']
-    iso = iso.sort('total', ascending=False)
+    iso = iso.sort_values('total', ascending=False)
     #filter very low abundance reads
     iso = iso[(iso.total>10) & (iso.freq>0.5)]
     top = get_top_isomirs(iso)
@@ -356,22 +356,7 @@ def analyse_isomirs(iso,outpath=None):
     ax.set_title('isomiR class distribution')
     plt.tight_layout()
     fig.savefig('srnabench_isomir_classes.png')
-    fig,axs = plt.subplots(2,2,figsize=(8,6))
-    grid=axs.flat
-    bins=np.arange(-6,6,1)
-    i=0
-    for v in ['lv3p','lv5p','nta#A','nta#T']:
-        ax=grid[i]
-        iso[iso.variant==v].hist('pos',ax=ax,bins=bins,grid=False)
-        ax.set_title(v)
-        ax.set_xticks(bins+0.5)
-        ax.set_xticklabels(bins)
-        i+=1
-    ax.set_xlabel('length difference')
-    fig.suptitle('isomiR class length distributions')
-    plt.tight_layout()
-    fig.savefig('srnabench_isomir_variantlengths.png')
-    #plt.show()
+
     iso.to_csv('srnabench_isomirs_all.csv',index=False)
     return top
 
@@ -399,8 +384,6 @@ def main():
     parser = OptionParser()
     parser.add_option("-r", "--run", dest="run", action='store_true',
                            help="run predictions")
-    parser.add_option("-i", "--input", dest="input",
-                           help="input path or file")
     parser.add_option("-a", "--analyse", dest="analyse",
                            help="analyse results of runs")
     parser.add_option("-c", "--config", dest="config",
@@ -413,9 +396,7 @@ def main():
         cp = config.parse_config(opts.config)
         options = cp._sections['base']
         print (options)
-        if opts.input == None:
-            opts.input = options['path']
-        run_all(**options)
+        run_all(path=options['input'], **options)
     elif opts.analyse != None:
         k,n,iso = get_results(opts.analyse)
         analyse_results(k,n)

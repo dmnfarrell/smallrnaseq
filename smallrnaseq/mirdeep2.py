@@ -264,6 +264,7 @@ def get_results(path):
         res.append(q)
     res = pd.concat(res)
 
+    res = res.apply( lambda x: pd.to_numeric(x, errors='ignore' ))
     #get mean normalised count
     res['mean_norm'] = res.filter(regex="norm").apply(lambda r: r[r.nonzero()[0]].mean(),1)
     res = res.sort_values(by=['read_count'], ascending=False)
