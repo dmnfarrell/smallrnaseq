@@ -1,23 +1,24 @@
 #!/usr/bin/env python
 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 3
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """
-    Novel miRNA prediction
-    Created Feb 2017
-    Copyright (C) Damien Farrell
-
-    This program is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public License
-    as published by the Free Software Foundation; either version 3
-    of the License, or (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+Novel miRNA prediction module which implements a classifier for predicting
+likely miRNAs using the miRanalyzer approach. Uses sklearn for classification.
+Created Feb 2017.
+Copyright (C) Damien Farrell.
 """
 
 from __future__ import absolute_import, print_function
@@ -244,7 +245,8 @@ def get_negatives(fasta_file=None, samples=2000):
     return result
 
 def get_training_data(known=None, neg=None):
-    """Get training data for classifier
+    """Get training data for classifier.
+
         Args:
             known: known precursor data, a dataframe
             neg: negatives
@@ -270,6 +272,7 @@ def get_training_data(known=None, neg=None):
 
 def precursor_classifier(known=None, neg=None, kind='regressor'):
     """Get a miRNA precursor classifier using given training data.
+
        Args:
         X: numpy array/dataframe with features
         y: true/false values matching feature rows, 1's and 0's
@@ -347,7 +350,8 @@ def build_cluster_trees(reads, cluster_distance=2, min_size=2):
     return dict(cluster_trees)
 
 def get_read_clusters(reads, cluster_distance=0, min_size=3, key='align_id'):
-    """Assign reads to clusters from a dataframe from an alignment
+    """Assign reads to clusters from a dataframe from an alignment.
+
       Args:
         reads: pandas dataframe of reads with start, end, read_id fields
         key: key to use for assigning reads to clusters, should be unique
@@ -392,6 +396,7 @@ def get_cluster_groups(rcl):
 def generate_precursors(ref_fasta, coords, mature=None, step=5):
     """Create a set of possible precursor sequences from flanking sequence given
        genomic coordinates and the reference genome sequence.
+
        Args:
         ref_fasta: reference genome fasta file
         cooords: coordinates of estimated mature sequence to start from
@@ -496,6 +501,7 @@ def get_consensus_read(ref, df):
 def find_precursor(ref_fasta, m, o=None, step=5, score_cutoff=.7):
     """Find the most likely precursor from a genomic sequence and
        one or two mapped read clusters.
+
        Args:
            ref_fasta: genomic reference sequence
            cluster: reads in a cluster, a dataframe
@@ -557,6 +563,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
                 max_length=25, min_length=18, min_size=3):
     """Find novel miRNAs in reference mapped reads. Assumes we have already
         mapped to known miRNAs.
+
         Args:
             reads: unique aligned reads with counts in a dataframe
             ref_fasta: reference genome fasta file
@@ -654,7 +661,7 @@ def assign_names(df, species=''):
     return
 
 def encode_name(s):
-    """hash a sequence into a short string"""
+    """Hash a sequence into a short string"""
 
     import hashlib
     h = hashlib.md5(s.encode())
@@ -663,7 +670,7 @@ def encode_name(s):
     return s
 
 def forna_url(precursor, mature, star=None, struct=None):
-    """Create link to view mirna structure in forna web app"""
+    """Create link to view mirna structure in forna web app."""
 
     #print x
     pd.options.display.max_colwidth = 500
@@ -697,7 +704,15 @@ def string_to_html(s):
     return html
 
 def create_report(df, reads, species=None, outfile='report.html'):
-    """Novel miRNA predictions html report"""
+    """Novel miRNA predictions html report.
+
+    Args:
+        reads: reads in
+        species: species in three letter mirbase code
+        outfile: file to save to
+    Returns:
+        html to be inserted into page
+    """
 
     pd.options.display.max_colwidth = 500
     css = get_css()

@@ -1,6 +1,11 @@
 Code Examples
 =============
 
+Methodology
++++++++++++
+
+.. image:: https://raw.githubusercontent.com/dmnfarrell/smallrnaseq/master/img/workflow.png
+
 Counting microRNAs
 ++++++++++++++++++
 
@@ -26,6 +31,32 @@ This requires a reference genome and a gtf file with miRNA features::
 
     featcounts = srseq.map_genome_features(['test_1.fastq'], 'bos_taurus', gtffile,
                                         outpath='ncrna_map', aligner='subread', merge=True)
+
+Novel miRNA prediction
+++++++++++++++++++++++
+
+The built-in method for novel prediction should be considered a somewhat 'quick and dirty'
+method at present but is relatively fast and convenient to use. The basic idea is to take
+clusters of reads that could be mature sequence and find suitable precursors. Structural
+features of each precursor are then scored using a classifier. The best candidate is selected
+is there is at least one. We have followed a similar approach to the miRanalyzer method.
+
+The following features are currently used in our algorithm, most are the same as those used
+in sRNAbench (miRanalyzer). The diagram below may help to clarify some of the terminology used.
+
+.. image:: https://raw.githubusercontent.com/dmnfarrell/smallrnaseq/master/img/mirna_example.png
+
+To predict miRNAs you need to have run mapping on genome. Then use the sam file and read
+counts to get the true reads and input this into the method find_mirnas with a reference
+genome fasta file. The reference fasta must match the bowtie index you used for alignment::
+
+    from smallrnaseq import novel
+    import pandas as pd
+    #single file prediction
+    readcounts = pd.read_csv('countsfile.csv')
+    samfile = 'mysamfile.sam'
+    reads = utils.get_aligned_reads(samfile, readcounts)
+    new = novel.find_mirnas(reads, ref_fasta)
 
 Differential Expression
 +++++++++++++++++++++++
