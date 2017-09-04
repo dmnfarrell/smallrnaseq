@@ -72,14 +72,16 @@ def gtf_to_dataframe(gtf=None, gtf_file=None, index='transcript_id'):
 
 def count_features(samfile, features=None, gtffile=None, readcounts=None, merge=False):
     """Count reads in features from an alignment, if no truecounts we
-       assume a non-collapsed file was used to map
+       assume a non-collapsed file was used to map.
+
        Args:
            samfile: mapped sam file
            gtffile: feature file
            features: annotations read from bed or gtf file
-           truecounts: read counts from original (un-collapsed) file
+           readcounts: read counts from original (un-collapsed) file
            merge: whether to merge the gtf fields with the results
-       Returns: dataframe of genes with total counts
+       Returns:
+           dataframe of genes with total counts
     """
 
     if gtffile != None:
@@ -151,6 +153,7 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name',
                    count_method='split'):
     """Count short read alignments from a sam or bam file. Designed to be used with
        collapsed reads with original read counts in fasta id.
+
        Args:
            samfile: mapped sam file
            collapsed: collapsed fasta with original read counts in name
@@ -182,6 +185,7 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name',
 def pivot_count_data(counts, idxcols='name', norm_method='library', sortby=None):
     """Pivot read counts created by count_aligned over multiple samples
        and get normalised read counts.
+
        Args:
            counts: dataframe of raw count data with samples per column
            idxcols: name of index column
@@ -213,7 +217,8 @@ def pivot_count_data(counts, idxcols='name', norm_method='library', sortby=None)
 
 def normalize_samples(counts, norm_method='library', rename=True):
     """Normalize over a matrix of samples explicitly, this will overwrite any 'norm'
-       columns created previously when pivoting the count data
+       columns created previously when pivoting the count data.
+
        Args:
             counts: dataframe of raw count data with samples per column
             rename: rename columns with 'norm' label and add to existing ones
@@ -286,7 +291,8 @@ def deseq_normalize(df):
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
              norm_method='library', use_remaining=True, overwrite=False,
              samplelabels=None, params={}, count_method='split'):
-    """Map reads to one or more gene annotations, assumes adapters are removed
+    """Map reads to one or more gene annotations, assumes adapters are removed.
+
     Args:
         files: input fastq read files
         indexes: bowtie indexes of annotations/genomes
@@ -370,12 +376,15 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
 
 def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',
                         overwrite=True, aligner_params=''):
-    """Map multiple files to a genome with features and return/process hits.
-       Can be used for miRNA discovery
+    """Convenience method that maps multiple files to a genome with features
+       and return/process hits. Can be used for miRNA discovery.
+
        Args:
            ref: genome bowtie index name
            gtf_file: gtf or bed file with features
-           bowtie _index: path with bowtie indexes
+           outpath: output path
+           aligner: short read alligner to use
+           aligner_params: aligner parameters
     """
 
     if aligner_params != '' :
@@ -448,11 +457,18 @@ def trim_files(files, outpath, adapters):
             trim_adapters(f, adapters, cut)
     return
 
-def collapse_reads(infile, outfile=None, min_length=15, progress=False):
-    """Collapse identical reads, retaining copy number in a csv file
-       and writing collapsed reads to a new fasta file.
-       Creates a collapsed fasta file of unique reads and a csv
-       file with the """
+def collapse_reads(infile, outfile=None, min_length=15):
+    """Collapse identical reads, writing collapsed reads to a new fasta file.
+      Retains copy number in fasta headers. Each sequence in the resulting file
+      should be unique.
+
+    Args:
+        infile: input fastq file
+        outfile: output fasta file with collapsed reads
+        min_length: minimum length of read to include
+    Returns:
+        True if successful, otherwise False
+    """
 
     #from itertools import islice
     if outfile == None:
@@ -495,8 +511,8 @@ def collapse_reads(infile, outfile=None, min_length=15, progress=False):
     return True
 
 def collapse_files(files, outpath, **kwargs):
-    """Collapse reads and save counts
-        min_length: min length of reads to include
+    """Collapse reads and save counts. kwargs are passed to collapse_reads
+       method.
     """
 
     outfiles = []
@@ -546,6 +562,7 @@ def get_mirbase(species=None):
 
 def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
     """Extract species specific sequences from mirbase file.
+
        Args:
            species: 3-letter code for species
            n: bases to extend around ends of mature sequence
@@ -569,7 +586,8 @@ def get_mirbase_sequences(species='hsa', pad5=0, pad3=0, dna=False):
 
 def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5,
                         kind='mature', index_path='indexes'):
-    """Build species-specific mirbase bowtie index
+    """Build species-specific mirbase bowtie index.
+
        Args:
            species: 3-letter code for species
            aligner: which aligner to build for
@@ -602,6 +620,7 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
                 pad5=3, pad3=5, **kwargs):
     """Map multiple fastq files to mirbase mature sequences and get
        count results into one file. Used for counting of known miRNAs.
+
        Args:
            Species: three letter name of species using mirbase convention
            indexes: other libraries to align to before we count mirnas
