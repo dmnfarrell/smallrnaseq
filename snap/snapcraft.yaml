@@ -16,7 +16,7 @@ parts:
   smallrnaseq:
     plugin: python
     python-version: python2
-    source: /home/farrell/gitprojects/smallrnaseq/
+    source: ../
     #source: https://github.com/dmnfarrell/smallrnaseq.git
     #source-type: git
     #source-tag: v0.2.1
