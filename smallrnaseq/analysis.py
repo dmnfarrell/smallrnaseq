@@ -221,7 +221,7 @@ def do_pca(X, c=3):
     pX = pd.DataFrame(pX,index=X.index)
     return pX
 
-def plot_pca(pX, palette='Spectral', labels=False, ax=None, colors=None):
+def plot_pca(pX, palette='Spectral', labels=None, ax=None, colors=None):
     """Plot PCA result, input should be a dataframe"""
 
     if ax==None:
@@ -236,9 +236,12 @@ def plot_pca(pX, palette='Spectral', labels=False, ax=None, colors=None):
                    lw=.8, edgecolor='black', alpha=0.8)
     ax.set_xlabel('PC1')
     ax.set_ylabel('PC2')
-    if labels == True:
-        for i, point in pX.iterrows():
-            ax.text(point[0]+.3, point[1]+.3, str(i),fontsize=(9))
+    i=0
+    if labels is not None:
+        for n, point in pX.iterrows():
+            l=labels[i]
+            ax.text(point[0]+.1, point[1]+.1, str(l),fontsize=(9))
+            i+=1
     ax.legend(fontsize=10,bbox_to_anchor=(1.5, 1.05))
     sns.despine()
     plt.tight_layout()

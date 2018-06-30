@@ -1,7 +1,8 @@
 from setuptools import setup
 import sys,os
 
-inst_requires = ['pandas>=0.17',
+inst_requires = ['numpy>=1.10',
+                    'pandas>=0.20',
                     'seaborn>=0.7',
                     'scikit-learn>=0.18',
                     'pybedtools>=0.7.9',

@@ -52,7 +52,7 @@ def venn_diagram(names,labels,ax=None,**kwargs):
     ax.axis('off')
     #f.patch.set_visible(False)
     ax.set_axis_off()
-    return v
+    return 
 
 def heatmap(df,fname=None,cmap='seismic',log=False):
     """Plot a heat map"""
