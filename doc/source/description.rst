@@ -9,14 +9,8 @@ of analysis. This can be quite cumbersome. Our objective is to perform the
 analyses using Python packages as far as possible allowing almost all requirements
 to be installed using the pip tool. An aligner such as bowtie are still needed.
 
-Python users may find the various modules useful in creating their own more flexible workflows.
-A functional approach is used with a flat hierarchy of modules with limited use of classes.
-
-The primary source for this documentation is on the github wiki pages. This site
-is mostly intended for documentating the module API. For dataexplore see below.
-
 Command Line Interface
-===========================
+----------------------
 
 Installing the package provides the command *smallrnaseq* in your path.
 This allows users is a command line interface to the library without the need
@@ -24,17 +18,40 @@ for any Python coding at all. It provides a set of pre-defined functions with
 parameters specified in a text configuration file. This is documented on the github wiki.
 
 Screencast
-=====
+----------
 
 A screencast tutorial for using the command line interface: https://www.youtube.com/watch?v=m24cuLyTqg0
 
 Citation
-========
+--------
 
 If you use this software in your work please cite the following article:
 
 **Farrell, D. (2017). smallrnaseq : short non coding RNA-seq analysis with Python.
 Bioarxiv. https://doi.org/10.1101/110585**
+
+FAQ
+---
+
+**Which version of python is supported?**
+
+This package should work with python>=2.7 and >=3.5.
+
+**Does this package work in windows?**
+
+In theory yes, but this has not been tested. We strongly recommend using a linux OS. You can run a Linux operating system inside windows using virtualbox if you don't have linux on a separate computer. Just make sure you have enough memory (probably 8GB min).
+
+**How about OSX?**
+
+Yes it should run. It's recommended to install python with anaconda (see also bioconda).
+
+**Can I use another aligner?**
+
+As long as the aligner produces sam/bam file output it should work. It simply needs to be integrated into the package using a small amount of code. This can be done on request. Bowtie (v1) is recommended otherwise.
+
+**How reliable is the novel miRNA prediction?**
+
+It is hard to benchmark such an algorithm as there is no 'gold standard'. Our approach is broadly similar to the miRanalyzer one in that we use a feature classifier to score likely precursors then add some filters to remove unlikely candidates. The precursor score is only one factor. We do not use a more sophisticated model like miRDeep2. Our version is designed to be fast and easy to interpret the results. It is highly recommended to use another tool to compare the results to. If you think to much junk is being returned you can raise the score cutoff/read_cutoff or vice versa.
 
 Installation
 ============
@@ -126,6 +143,7 @@ on all systems. Go to https://www.tbi.univie.ac.at/RNA/#binary_packages and down
 binary for your system.
 
 Required dependencies
+---------------------
 
 * numpy
 * pandas

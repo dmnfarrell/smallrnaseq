@@ -1,11 +1,6 @@
 Code Examples
 =============
 
-Methodology
-+++++++++++
-
-.. image:: https://raw.githubusercontent.com/dmnfarrell/smallrnaseq/master/img/workflow.png
-
 Counting microRNAs
 ++++++++++++++++++
 

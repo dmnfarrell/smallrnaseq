@@ -60,14 +60,6 @@ smallrnaseq\.ensembl module
     :undoc-members:
     :show-inheritance:
 
-smallrnaseq\.gui module
------------------------
-
-.. automodule:: smallrnaseq.gui
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 smallrnaseq\.mirdeep2 module
 ----------------------------
 

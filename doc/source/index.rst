@@ -1,6 +1,6 @@
 
-Welcome to smallrnaseq documentation.
-=======================================
+smallrnaseq - tool for short RNA analysis
+=========================================
 
 Contents:
 
@@ -8,7 +8,9 @@ Contents:
    :maxdepth: 2
 
    description
+   cli
    examples
+   methods
    modules
 
 Indices and tables

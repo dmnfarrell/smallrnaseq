@@ -66,7 +66,8 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'sphinx_rtd_theme'
+#html_theme = 'sphinx_rtd_theme'
+html_theme = 'alabaster'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
@@ -82,10 +83,8 @@ html_logo = 'logo.png'
 # so a file named "default.css" will overwrite the builtin "default.css".
 #html_static_path = ['_static']
 
-
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'smallrnaseqdoc'
-
 
 # -- Options for LaTeX output ---------------------------------------------
 
