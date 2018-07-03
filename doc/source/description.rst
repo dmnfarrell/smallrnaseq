@@ -15,7 +15,8 @@ Command Line Interface
 Installing the package provides the command *smallrnaseq* in your path.
 This allows users is a command line interface to the library without the need
 for any Python coding at all. It provides a set of pre-defined functions with
-parameters specified in a text configuration file. This is documented on the github wiki.
+parameters specified in a text configuration file. This is documented in detail
+in the Using smallrnaseq section.
 
 Screencast
 ----------
@@ -67,6 +68,24 @@ system. We hope to provide a snap package that will simplify installation on lin
 
 ``pip install smallrnaseq``
 
+If pip fails you can run the following commands first to fix likely missing packages.
+These are mainly needed for HTSeq to install. Then run pip again.
+
+Ubuntu
+++++++
+
+    sudo apt install python-dev samtools bedtools liblzma-dev libbz2-dev zlib1g-dev liblzo2-dev python-scipy
+    sudo pip install smallrnaseq
+    sudo apt install bowtie
+
+Fedora
+++++++
+
+    sudo dnf install zlib-devel bzip2-devel xz-devel samtools swig redhat-rpm-config python-devel
+    sudo pip install cython pysam
+    sudo pip install smallrnaseq
+    sudo dnf install bowtie
+
 For python 3 installs
 +++++++++++++++++++++
 
@@ -78,24 +97,6 @@ For python 2.7 ONLY
 +++++++++++++++++++
 
 You might also need the future package. Run `pip install future` to install.
-
-If pip fails you can run the following commands first to fix likely missing packages.
-These are mainly needed for HTSeq to install. Then run pip again.
-
-Ubuntu
-++++++
-
-    sudo apt install python-dev samtools BEDtools liblzma-dev libbz2-dev zlib1g-dev python-scipy
-    sudo pip install smallrnaseq
-    sudo apt install bowtie
-
-Fedora
-++++++
-
-    sudo dnf install zlib-devel bzip2-devel xz-devel samtools swig redhat-rpm-config python-devel
-    sudo pip install cython pysam
-    sudo pip install smallrnaseq
-    sudo dnf install bowtie
 
 Mac OSX
 -------
@@ -151,3 +152,29 @@ Required dependencies
 * seaborn (requires scipy)
 * HTSeq
 * scikit-learn
+
+Installing R for differential expression
+----------------------------------------
+
+R is **not** a requirement for this package but is currently needed to do differential expression
+analysis using the edgeR package. You will not need to use R directly at all. smallrnaseq handles
+pre-processing your count data according to the factors you want to compare.
+
+Linux
+~~~~~
+
+Installation is via the package managers so on Ubuntu::
+
+  sudo apt install r-base
+
+Windows/Mac
+~~~~~~~~~~~
+Go to https://cran.r-project.org/ and download the installers.
+
+edgeR
+~~~~~
+This is an extra package provided as part of the bioconductor project. You can install from the command line as follows::
+
+  ## try http:// if https:// URLs are not supported
+  source("https://bioconductor.org/biocLite.R")
+  biocLite("edgeR")

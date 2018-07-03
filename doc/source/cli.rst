@@ -59,7 +59,8 @@ Settings explained:
 +===============+=================================+===================+
 | filenames     | test.fastq                      | input fastq       |
 |               |                                 | file(s) with      |
-|               |                                 | reads             |
+|               |                                 | reads, comma      |
+|               |                                 | separated         |
 +---------------+---------------------------------+-------------------+
 | path          | testfiles                       | folder containing |
 |               |                                 | fastq files       |
@@ -249,3 +250,84 @@ Links
 
  * http://subread.sourceforge.net/
  * http://bowtie-bio.sourceforge.net/index.shtml
+
+Alignment settings
+------------------
+
+The parameters used for the alignment/mapping procedure can be important
+in the final counts produced, irrespective of the aligner used.
+
+This can be a complex topic in itself and general users will be confused
+by the many options. The command line tool for smallrnaseq takes the
+simple approach of providing a default alignment parameter for general
+mapping to libraries, another for mapping miRNAs and one for reference
+genomes. All can be changed in the config file if needed. You can also
+set custom parameters per library in the aligner section.
+
+Bowtie
+~~~~~~
+
+For general mapping ``-v 1 --best`` is used. ``-v 1`` reports read
+mappings with up to one mismatch, options ``--best`` orders the mappings
+from best to worse alignments.
+
+In miRDeep2 when mapping to the mature miRNAs (miRBase sequences) for
+mature quantification the following parameters are used::
+
+ -v 1 -a --best --strata --norc
+
+Here ``-a`` means report all valid alignments, options
+``--best --strata`` orders the mappings from best to worse alignments
+according to the strata definition of bowtie. ``--norc`` means do not
+map reads to the reverse complement of the sequences.
+
+For reference genome mapping miRDeep2 uses these parameters::
+
+ -n 0 -e 80 -l 18 -a -m 5 --best --strata
+
+Subread
+~~~~~~~
+
+``-m 2 -M 1`` is the default for general alignment to libraries. If you
+use subread you can check the parameters by typing
+``subread-align --help`` at the command line, or refer to the website.
+
+Configuration file
+~~~~~~~~~~~~~~~~~~
+
+In the aligner section set your parameters. In the example below
+bos_taurus is the name of the reference genome. We have also used custom
+settings for mirna and another library of tRNAs.
+
+::
+
+  [aligner]
+  mirna_params = -n 1 -l 20
+  bos_taurus = -v 1 -k 50
+  bosTau8-tRNAs = -v 0 --best
+
+Code example
+~~~~~~~~~~~~
+
+If using the package in your python code, aligner parameters are set via
+the aligners module. This is done before calling mapping routines such
+as ``map_rnas``.
+
+for example::
+
+  from smallrnaseq import aligners
+  aligners.BOWTIE_PARAMS = '-v 0 --best'
+  aligners.SUBREAD_PARAMS = '-m 0 -M 1'
+
+References
+~~~~~~~~~~
+
+-  Shi, J., Dong, M., Li, L., Liu, L., Luz-Madrigal, A., Tsonis, P. A.,
+  … Liang, C. (2015). mirPRo–a novel standalone program for
+  differential expression and variation analysis of miRNAs. Scientific
+  Reports, 5, 14617. http://doi.org/10.1038/srep14617
+
+-  Friedländer, M. R., Mackowiak, S. D., Li, N., Chen, W., & Rajewsky,
+  N. (2012). miRDeep2 accurately identifies known and hundreds of novel
+  microRNA genes in seven animal clades. Nucleic Acids Research, 40(1),
+  37–52. http://doi.org/10.1093/nar/gkr688
