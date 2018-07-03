@@ -32,6 +32,9 @@ try:
 except:
     'HTSeq not present'
 from . import utils, aligners
+#make sure we are using the agg backend for melt_samples
+import matplotlib
+matplotlib.use('agg', warn=False)
 
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')

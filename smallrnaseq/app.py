@@ -95,6 +95,7 @@ class WorkFlow(object):
             self.map_libraries()
         if self.features != '':
             self.map_genomic_features()
+        print ('done')
         print ('intermediate files saved to %s' %self.temp_path)
         return
 

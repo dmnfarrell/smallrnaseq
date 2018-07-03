@@ -65,21 +65,19 @@ If not use your distributions package manager to install pip first. Then the sim
 call below should install all dependencies. However if this fails see the linux section
 below for commands to run for installing any pre-requisites that might not be on your
 system. We hope to provide a snap package that will simplify installation on linux.
-
-``pip install smallrnaseq``
+::
+  pip install smallrnaseq
 
 If pip fails you can run the following commands first to fix likely missing packages.
 These are mainly needed for HTSeq to install. Then run pip again.
 
-Ubuntu
-++++++
+Ubuntu::
 
     sudo apt install python-dev samtools bedtools liblzma-dev libbz2-dev zlib1g-dev liblzo2-dev python-scipy
     sudo pip install smallrnaseq
     sudo apt install bowtie
 
-Fedora
-++++++
+Fedora::
 
     sudo dnf install zlib-devel bzip2-devel xz-devel samtools swig redhat-rpm-config python-devel
     sudo pip install cython pysam
