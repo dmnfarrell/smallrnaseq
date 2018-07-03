@@ -18,7 +18,7 @@ Functionality includes:
 
 #### Usage
 
-See the [wiki page](https://github.com/dmnfarrell/smallrnaseq/wiki) for documentation.
+Up to date documentation is at http://smallrnaseq.readthedocs.io
 
 There is a video tutorial at https://youtu.be/m24cuLyTqg0
 
@@ -26,7 +26,7 @@ There is a video tutorial at https://youtu.be/m24cuLyTqg0
 
 pip install smallrnaseq
 
-See the [installation wiki page](https://github.com/dmnfarrell/smallrnaseq/wiki/Installation) for more details 
+See the [installation page](http://smallrnaseq.readthedocs.io/en/latest/description.html#installation) for more details 
 
 ##### Python Dependencies
 
