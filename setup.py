@@ -25,7 +25,7 @@ setup(
     author = 'Damien Farrell',
     author_email = 'farrell.damien@gmail.com',
     packages = ['smallrnaseq'],
-    package_data={'smallrnaseq': ['data/*','data/de_example/*','*.R']},
+    package_data={'smallrnaseq': ['data/*.*','data/de_example/*','*.R']},
     install_requires=inst_requires,
     entry_points = {
         'console_scripts': [
