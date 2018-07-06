@@ -705,8 +705,13 @@ def get_bg(seq, struct=None):
 
     import forgi.graph.bulge_graph as cgb
     if struct == None:
-        struct,sc = utils.rnafold(seq)
+        struct,sc = rnafold(seq)
     bg = cgb.BulgeGraph()
     bg.from_dotbracket(struct)
-    bg.seq = seq
-    return bg
+    #print (bg.struct)
+    try:
+        bg.seq = seq
+        return bg
+    except Exception as e:
+        print (e)
+        return

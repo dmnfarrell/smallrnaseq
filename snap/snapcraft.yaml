@@ -19,8 +19,10 @@ parts:
   part1:
     plugin: python
     python-version: python2
+    python-packages:
+      [numpy]
     stage-packages:
-      [python-numpy,libblas3,libopenblas-dev]
+      [libblas3,libopenblas-dev]
   smallrnaseq:
     plugin: python
     python-version: python2

@@ -176,6 +176,8 @@ def check_mature(seq, struct, mature):
     """Check if the mature sequence is not in hairpin loop and inside stem"""
 
     bg = utils.get_bg(seq, struct)
+    if bg is None:
+        return
     start = utils.find_subseq(seq, mature)+1
     end = start + len(mature)
     loops = list(bg.hloop_iterator())
@@ -424,7 +426,8 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         struct,sc = utils.rnafold(prseq)
         #prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
-        #print (mstatus)
+        if mstatus is None:
+            continue
         #print (i)
         #print (prseq)
         #print (struct)
@@ -442,6 +445,8 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         struct,sc = utils.rnafold(prseq)
         #prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
+        if mstatus is None:
+            continue
         N.append({'precursor':prseq,'struct':struct,'score':sc,
                   'chrom':chrom,'start':start3,'end':end3,
                   'mature':mature,'strand':strand,'mature_check': mstatus})
@@ -611,7 +616,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
         m['mature'] = True
         X.append(m)
         #remainder of reads assigned as non-mature
-        o = df.loc[-df.index.isin(m.index)].copy()
+        o = df.loc[~df.index.isin(m.index)].copy()
         o['mature'] = False
         X.append(o)
 

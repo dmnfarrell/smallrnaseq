@@ -9,7 +9,7 @@ inst_requires = ['numpy>=1.10',
                     'pysam>=0.10.0',
                     'HTSeq>=0.6',
                     'bx-python>=0.5',
-                    'forgi>=0.4']
+                    'forgi==0.20']
 
 major, minor, micro = sys.version_info[:3]
 if major == '2':
