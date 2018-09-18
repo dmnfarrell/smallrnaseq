@@ -36,7 +36,7 @@ FAQ
 
 **Which version of python is supported?**
 
-This package should work with python>=2.7 and >=3.5.
+This package should work with python>=2.7 and >=3.6.
 
 **Does this package work in windows?**
 

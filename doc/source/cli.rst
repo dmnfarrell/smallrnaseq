@@ -3,7 +3,7 @@ Using smallrnaseq
 
 This page refers to using the Command Line Interface of smallrnaseq. For programmers using the API see code examples.
 
-Installing the package provides the command `smallrnaseq` in your path. This allows users is a command line interface to the library without the need for any Python coding at all. It provides a set of pre-defined functions with parameters specified in a text configuration file.
+Installing the package provides the command `smallrnaseq` in your path. This allows users is a command line interface to the library without the need for any Python coding at all. It provides a set of pre-defined functions with parameters specified in a text configuration file. The primary input is one or more fastq files containing short read data from a small rna-seq experiment. Note: It is assumed they have already been adapter trimmed, if required.
 
 Usage
 -----
@@ -236,6 +236,12 @@ So the config file will look like this::
   conditions = 3 months,6 months
   logfc_cutoff = 1.5
 
+
+Adapter trimming
+----------------
+
+Since there are numerous programs to perform this task it is left to the user to perform trimming of the reads prior to input.
+
 Aligners
 --------
 
@@ -246,7 +252,7 @@ Currently smallrnaseq integrates bowtie (version 1) and subread. Though others c
   apt install bowtie subread
 
 Links
-~~~~~
++++++
 
  * http://subread.sourceforge.net/
  * http://bowtie-bio.sourceforge.net/index.shtml
@@ -265,7 +271,7 @@ genomes. All can be changed in the config file if needed. You can also
 set custom parameters per library in the aligner section.
 
 Bowtie
-~~~~~~
+++++++
 
 For general mapping ``-v 1 --best`` is used. ``-v 1`` reports read
 mappings with up to one mismatch, options ``--best`` orders the mappings
@@ -286,14 +292,14 @@ For reference genome mapping miRDeep2 uses these parameters::
  -n 0 -e 80 -l 18 -a -m 5 --best --strata
 
 Subread
-~~~~~~~
++++++++
 
 ``-m 2 -M 1`` is the default for general alignment to libraries. If you
 use subread you can check the parameters by typing
 ``subread-align --help`` at the command line, or refer to the website.
 
 Configuration file
-~~~~~~~~~~~~~~~~~~
+++++++++++++++++++
 
 In the aligner section set your parameters. In the example below
 bos_taurus is the name of the reference genome. We have also used custom
@@ -307,7 +313,7 @@ settings for mirna and another library of tRNAs.
   bosTau8-tRNAs = -v 0 --best
 
 Code example
-~~~~~~~~~~~~
+++++++++++++
 
 If using the package in your python code, aligner parameters are set via
 the aligners module. This is done before calling mapping routines such
@@ -320,7 +326,7 @@ for example::
   aligners.SUBREAD_PARAMS = '-m 0 -M 1'
 
 References
-~~~~~~~~~~
+----------
 
 -  Shi, J., Dong, M., Li, L., Liu, L., Luz-Madrigal, A., Tsonis, P. A.,
   … Liang, C. (2015). mirPRo–a novel standalone program for

@@ -3,10 +3,17 @@ Methodology
 
 smallrnaseq is a Python package that implements some of the standard approaches for quantification and analysis of sncRNAs. This is usually implemented as part of a 'pipeline' that goes from raw fastq files to final counts of specific genes (e.g. coding transcripts or RNA species).
 
-Python users may find the various modules useful in creating their own more flexible workflows.
+For command line usage see the 'using smallrnaseq' section.
+
+Python programmers may find the various modules useful in creating their own more flexible workflows.
 A functional approach is used with a flat hierarchy of modules with limited use of classes.
 
 .. image:: https://raw.githubusercontent.com/dmnfarrell/smallrnaseq/master/img/workflow.png
+
+Counting known miRNAs
+---------------------
+
+This program uses the known miRNA sequences from miRBase for counting of species specific sequences. The current release used is version 22 (March 2018).
 
 Counting isomiRs
 ----------------

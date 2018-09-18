@@ -18,17 +18,17 @@ apps:
 parts:
   part1:
     plugin: python
-    python-version: python2
+    python-version: python3
     python-packages:
       [numpy]
     stage-packages:
       [libblas3,libopenblas-dev]
   smallrnaseq:
     plugin: python
-    python-version: python2
+    python-version: python3
     source: ../
     python-packages:
-      [Cython,scipy,matplotlib]
+      [Cython,scipy,matplotlib,pybedtools]
     build-packages:
       [zlib1g-dev,liblzo2-dev]
     stage-packages:
