@@ -414,19 +414,24 @@ def features_to_gtf(df, filename):
     return gtf
 
 def sequence_from_coords(fastafile, coords):
-    """Fasta sequence from genome coords"""
+    """Fasta sequence from genome coords.
+    Args:
+        fastafile: inpout fasta file
+        coords: genome coordinates as tuple of the form
+                (chrom,start,end,strand)
+    """
 
-    from pybedtools import BedTool
-    chrom,start,end,strand = coords
     if not os.path.exists(fastafile):
         print ('no such file')
         return
+    chrom,start,end,strand = coords
+    from pyfaidx import Fasta
+    genes = Fasta(fastafile)
     try:
-        if strand == '+':
-            seq = str(BedTool.seq(coords, fastafile))
-        else: #reverse strand
-            seq = str(BedTool.seq(coords, fastafile))
-            seq = str(HTSeq.Sequence(seq).get_reverse_complement())
+        #gets seq string from genome
+        seq = str(genes[chrom][start:end])
+        if strand == '-':
+            seq = str(HTSeq.Sequence(seq.encode()).get_reverse_complement())
     except Exception as e:
         print (e)
         return
@@ -704,13 +709,14 @@ def get_bg(seq, struct=None):
     """
 
     import forgi.graph.bulge_graph as cgb
+    seq = seq.replace('T','U')
     if struct == None:
         struct,sc = rnafold(seq)
     bg = cgb.BulgeGraph()
     bg.from_dotbracket(struct)
     #print (bg.struct)
     try:
-        bg.seq = seq
+        bg.seq = seq        
         return bg
     except Exception as e:
         print (e)

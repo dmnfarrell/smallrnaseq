@@ -5,7 +5,7 @@ inst_requires = ['numpy>=1.10',
                     'pandas>=0.20',
                     'seaborn>=0.7',
                     'scikit-learn>=0.18',
-                    'pybedtools>=0.7.9',
+                    'pyfaidx>=0.5.4',
                     'pysam>=0.10.0',
                     'HTSeq>=0.6',
                     'bx-python>=0.5',
@@ -17,7 +17,7 @@ if major == '2':
 
 setup(
     name = 'smallrnaseq',
-    version = '0.4.0',
+    version = '0.5.0',
     description = 'Package for short RNA-seq analysis',
     long_description = 'smallrnaseq is a Python package for processing of small RNA seq data.',
     url='https://github.com/dmnfarrell/smallrnaseq',

@@ -1,5 +1,5 @@
 name: smallrnaseq
-version: '0.2'
+version: '0.5.0'
 version-script: git describe --abbrev=1 --tags
 summary: small rna seq analysis in Python
 description: |
@@ -17,6 +17,7 @@ apps:
     plugs: [home,x11,network-bind]
 parts:
   part1:
+    #required for bx-python to build
     plugin: python
     python-version: python3
     python-packages:
@@ -28,12 +29,9 @@ parts:
     python-version: python3
     source: ../
     python-packages:
-      [Cython,scipy,matplotlib,pybedtools]
+      [Cython,scipy,matplotlib]
     build-packages:
       [zlib1g-dev,liblzo2-dev]
     stage-packages:
-      [swig3.0,bowtie,ncbi-blast+,samtools,bedtools]
+      [swig3.0,bowtie,ncbi-blast+,samtools,vienna-rna]
     after: [part1]
-  vienna-rna:
-    plugin: autotools
-    source: https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_3_x/ViennaRNA-2.3.5.tar.gz

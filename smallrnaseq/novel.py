@@ -71,7 +71,7 @@ def get_stem_matches(bg):
     """Find rna stem mismatches"""
 
     pairs = get_stem_pairs(bg)
-    wc = {'G':'C','C':'G','T':'A','A':'T'}
+    wc = {'G':'C','C':'G','T':'A','A':'T','U':'A'}
     matches = [True if i[1]==wc[i[0]] else False for i in pairs]
     return matches
 
@@ -420,10 +420,12 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         start5 = start - i
         end5 = start + 2 * seqlen-1 + loop + i
         coords = [chrom,start5,end5,strand]
+        #print (coords)
         prseq = utils.sequence_from_coords(ref_fasta, coords)
-        if prseq == None:
+        if prseq == None or 'N' in prseq:
             continue
         struct,sc = utils.rnafold(prseq)
+
         #prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
         if mstatus is None:
@@ -440,7 +442,7 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         end3 = end + i + seqlen+1
         coords = [chrom,start3,end3,strand]
         prseq = utils.sequence_from_coords(ref_fasta, coords)
-        if prseq == None:
+        if prseq == None or 'N' in prseq:
             continue
         struct,sc = utils.rnafold(prseq)
         #prseq, struct = check_hairpin(prseq, struct)
@@ -493,13 +495,13 @@ def get_consensus_read(ref, df):
     #print g
     x = g.iloc[0]
     cons = df[(df[s]==x[s]) & (df.length==x.length)].sort_values(by='reads',ascending=False)
-    #print cons
     mature = None
     for i,r in cons.iterrows():
         if r.seq in ref:
             mature = r.seq
             break
-    if mature==None:
+    if mature is None:
+        #print (cons.iloc[0])
         mature = cons.iloc[0].seq
     return mature
 
@@ -517,7 +519,7 @@ def find_precursor(ref_fasta, m, o=None, step=5, score_cutoff=.7):
            the top precursor
     """
 
-    x=m.iloc[0]
+    x = m.iloc[0]
     rcoords = (x['name'], x.start-10, x.end+10, x.strand)
     refseq = utils.sequence_from_coords(ref_fasta, rcoords)
     #get a consensus mature sequence
@@ -668,10 +670,11 @@ def assign_names(df, species=''):
 def encode_name(s):
     """Hash a sequence into a short string"""
 
-    import hashlib
+    import hashlib, base64
     h = hashlib.md5(s.encode())
-    s = h.digest().encode('base64')[:8]
-    s = s.replace('/','x')
+    s = h.digest()
+    s = base64.b64encode(s)[:8]
+    s = s.decode().replace('/','x')
     return s
 
 def forna_url(precursor, mature, star=None, struct=None):
