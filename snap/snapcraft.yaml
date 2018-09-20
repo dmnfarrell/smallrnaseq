@@ -14,7 +14,7 @@ icon: gui/icon.png
 apps:
   smallrnaseq:
     command: bin/smallrnaseq
-    plugs: [home,x11,network-bind]
+    plugs: [home,network-bind]
 parts:
   part1:
     #required for bx-python to build
@@ -22,16 +22,14 @@ parts:
     python-version: python3
     python-packages:
       [numpy]
-    stage-packages:
-      [libblas3,libopenblas-dev]
   smallrnaseq:
     plugin: python
     python-version: python3
     source: ../
     python-packages:
-      [Cython,scipy,matplotlib]
+      [scipy,matplotlib]
     build-packages:
       [zlib1g-dev,liblzo2-dev]
     stage-packages:
-      [swig3.0,bowtie,ncbi-blast+,samtools,vienna-rna]
+      [bowtie,ncbi-blast+,samtools,vienna-rna,python3-rna]
     after: [part1]

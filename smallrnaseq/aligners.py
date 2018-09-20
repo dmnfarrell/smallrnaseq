@@ -49,18 +49,23 @@ def set_params(aligner, params=None):
         global SUBREAD_PARAMS
         SUBREAD_PARAMS = params
 
-def build_bowtie_index(fastafile, path):
-    """Build a bowtie index"""
+def build_bowtie_index(fastafile, path=None):
+    """Build a bowtie index
+    Args:
+        fastafile: file input
+        path: folder to place index files
+    """
 
-    name = os.path.splitext(fastafile)[0]
+    name = os.path.splitext(os.path.basename(fastafile))[0]
+    name = os.path.join(path, name)
+    if not os.path.exists(path):
+        os.makedirs(path)
     cmd = 'bowtie-build -f %s %s' %(fastafile, name)
     try:
         result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     except subprocess.CalledProcessError as e:
         print (str(e.output))
         return
-    files = glob.glob(name+'*.ebwt')
-    utils.move_files(files, path)
     print ('built bowtie index for %s' %fastafile)
     return
 

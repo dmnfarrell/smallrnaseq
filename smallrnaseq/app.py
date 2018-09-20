@@ -23,6 +23,8 @@ import sys, os, string, types, shutil, time
 import glob
 import pandas as pd
 from smallrnaseq import config, base, analysis, utils, aligners, novel, plotting, de
+snap_msg = 'when running from a snap you should use your home folder for reading/writing'
+home = os.path.expanduser('~')
 
 class WorkFlow(object):
     """Class for implementing a rna/mirna workflow from a set of options"""
@@ -43,9 +45,13 @@ class WorkFlow(object):
             self.files = glob.glob(os.path.join(self.path,'*.fastq'))
             if len(self.files) == 0:
                 print ('no fastq files found')
+                if check_snap() == True:
+                    print (snap_msg)
                 return False
         else:
             print ('you should provide at least one file or folder')
+            if check_snap() == True:
+                print (snap_msg)
             return False
         self.files = [str(f) for f in self.files]
         aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = self.index_path
@@ -53,6 +59,8 @@ class WorkFlow(object):
             aligners.set_params(self.aligner, self.default_params)
         if not os.path.exists(self.index_path):
             print ('no such folder for indexes')
+            if check_snap() == True:
+                print (snap_msg)
             return False
         if not os.path.exists(self.output):
             os.mkdir(self.output)
@@ -189,7 +197,7 @@ class WorkFlow(object):
         #novel prediction
         if self.ref_fasta == '' or not os.path.exists(self.ref_fasta):
             print ('no reference genome file, skipping novel mirna step')
-        elif ref_name == None:
+        elif ref_name == None or ref_name == '':
             print ('no index for ref genome, required for novel mirna step')
         elif check_viennarna() == False:
             print ('Vienna RNA package not installed')
@@ -413,16 +421,23 @@ def print_help():
     print ('for further information')
     return
 
-def run_test():
+def check_snap():
+    """Check if inside a snap"""
+
+    if 'SNAP_COMMON' in os.environ:
+        return True
+    return False
+
+def test_run():
     """Run mirna test with test files"""
 
     print ('running miRNA counting test')
-    indpath = 'testing/indexes'
-    aligners.BOWTIE_INDEXES = indpath
-    if not os.path.exists(indpath):
-        os.makedirs(indpath)
+    idxpath = 'testing/indexes'
+    if check_snap() == True:
+        idxpath = os.path.join(home, idxpath)
+    aligners.BOWTIE_INDEXES = idxpath
     lib1 = os.path.join(base.datadir, 'bosTau8-tRNAs.fa')
-    aligners.build_bowtie_index(lib1, path=indpath)
+    aligners.build_bowtie_index(lib1, path=idxpath)
     f1 = os.path.join(base.datadir, 'bovine_plasma_sample.fastq')
     f2 = os.path.join(base.datadir, 'bovine_serum_sample.fastq')
     path = os.path.join('testing', 'ncrna_map')
@@ -463,7 +478,11 @@ def main():
         if opts.collapse == True:
             base.collapse_reads(opts.infile)
     elif opts.build != None:
-        build_indexes(opts.build, 'indexes')
+        idxpath = 'indexes'
+        if check_snap() == True:
+            idxpath = os.path.join(home, 'indexes')
+        build_indexes(opts.build, idxpath)
+        print ('wrote index to folder %s' %idxpath)
     elif opts.config != None and os.path.exists(opts.config):
         cp = config.parse_config(opts.config)
         options = config.get_options(cp)
@@ -484,7 +503,7 @@ def main():
         else:
             print_help()
     elif opts.tests == True:
-        run_test()
+        test_run()
     else:
         if opts.config != None:
             conffile = opts.config

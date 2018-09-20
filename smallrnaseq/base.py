@@ -40,7 +40,6 @@ path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
 MIRBASE = os.path.join(datadir, 'miRBase_all.csv')
 
-
 def first(x):
     return x.iloc[0]
 

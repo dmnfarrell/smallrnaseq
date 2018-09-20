@@ -539,6 +539,7 @@ def combine_aligned_reads(path, idx, filenames=None):
         #print(f)
         name = os.path.splitext(os.path.basename(f))[0]
         samfile = os.path.join(path, '%s_%s.sam' %(name,idx))
+        #print (samfile)
         if not os.path.exists(samfile):
             print ('no sam file')
             continue
@@ -716,7 +717,7 @@ def get_bg(seq, struct=None):
     bg.from_dotbracket(struct)
     #print (bg.struct)
     try:
-        bg.seq = seq        
+        bg.seq = seq
         return bg
     except Exception as e:
         print (e)
