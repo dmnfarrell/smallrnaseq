@@ -64,7 +64,7 @@ On most linux operating systems installations of Python should include the pip t
 If not use your distributions package manager to install pip first. Then the simple
 call below should install all dependencies. However if this fails see the linux section
 below for commands to run for installing any pre-requisites that might not be on your
-system. We hope to provide a snap package that will simplify installation on linux.
+system.
 ::
   pip install smallrnaseq
 
@@ -83,6 +83,15 @@ Fedora::
     sudo pip install cython pysam
     sudo pip install smallrnaseq
     sudo dnf install bowtie
+
+Snap package
+++++++++++++
+
+You can install the application with a single command as a snap on Ubuntu and other supported linux systems. This has the advantage of convenient updates and not having to worry about any dependencies as everything is packaged in the snap. To install from the command line::
+
+    snap install smallrnaseq
+
+You can also visit the store page for the app at https://snapcraft.io/smallrnaseq
 
 For python 3 installs
 +++++++++++++++++++++
@@ -130,16 +139,20 @@ will install the older version which should work.
 Windows
 -------
 
-In theory this package will work on Windows but has not been tested. If you are a windows user
-it is recommended to use linux running inside virtualbox.
-See http://www.makeuseof.com/tag/how-to-use-virtualbox/
+In theory this package will work on Windows but has not been tested. If you are a windows user there are several options available:
+
+ 1. simply use linux running inside a virtualbox instance. see http://www.makeuseof.com/tag/how-to-use-virtualbox/
+ 2. install windows subsystem for linux (WSL_) and use the linux instructions above (not tested).
+ 3. Use conda and bioconda (see the OSX instructions below).
+
+.. _WSL: https://docs.microsoft.com/en-gb/windows/wsl/install-win10
 
 Vienna package
 --------------
 
 This is needed if you want to do novel miRNA prediction. It has to be installed separately
 on all systems. Go to https://www.tbi.univie.ac.at/RNA/#binary_packages and download the
-binary for your system.
+binary for your system. Note: this is not required if using the snap package.
 
 Required dependencies
 ---------------------
