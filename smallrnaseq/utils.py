@@ -21,7 +21,7 @@
 """
 
 from __future__ import absolute_import, print_function
-import sys, os, string, types, re, csv
+import sys, os, string, types, re, csv, time
 import shutil, glob, collections
 import itertools
 from itertools import islice
@@ -63,6 +63,63 @@ def gzipfile(filename, remove=False):
     if remove == True:
         os.remove(filename)
     return
+
+def _run_multiprocess(recs, cpus=2, worker=None, **kwargs):
+    """
+    Call function with multiprocessing pools. Used for running predictions
+    in parallel where the main input is a pandas dataframe.
+    Args:
+        recs: input dataframe or iterable
+        cpus: number of cores to use
+        worker: function to be run in parallel, expected to return a dataframe
+    Returns:
+        concatenated result, a pandas dataframe
+       """
+
+    import multiprocessing as mp
+    maxcpu = mp.cpu_count()
+    if cpus == 0 or cpus > maxcpu:
+        cpus = maxcpu
+    if cpus >= len(recs):
+        cpus = len(recs)
+    pool = mp.Pool(cpus)
+    funclist = []
+    st = time.time()
+    chunks = np.array_split(recs,cpus)
+    #print ([len(i) for i in chunks])
+
+    for recs in chunks:
+        f = pool.apply_async(worker, [recs,kwargs])
+        funclist.append(f)
+    result = []
+    try:
+        for f in funclist:
+            df = f.get(timeout=None)
+            #print (df)
+            if df is not None and len(df)>0:
+                result.append(df)
+    except KeyboardInterrupt:
+        print ('process interrupted')
+        pool.terminate()
+        sys.exit(0)
+    pool.close()
+    pool.join()
+
+    if type(result) is list:
+        #if multiple dfs returned from the function we zip, concat
+        #and put back in a list
+        result = zip(*result)
+        r=[]
+        for df in result:
+            r.append(pd.concat(df))
+        result=r
+    else:
+        if len(result)>0:
+            result = pd.concat(result)
+
+    t=time.time()-st
+    print ('took %s seconds' %str(round(t,3)))
+    return result
 
 def create_html(df,name,path='.'):
     """Create a basic html page for dataframe results"""

@@ -294,7 +294,7 @@ def deseq_normalize(df):
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
              norm_method='library', use_remaining=True, overwrite=False,
-             samplelabels=None, params={}, count_method='split'):
+             samplelabels=None, params={}, count_method='split', verbose=True):
     """Map reads to one or more gene annotations, assumes adapters are removed.
 
     Args:
@@ -352,7 +352,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
 
             if aligner == 'bowtie':
                 aligners.bowtie_align(query, idx, outfile=samfile,
-                                      remaining=rem, verbose=True)
+                                      remaining=rem, verbose=verbose)
             elif aligner == 'subread':
                 aligners.subread_align(query, idx, samfile)
 
@@ -626,8 +626,9 @@ def map_mirbase(files, species='bta', outpath='mirna_results', indexes=[],
        count results into one file. Used for counting of known miRNAs.
 
        Args:
-           Species: three letter name of species using mirbase convention
+           species: three letter name of species using mirbase convention
            indexes: other libraries to align to before we count mirnas
+           outpath: output folders
     """
 
     if not os.path.exists(outpath):

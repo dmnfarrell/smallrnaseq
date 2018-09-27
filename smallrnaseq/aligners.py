@@ -96,7 +96,7 @@ def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
         print ('aligners.BOWTIE_INDEXES variable not set')
         return
     os.environ["BOWTIE_INDEXES"] = BOWTIE_INDEXES
-    print (BOWTIE_INDEXES)
+    #print (BOWTIE_INDEXES)
     params = BOWTIE_PARAMS
     if remaining == None:
         remaining = os.path.join(outpath, label+'_r.fa')

@@ -176,7 +176,8 @@ class WorkFlow(object):
                                        species=self.species, ref_genome=ref_name,
                                        pad5=self.pad5, pad3=self.pad3, aligner=self.aligner,
                                        samplelabels=self.labels,
-                                       params=self.aligner_params)
+                                       params=self.aligner_params,
+                                       verbose=self.verbose)
 
         #seperate out mature counts and save
         matcounts = counts[counts.ref==mat_name]
@@ -211,7 +212,8 @@ class WorkFlow(object):
             allreads = utils.combine_aligned_reads(temp, idx=ref_name)
             new,cl = novel.find_mirnas(allreads, self.ref_fasta, species=self.species,
                                        score_cutoff=float(self.score_cutoff),
-                                       read_cutoff=int(self.read_cutoff))
+                                       read_cutoff=int(self.read_cutoff),
+                                       cpus=self.cpus, verbose=self.verbose)
             if self.strict == True:
                 new = new[new.mature_check=='ok']
                 print ('filtered %s' %len(new))

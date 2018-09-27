@@ -34,6 +34,13 @@ path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')
 CLASSIFIER = None
 
+def findprecursorsworker(recs, kwargs):
+    try:
+        df = precursors_from_clusters(recs, **kwargs)
+    except KeyboardInterrupt:
+        return
+    return df
+
 def get_triplets(seq, struct):
     """Get triplet elements used by Xue et al."""
 
@@ -566,8 +573,55 @@ def find_precursor(ref_fasta, m, o=None, step=5, score_cutoff=.7):
     #print ('')
     return P
 
+def precursors_from_clusters(clusts, rcl, ref_fasta, score_cutoff=0.7, read_cutoff=50):
+    """Get best precursors from read clusters.
+    Args:
+        clusters: dataframe of read clusters
+        rcl: reads with cluster information, a dataframe"""
+
+    reads = []
+    N = []
+    for i,c in clusts.iterrows():
+        df = rcl[rcl.cluster==c.cluster]
+        df = df.sort_values('reads',ascending=False)
+
+        #small clusters should belong to a single mature
+        if c.clust_size<28:
+            df['mature'] = True
+            reads.append(df)
+            p = find_precursor(ref_fasta, df, score_cutoff=score_cutoff)
+            #print p
+            if p is not None:
+                N.append(p)
+                #print (p.mature)
+            continue
+
+        #for larger clusters choose most likely mature reads
+        anchor = df.iloc[0]
+        st = anchor.start
+        end = anchor.end
+        m = df.loc[(abs(df.start-st)<=3) & (abs(df.end-end)<=5)].copy()
+        if m.reads.sum() <= read_cutoff:
+            continue
+        m['mature'] = True
+        reads.append(m)
+        #remainder of reads assigned as non-mature
+        other = df.loc[~df.index.isin(m.index)].copy()
+        other['mature'] = False
+        reads.append(other)
+
+        p = find_precursor(ref_fasta, m, other, score_cutoff=score_cutoff)
+        #check for nearby clusters inside this precursor
+        #nc = clusts[(abs(clusts.start-c.start)<100) & (clusts.cluster!=c.cluster)]
+        if p is not None:
+            N.append(p)
+            #print (p.mature)
+    found = pd.DataFrame(N)
+    reads = pd.concat(reads)
+    return found, reads
+
 def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
-                max_length=25, min_length=18, min_size=3):
+                max_length=25, min_length=18, min_size=3, cpus=1, verbose=True):
     """Find novel miRNAs in reference mapped reads. Assumes we have already
         mapped to known miRNAs.
 
@@ -587,51 +641,21 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
 
     reads = reads[(reads.length<=max_length) & (reads.length>=min_length)]
     #assign reads to clusters
+    print ('finding read clusters')
     rcl = get_read_clusters(reads, 10, min_size)
     clusts = get_cluster_groups(rcl)
     clusts = clusts[clusts.reads>=read_cutoff]
     print ('%s clusters above reads cutoff' %len(clusts))
 
-    X = []
-    N = []
-    for i,c in clusts.iterrows():
-        df = rcl[rcl.cluster==c.cluster]
-        df = df.sort_values('reads',ascending=False)
-        #small clusters should belong to a single mature
-        if c.clust_size<28:
-            df['mature'] = True
-            X.append(df)
-            p = find_precursor(ref_fasta, df, score_cutoff=score_cutoff)
-            #print p
-            if p is not None:
-                N.append(p)
-                #print (p.mature)
-            continue
+    if cpus == 1:
+        new, found = precursors_from_clusters(clusts, rcl, ref_fasta,
+                                              score_cutoff, read_cutoff)
+    else:
+        #parallelise this part
+        new, found = utils._run_multiprocess(recs=clusts, cpus=cpus, worker=findprecursorsworker,
+                                rcl=rcl, ref_fasta=ref_fasta, score_cutoff=score_cutoff,
+                                read_cutoff=read_cutoff)
 
-        #for larger clusters choose most likely mature reads
-        anchor = df.iloc[0]
-        st = anchor.start
-        end = anchor.end
-        m = df.loc[(abs(df.start-st)<=3) & (abs(df.end-end)<=5)].copy()
-        if m.reads.sum() < read_cutoff:
-            continue
-        m['mature'] = True
-        X.append(m)
-        #remainder of reads assigned as non-mature
-        o = df.loc[~df.index.isin(m.index)].copy()
-        o['mature'] = False
-        X.append(o)
-
-        p = find_precursor(ref_fasta, m, o, score_cutoff=score_cutoff)
-
-        #check for nearby clusters inside this precursor
-        #nc = clusts[(abs(clusts.start-c.start)<100) & (clusts.cluster!=c.cluster)]
-
-        if p is not None:
-            N.append(p)
-            #print (p.mature)
-
-    new = pd.DataFrame(N)
     new['seed'] = new.apply(lambda x: x.mature[1:7], 1)
     #get coords column
     new['coords'] = new.apply(get_coords_string,1)
@@ -645,7 +669,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
     print ('found %s novel mirnas' %len(new.groupby('mature_id')))
     print ('%s with known mature sequences' %len(new[-new.known_id.isnull()]))
     #also return all the reads found in clusters
-    found = pd.concat(X)
+    #found = pd.concat(X)
     return new, found
 
 def get_coords_string(r):
