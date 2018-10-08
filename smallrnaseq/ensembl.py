@@ -15,8 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """
-    Module for methods using ensembl mostly using pycogent API
-    Created September 2014
+    Module for methods using ensembl mostly using ensembldb3 API
+    This only works with python 3.
+    Created September 2014-
     Copyright (C) Damien Farrell
 """
 
@@ -26,22 +27,16 @@ import pandas as pd
 from . import base
 
 try:
-    import cogent
-    from cogent.db.ensembl import HostAccount, Genome, Compara, Species
+    from ensembldb3 import HostAccount, Genome, Compara, Species
     account = None
-    release = '87'
-    #add recent ensembl species
+    release = '89'
     species = ['cow','human','mouse','rat','chimp','gorilla','orangutan',
                'macaque','dog','pig','cat','olive baboon','sheep']
-    Species.amendSpecies('Papio anubis', 'olive baboon')
-    Species.amendSpecies('Ovis aries', 'sheep')
-    Species.amendSpecies('Erinaceus europaeus', 'hedgehog')
-    Species.amendSpecies('Mustela putorius furo', 'ferret')
 except Exception as e:
     print (e)
 
-
 def get_orthologs(refgenome, ensid=None, symbol=None):
+
     '''if ensid!=None:
         mygene = cow.getGeneByStableId(StableId=ensid)
     else:
@@ -50,10 +45,7 @@ def get_orthologs(refgenome, ensid=None, symbol=None):
     orthologs = comp.getRelatedGenes(gene_region=mygene,
                     Relationship='ortholog_one2one')
     print (orthologs.Members)
-    #seqs = orthologs.getSeqCollection(feature_types='gene')
-    #print seqs.Names
-    #syntenicregions = comp.getSyntenicRegions(region=mygene,
-    #                align_method='EPO', align_clade='eutherian')
+
     return
 
 def get_genes_from_location(ref, coords, pad=0):
@@ -83,51 +75,36 @@ def find_in_gene(g, start, end):
             return 'intron'
     #return 'both'
 
-def get_alignment_tree(fname):
-    """Build a neighbour joining tree"""
-
-    from cogent.phylo import distance, nj
-    from cogent.evolve.models import HKY85,F81
-    al = cogent.LoadSeqs(fname,format='fasta')
-    d = distance.EstimateDistances(al, submodel= F81())
-    d.run(show_progress=False)
-    mytree = nj.nj(d.getPairwiseDistances())
-    mytree = mytree.balanced()
-    print (mytree.asciiArt())
-    print
-    '''from cogent.draw import dendrogram
-    p = dendrogram.SquareDendrogram(mytree)
-    p.drawToPDF('tree-scaled.pdf', 500, 400, stroke_width=2.0,
-                shade_param = 'r', max_value = 1.0,)'''
-    return
-
-def get_syntenic_alignment(comp, ref, coords, fname='ensembl.aln.fa'):
+def get_syntenic_alignment(compara, ref, coords, fname='ensembl.aln.fa'):
     """Get ensembl genomic alignment for a location using compara and return seqs"""
 
     print
+    pad = 5
     chrom,start,end,strand = coords
-    regions = comp.getSyntenicRegions(Species=ref, CoordName=chrom,
-                                       Start=start, End=end, align_method="EPO_LOW_COVERAGE",
-                                       align_clade="39 eutherian", Strand=strand)
+    regions = compara.get_syntenic_regions(ref, coord_name=chrom, strand=strand,
+                                       start=start-pad, end=end+pad, align_method="EPO",
+                                        align_clade='mammals')
     regions = [r for r in regions]
+    if regions is not None:
+        print ('%s syntenic regions found' %len(regions))
     if len(regions)==0:
         print ('no alignments')
         return None, None
     #usually only 1 alignment
-    A = regions[0].getAlignment()
-    A.writeToFile(fname)
-    #print cogent.LoadSeqs(fname)
-    #if len(A.Seqs)>3:
-    #    getAlignmentTree(fname)
-    if regions is not None:
-        print ('%s syntenic regions found' %len(regions))
-    return regions, A
+    aln = regions[0].get_alignment()
+    try:
+        aln = regions[0].get_alignment()
+        aln.write(fname)
+    except Exception as e:
+        print(e)
+        aln=None
+    return regions, aln
 
-def get_host_genes(df, ref='cow'):
+def get_host_genes(df, ref='cow', release='93'):
     """Get all genes containing the given miRNAs using ensembl"""
 
     results=[]
-    comp = Compara(species, account=None, Release='79')
+    comp = Compara(species, release=release)
     for i, r in list(df.iterrows()):
         name = r['#miRNA']
         c,locs,strand = r['precursor coordinate'].split(':')
@@ -144,10 +121,6 @@ def get_host_genes(df, ref='cow'):
                                 'tu','ensid'])
         return results
     return
-
-#def getGeneProperty(genes, label):
-#    x = [g[0].Symbol if len(g)>0 else np.nan for g in orthgenes]
-#    return x
 
 def get_mirna_orthologs(df, comp=None, ref='cow'):
     """Get all possible orthologs/conservation for miRNAs using ensembl"""
@@ -277,10 +250,9 @@ def get_sequence_from_location(species, coords):
 
 def test():
 
-    comp = Compara(species, account=account, Release=release)
+    comp = Compara(species, account=account, release=release)
     #print comp.method_species_links
-    coords = [('15', 85273455, 85273507, '+'),('18',12423976,12424060,'+')]
+    coords = [('14', 79379660, 79379723, '-')]
     for c in coords:
-        getSyntenicAlignment(comp, 'cow', c)
-        #getAlignmentTree('ensembl_aln.fa')
+        get_syntenic_alignment(comp, 'cow', c)
     return

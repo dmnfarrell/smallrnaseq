@@ -294,7 +294,7 @@ def deseq_normalize(df):
 
 def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
              norm_method='library', use_remaining=True, overwrite=False,
-             samplelabels=None, params={}, count_method='split', verbose=True):
+             samplelabels=None, params={}, count_method='split', cpus=2, verbose=True):
     """Map reads to one or more gene annotations, assumes adapters are removed.
 
     Args:
@@ -351,7 +351,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             rem = os.path.join(outpath, filename+'_r.fa')
 
             if aligner == 'bowtie':
-                aligners.bowtie_align(query, idx, outfile=samfile,
+                aligners.bowtie_align(query, idx, outfile=samfile, cpus=cpus,
                                       remaining=rem, verbose=verbose)
             elif aligner == 'subread':
                 aligners.subread_align(query, idx, samfile)

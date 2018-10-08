@@ -62,18 +62,14 @@ Linux
 
 On most linux operating systems installations of Python should include the pip tool.
 If not use your distributions package manager to install pip first. Then the simple
-call below should install all dependencies. However if this fails see the linux section
-below for commands to run for installing any pre-requisites that might not be on your
-system.
-::
-  pip install smallrnaseq
+call below should install all dependencies.
 
-If pip fails you can run the following commands first to fix likely missing packages.
-These are mainly needed for HTSeq to install. Then run pip again.
+You should first run the following commands for installing the pre-requisites that might not
+be on your system already.
 
 Ubuntu::
 
-    sudo apt install python-dev samtools bedtools liblzma-dev libbz2-dev zlib1g-dev liblzo2-dev python-scipy
+    sudo apt install python-dev samtools liblzma-dev libbz2-dev zlib1g-dev liblzo2-dev python-scipy
     sudo pip install smallrnaseq
     sudo apt install bowtie
 
@@ -83,6 +79,10 @@ Fedora::
     sudo pip install cython pysam
     sudo pip install smallrnaseq
     sudo dnf install bowtie
+
+Then finally run::
+
+  pip install smallrnaseq
 
 Snap package
 ++++++++++++
@@ -139,10 +139,10 @@ will install the older version which should work.
 Windows
 -------
 
-In theory this package will work on Windows but has not been tested. If you are a windows user there are several options available:
+If you are a Windows user there are several options available:
 
- 1. simply use linux running inside a virtualbox instance. see http://www.makeuseof.com/tag/how-to-use-virtualbox/
- 2. install windows subsystem for linux (WSL_) and use the linux instructions above (not tested).
+ 1. Simply use linux running inside a virtualbox instance. see http://www.makeuseof.com/tag/how-to-use-virtualbox/
+ 2. Install Windows Subsystem for Linux (WSL_) and use the linux instructions above. This is confirmed to work on Windows 10.
  3. Use conda and bioconda (see the OSX instructions below).
 
 .. _WSL: https://docs.microsoft.com/en-gb/windows/wsl/install-win10
@@ -162,6 +162,8 @@ Required dependencies
 * matplotlib
 * seaborn (requires scipy)
 * HTSeq
+* bx-python
+* pyfaidx
 * scikit-learn
 
 Installing R for differential expression

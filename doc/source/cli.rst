@@ -34,6 +34,8 @@ The advantage of configuration files is in avoiding long commands that have to b
   species = hsa
   pad5 = 3
   pad3 = 5
+  verbose = 1
+  cpus = 1
 
   [aligner]
   default_params = -v 1 --best
@@ -109,6 +111,12 @@ Settings explained:
 +---------------+---------------------------------+-------------------+
 | pad3          | 5                               | 5’ flanking bases |
 |               |                                 | to add            |
++---------------+---------------------------------+-------------------+
+| verbose       | 1                               | print extra       |
+|               |                                 | information       |
++---------------+---------------------------------+-------------------+
+| cpus          | 1                               | number of threads |
+|               |                                 | to use            |
 +---------------+---------------------------------+-------------------+
 | sample_labels | samplefile.txt                  | csv file with     |
 |               |                                 | sample labels     |

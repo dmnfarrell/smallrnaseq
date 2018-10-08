@@ -33,6 +33,7 @@ from . import base, utils
 path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')
 CLASSIFIER = None
+VERBOSE = True
 
 def findprecursorsworker(recs, kwargs):
     try:
@@ -50,7 +51,7 @@ def get_triplets(seq, struct):
     for i in nuc:
         for j in tr:
             d[i+j]=0
-    struct=struct.replace(')','(')
+    struct = struct.replace(')','(')
     l = len(seq)-len(seq)%3
     for i in range(0,l,3):
         n = seq[i+1]+struct[i:i+3]
@@ -94,12 +95,12 @@ def build_rna_features(seq, struct=None, sc=None, mature=None):
     import forgi.graph.bulge_graph as cgb
 
     if struct == None:
-        struct,sc = utils.rnafold(seq)
+        struct,sc = utils.rnafold(str(seq))
 
     feats = {}
     #feats['reads'] = reads.reads.sum()
     feats['length'] = len(seq)
-    feats['mfe'] = round(sc/len(seq),3)
+    feats['mfe'] = sc #round(sc/len(seq),3)
     #print seq
     #print struct
 
@@ -114,7 +115,12 @@ def build_rna_features(seq, struct=None, sc=None, mature=None):
         feats['loop_length'] = 0
     feats['gc'] = GC(seq)
     feats['loop_gc']= GC(h0seq)
-    feats['stem_length'] = len(get_stem_pairs(bg))
+    stem_length = len(get_stem_pairs(bg))
+    if stem_length <=1 :
+        #not a useful structure so return nothing
+        return
+    #feats['stems'] = len(list(bg.stem_iterator()))
+    feats['stem_length'] = stem_length
     feats['longest_stem'] = get_biggest_stem(bg)[0]
     bulges = [bg.get_bulge_dimensions(i) for i in bg.iloop_iterator()]
     feats['bulges'] = len(bulges)
@@ -128,16 +134,25 @@ def build_rna_features(seq, struct=None, sc=None, mature=None):
     sm = get_stem_matches(bg)
     feats['stem_mismatches'] = sm.count(False)
 
-    if mature == None:
+    '''if mature == None:
         #mature should be given - place holder for code to guess it later
         start = np.random.randint(1,len(sm)-20)
         end = start+22
     else:
         start = utils.find_subseq(seq, mature)
         end = start+len(mature)
-        #print start, end
-    feats['mature_mismatches'] = sm[start:end].count(False)
-    feats['struct'] = struct
+        #print start, end'''
+    #feats['mature_mismatches'] = sm[start:end].count(False)
+    #feats['struct'] = struct
+    #feats['mature_start'] = start
+
+    #p = list(bg.stem_bp_iterator('s0'))[0]
+    #l = list(bg.define_range_iterator('h0'))[0]
+    #feats['3p mature outside'] = int(end>p[1]+2)
+    #feats['mature in loop'] = 0
+    #if (start<l[0] and end>l[0]) or (start<l[1] and end>l[1]):
+    #    feats['mature in loop'] = 1
+    #get triplet features
     tr = get_triplets(seq, struct)
     feats.update(tr)
     return feats
@@ -151,21 +166,22 @@ def find_star_sequence(seq, mature, struct=None):
     #print (start, end)
     #find end of mature to estimate start of star
     for p in bg.adjacent_stem_pairs_iterator():
-        #print (p)
+        #print (len(p))
         for s in p:
-            #print (s)
+            #print (len(s))
             x = list(bg.stem_bp_iterator(s))
             #print (x)
             for i in x:
                 if start == i[0]:
                     #print ('found start', i )
-                    star = seq[i[1]-len(mature):i[1]+2]
+                    star = seq[i[1]-len(mature)+2:i[1]+2]
                     return star
                 elif start == i[1]:
                     #print ('found start', i )
-                    star = seq[i[0]-len(mature)+1:i[0]]
+                    star = seq[i[0]-len(mature)+1:i[0]+2]
                     return star
-    print ('star not found')
+    if VERBOSE == True:
+        print ('star not found')
     return
 
 def check_hairpin(seq, struct):
@@ -199,32 +215,52 @@ def check_mature(seq, struct, mature):
         return 'mature not found'
     if end>p[1]+2:
         return '3p mature outside'
+    if p[0]>start+2:
+        return 'mature unpaired'
     return 'ok'
 
-def get_positives(species='hsa'):
+def get_positives(species=None, samples=2000):
     """Get known mirbase hairpins for training precursor classifier. """
 
-    reload(base)
+    mammals=['hsa','bta','mmu','gga','ocu','eca']
     mirs = base.get_mirbase(species)
+    mirs = mirs[mirs.species.isin(mammals)]
+    if species is None:
+        idx=[np.random.randint(0,len(mirs.index)) for i in range(samples)]
+        mirs=mirs.iloc[idx]
+    else:
+        mirs = mirs[:samples]
     feats=[]
+    seqs=[]
     for i,row in mirs.iterrows():
-        f = build_rna_features(row.precursor, mature=row.mature1_seq)
-        f['seq'] = row.precursor
-        f['mature'] = row.mature1_seq
-        f['star'] = row.mature2_seq
+        struct,sc = utils.rnafold(str(row.precursor))
+        f = build_rna_features(row.precursor, struct, sc, mature=row.mature1_seq)
+        if f is None:
+            continue
+        s={}
+        s['precursor'] = row.precursor
+        s['mature'] = row.mature1_seq
+        s['star'] = row.mature2_seq
+        s['struct'] = struct
+        seqs.append(s)
         feats.append(f)
 
-    result = pd.DataFrame(feats)
-    result.to_csv('known_mirna_features.csv', index=False)
-    return result
+    seqs = pd.DataFrame(seqs)
+    feats = pd.DataFrame(feats)
+    feats.to_csv('known_mirna_features.csv', index=False)
+    return seqs, feats
 
-def get_negatives(fasta_file=None, samples=2000):
-    """Create a negative pseudo mirna set for training classifier"""
+def get_negatives(fasta_file, samples=2000):
+    """Create a negative pseudo precursor mirna set.
+    same length distribution as mirbase mirnas
+    minimum of 18 base pairings on the stem of the hairpin structure
+    maximum of -15 kcal/mol free energy of the secondary structure
+    no multiple loops
+    Can use Homo_sapiens.GRCh38.cds.all.fa"""
 
-    if fasta_file == None:
-        cds = utils.fasta_to_dataframe('../genomes/human/Homo_sapiens.GRCh38.cds.all.fa')
+    cds = utils.fasta_to_dataframe(fasta_file)
     cds = cds.drop_duplicates('sequence')
-    cds = cds[cds.sequence.str.len()>50]
+    cds = cds[cds.sequence.str.len()>40]
 
     def split_seqs(r):
         #maxlen = int(np.random.normal(81,17))
@@ -233,25 +269,35 @@ def get_negatives(fasta_file=None, samples=2000):
         s = [r.sequence[ind:ind+maxlen] for ind in range(0, len(r.sequence), maxlen)]
         return pd.Series(s)
 
-    seqs = cds[:5000].apply(split_seqs,1).stack().reset_index(drop=True)
-    seqs = seqs[seqs.str.len()>50]
-    seqs = seqs[-seqs.str.contains('N')]
-    result=[]
+    S = cds[:5000].apply(split_seqs,1).stack().reset_index(drop=True)
+    S = S[S.str.len()>40]
+    S = S[-S.str.contains('N')]
+    #print (S)
+    feats=[]
+    seqs=[]
     i=1
-    for seq in seqs:
+    for seq in S:
         ms = int(np.random.randint(2,5))
-        f = build_rna_features(seq, mature=seq[ms:ms+22])
-        f['seq'] = seq
-        if f['loops'] > 2:# or f['stem_length']>18:
+        struct,sc = utils.rnafold(str(seq))
+        f = build_rna_features(seq, struct, sc)
+        if f is None:
             continue
-        result.append(f)
+        if f['stem_length']<10 or f['mfe'] >-5 or f['loops']>1:
+            continue
+        feats.append(f)
+        s={}
+        s['precursor'] = seq
+        #s['mature'] = mature_seq
+        #s['star'] = ''
+        s['struct'] = struct
+        seqs.append(s)
         i+=1
         if i > samples:
             break
-    result = pd.DataFrame(result)
-    #result = result[(result.mfe*result.length<=-15)]
-    result.to_csv('negative_mirna_features.csv', index=False)
-    return result
+    feats = pd.DataFrame(feats)
+    seqs = pd.DataFrame(seqs)
+    feats.to_csv('negative_mirna_features.csv', index=False)
+    return seqs, feats
 
 def get_training_data(known=None, neg=None):
     """Get training data for classifier.
@@ -268,7 +314,7 @@ def get_training_data(known=None, neg=None):
         #known = get_positives()
     if neg is None:
         neg = pd.read_csv(os.path.join(datadir, 'training_negatives.csv'))
-    #print (len(known), len(neg))
+    print (len(known), len(neg))
     known['target'] = 1
     neg['target'] = 0
     data = pd.concat([known,neg]).reset_index(drop=True)
@@ -276,48 +322,32 @@ def get_training_data(known=None, neg=None):
     y = data.target
     data = data.drop('target',1)
     X = data.select_dtypes(['float','int'])
-    #X = sklearn.preprocessing.scale(X)
+    #from sklearn.preprocessing import StandardScaler
+    #scaler = StandardScaler().fit(X)
+    #from sklearn import preprocessing
+    #X = X.apply(preprocessing.scale)
     return X, y
 
-def precursor_classifier(known=None, neg=None, kind='regressor'):
-    """Get a miRNA precursor classifier using given training data.
-
-       Args:
-        X: numpy array/dataframe with features
-        y: true/false values matching feature rows, 1's and 0's
-        kind: use 'classifier' or 'regressor' random forest
-       Returns:
-        random forest classifier fitted to X,y
-    """
-
-    X, y = get_training_data(known, neg)
-    from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
-    if kind == 'classifier':
-        rf = RandomForestClassifier(n_estimators=100)
-    else:
-        rf = RandomForestRegressor(n_estimators=100)
-    #print ('fitting..')
-    rf.fit(X,y)
-    return rf
-
-def test_classifier(known=None, neg=None):
+def build_classifier(known, neg):
 
     from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
     X, y = get_training_data(known, neg)
-    rf = RandomForestClassifier(n_estimators=50)
-    rf.fit(X,y)
+    #rf = RandomForestClassifier(n_estimators=200)
+    rf = RandomForestRegressor(n_estimators=500)
+
     from sklearn.model_selection import train_test_split,cross_val_score
     #X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.4)
-    #rf = RandomForestRegressor()
     scores = cross_val_score(rf, X, y, cv=5, scoring='roc_auc')
     print (scores)
     #print sklearn.metrics.classification_report(y_test, y_score)
+    rf.fit(X,y)
     names = X.columns
     importances = rf.feature_importances_
     indices = np.argsort(importances)[::-1]
     print ('feature ranking:')
-    for f in range(X.shape[1])[:10]:
+    for f in range(X.shape[1])[:20]:
         print("%d. %s (%f)" % (f + 1, names[indices[f]], importances[indices[f]]))
+
     '''a = neg[:2000].drop('target',1)
     a['score'] = score_features(a, rf)
     b = known[:2000].drop('target',1)
@@ -327,6 +357,20 @@ def test_classifier(known=None, neg=None):
     res = pd.DataFrame({'neg':x,'pos':y})
     res.plot(kind='bar')
     '''
+    return rf
+
+def precursor_classifier():
+    """Get the stored miRNA precursor classifier model"""
+
+    from sklearn.externals import joblib
+    rf = joblib.load(os.path.join(datadir, 'premirna_model.joblib'))
+    return rf
+
+def save_classifier(reg):
+    """Save model fit to disk"""
+
+    from sklearn.externals import joblib
+    joblib.dump(reg, 'premirna_model.joblib', compress=True)
     return
 
 def score_features(data, rf):
@@ -415,24 +459,23 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
     """
 
     chrom,start,end,strand=coords
-    loop = 15
+    loop = 10
     N = []
     if mature != None:
         seqlen = len(mature)
     else:
         seqlen = 22
     #generate candidate precursors
-    for i in range(2,40,step):
+    for i in range(2,36,step):
         #5' side
-        start5 = start - i
+        start5 = start - 1 #i
         end5 = start + 2 * seqlen-1 + loop + i
         coords = [chrom,start5,end5,strand]
-        #print (coords)
+        #print (start5,coords)
         prseq = utils.sequence_from_coords(ref_fasta, coords)
         if prseq == None or 'N' in prseq:
             continue
         struct,sc = utils.rnafold(prseq)
-
         #prseq, struct = check_hairpin(prseq, struct)
         mstatus = check_mature(prseq, struct, mature)
         if mstatus is None:
@@ -441,13 +484,14 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         #print (prseq)
         #print (struct)
         N.append({'precursor':prseq,'struct':struct,'score':sc,
-                  'chrom':chrom,'start':start5,'end':end5,
+                  'chrom':chrom,'start':start5,'end':end5,'mature_start':start,
                   'mature':mature,'strand':strand, 'mature_check': mstatus})
-    for i in range(2,40,step):
+    for i in range(2,36,step):
         #3' side
         start3 = start - (loop + seqlen + i)
-        end3 = end + i + seqlen+1
+        end3 = end + seqlen + 1 #+i
         coords = [chrom,start3,end3,strand]
+        #print (start, coords)
         prseq = utils.sequence_from_coords(ref_fasta, coords)
         if prseq == None or 'N' in prseq:
             continue
@@ -457,7 +501,7 @@ def generate_precursors(ref_fasta, coords, mature=None, step=5):
         if mstatus is None:
             continue
         N.append({'precursor':prseq,'struct':struct,'score':sc,
-                  'chrom':chrom,'start':start3,'end':end3,
+                  'chrom':chrom,'start':start3,'end':end3,'mature_start':start,
                   'mature':mature,'strand':strand,'mature_check': mstatus})
     N = pd.DataFrame(N)
     return N
@@ -481,10 +525,10 @@ def score_precursors(N):
     N['score'] = score_features(f, rf)
     N['mfe'] = f.mfe
     #filter by features
-    N = N[(f.loops==1) & (f.stem_length>18) & (f.mfe*f.length<-15) & \
+    N = N[(f.loops==1) & (f.stem_length>18) & \
           (f.longest_bulge<10) & (f.gc<75) & (f.bulges_asymmetric<7)]
 
-    N = N.sort_values('mfe')
+    N = N.sort_values('score',ascending=False)
     #print (N)
     return N
 
@@ -512,7 +556,7 @@ def get_consensus_read(ref, df):
         mature = cons.iloc[0].seq
     return mature
 
-def find_precursor(ref_fasta, m, o=None, step=5, score_cutoff=.7):
+def find_precursor(ref_fasta, m, o=None, step=3, score_cutoff=.7):
     """Find the most likely precursor from a genomic sequence and
        one or two mapped read clusters.
 
@@ -529,16 +573,22 @@ def find_precursor(ref_fasta, m, o=None, step=5, score_cutoff=.7):
     x = m.iloc[0]
     rcoords = (x['name'], x.start-10, x.end+10, x.strand)
     refseq = utils.sequence_from_coords(ref_fasta, rcoords)
-    #get a consensus mature sequence
+    #get the consensus mature sequence first
     mature = get_consensus_read(refseq, m)
 
     coords = (x['name'], x.start, x.start, x.strand)
+    #print (coords)
     N = generate_precursors(ref_fasta, coords, mature=mature, step=step)
     if len(N)==0:
         return
-    N = score_precursors(N)
+    try:
+        N = score_precursors(N)
+    except:
+        return
     #print ('%s candidates' %len(N))
+    #N is sorted by score
     N = N[N.score>=score_cutoff]
+    N = N[N.mature_check == 'ok']
     if len(N)>0:
         P = N.iloc[0].copy()
         #print(P)
@@ -563,8 +613,9 @@ def find_precursor(ref_fasta, m, o=None, step=5, score_cutoff=.7):
         #print (sreads)
         #print display(HTML(forna_url(P.precursor, mature, star)))
 
-    print (P.start, P.end, P.strand)
-    print (mature, maturecounts, star, starcounts)
+    if VERBOSE == True:
+        print (P.start, P.end, P.strand)
+        print (mature, maturecounts, star, starcounts)
     P['mature_reads'] = maturecounts
     P['star_reads'] = starcounts
     P['star'] = star
@@ -579,8 +630,8 @@ def precursors_from_clusters(clusts, rcl, ref_fasta, score_cutoff=0.7, read_cuto
         clusters: dataframe of read clusters
         rcl: reads with cluster information, a dataframe"""
 
-    reads = []
-    N = []
+    reads = [] #stores reads associated with each cluster
+    N = [] #stores new mirnas
     for i,c in clusts.iterrows():
         df = rcl[rcl.cluster==c.cluster]
         df = df.sort_values('reads',ascending=False)
@@ -621,7 +672,7 @@ def precursors_from_clusters(clusts, rcl, ref_fasta, score_cutoff=0.7, read_cuto
     return found, reads
 
 def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
-                max_length=25, min_length=18, min_size=3, cpus=1, verbose=True):
+                max_length=25, min_length=18, min_size=3, cpus=1):
     """Find novel miRNAs in reference mapped reads. Assumes we have already
         mapped to known miRNAs.
 
@@ -637,7 +688,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
     global CLASSIFIER
     if CLASSIFIER == None:
         print ('getting default classifier')
-        CLASSIFIER = precursor_classifier(kind='regressor')
+        CLASSIFIER = precursor_classifier()
 
     reads = reads[(reads.length<=max_length) & (reads.length>=min_length)]
     #assign reads to clusters
@@ -663,25 +714,46 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
     assign_names(new, species)
     kp = base.get_mirbase(species)
     #check if the mature are already in known precursors
-    new['known_id'] = new.apply( lambda x: find_from_known_prec(x, kp), 1)
+    #new['known_id'] = new.apply( lambda x: find_from_known(x, kp), 1)
+    new = find_from_known(new, species)
     new = new.sort_values(by='mature_reads', ascending=False)
 
-    print ('found %s novel mirnas' %len(new.groupby('mature_id')))
-    print ('%s with known mature sequences' %len(new[-new.known_id.isnull()]))
+    u = summarize(new)
+    print ('found %s unique novel mirnas' %len(u))
+    print ('%s with known mature sequences' %len(u[-u.known_id.isnull()]))
     #also return all the reads found in clusters
     #found = pd.concat(X)
     return new, found
 
+def summarize(df):
+    """Summarise find_mirna result per unique mirna"""
+
+    nr = df.groupby('mature_id')\
+               .agg({'mature':base.first,'precursor':np.size, 'mature_reads':np.mean,
+                     'score':np.mean, 'known_id':base.first})\
+               .sort_values(by='precursor',ascending=False)
+    return nr
+
 def get_coords_string(r):
     """coords string from fields"""
+
     if 'chrom' not in r:
         r['chrom']=r['name']
     return r['chrom']+':'+str(r.start)+'..'+str(r.end)+':'+r.strand
 
-def find_from_known_prec(x, prec):
-    for i,r in prec.iterrows():
-        if r.precursor.find(x.mature[:-1]) != -1:
-            return r.mirbase_id
+def find_from_known(x, species):
+    """Get known mirbase matches to query sequences using blast"""
+
+    utils.dataframe_to_fasta(x, 'query.fa', seqkey='mature', idkey='mature_id')
+    kp = base.get_mirbase_sequences(species, pad3=2,pad5=2)
+    utils.dataframe_to_fasta(kp, seqkey='sequence', idkey='name',outfile='temp.fa')
+    utils.make_blastdb('temp.fa', title='mirbase-temp')
+    bl = utils.local_blast('query.fa', 'mirbase-temp', ident=95, params='-e 100')
+    bl = bl[(bl.qstart<2) & (bl.length>=18)].drop_duplicates('query')
+
+    x = x.merge(bl[['name','subj']],left_on='mature_id',right_on='name', how='left')
+    x = x.rename(columns={'subj':'known_id'})
+    return x
 
 def assign_names(df, species=''):
     """Assign name to novel mirna, precursor/mature ids should allow consistent
@@ -701,18 +773,32 @@ def encode_name(s):
     s = s.decode().replace('/','x')
     return s
 
-def forna_url(precursor, mature, star=None, struct=None):
+def forna_view(seq, struct=None):
+    """Forna viewer javascript"""
+
+    if struct == None:
+        struct,sc = utils.rnafold(seq)
+    url='http://nibiru.tbi.univie.ac.at/forna/forna.html?id=url/name&sequence=%s&structure=%s' %(seq,struct)
+    iframe = '<iframe src=' + url + ' width=500 height=500 frameBorder="0" AllowFullScreen></iframe>'
+    display(HTML(iframe))
+    return
+
+def forna_url(precursor, struct=None, mature=None, star=None):
     """Create link to view mirna structure in forna web app."""
 
     #print x
     pd.options.display.max_colwidth = 500
     #seq = x.precursor
     #mature = x[col1]
-    mstart = utils.find_subseq(precursor, mature)+1
-    mend = mstart+len(mature)-1
+    if mature is not None:
+        mstart = utils.find_subseq(precursor, mature)+1
+        mend = mstart+len(mature)-1
+        colors = '%s-%s:lightgreen\\n' %(mstart, mend)
+    else:
+        colors = ''
     if struct==None:
         struct = utils.rnafold(precursor)[0]
-    colors = '%s-%s:lightgreen\\n' %(mstart, mend)
+
     if star != None:
         #print x[maturecol], x[col2]
         #star = x[col2]
@@ -756,9 +842,10 @@ def create_report(df, reads, species=None, outfile='report.html'):
     h += '<h3>novel miRNA predictions</h3>'
     h += '</div>'
     h += '<div class="sidebar">'
-    links = df[['mature_id','mature_reads','chrom','start']].copy()
+    links = df[['mature_id','mature_reads','chrom','start','score']].copy()
     links['mature_id'] = links.mature_id.apply(lambda x: ('<a href=#%s > %s </a>' %(x,x)))
-    links = links.set_index(['mature_id','chrom','start'])
+    links = links.set_index(['mature_id','chrom','start']).sort_index()
+    #link = links.set_index('mature_id').sort_values(['chrom','start'])
     h += links.to_html(escape=False, classes='sidebar', sparsify=True)#, index=False)
     h += '</div>'
 
@@ -770,7 +857,7 @@ def create_report(df, reads, species=None, outfile='report.html'):
         ensname = ens_sp.ix[species]['scientific name']
         df['coords'] = df.coords.apply(
             lambda x: ('<a href=http://www.ensembl.org/%s/Location/View?r=%s target="_blank">%s </a>' %(ensname,x,x)),1)
-    df['link'] = df.apply(lambda x: forna_url(x.precursor, x.mature, x.star, x.struct), 1)
+    df['link'] = df.apply(lambda x: forna_url(x.precursor, x.struct, x.mature, x.star), 1)
 
     h += '<div class="content">'
     for i,r in df.iterrows():
