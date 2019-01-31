@@ -84,7 +84,7 @@ def build_subread_index(fastafile, path):
     utils.move_files(files, path)
     return
 
-def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
+def bowtie_align(infile, ref, outfile=None, remaining=None, cpus=2, verbose=True):
     """Map reads using bowtie"""
 
     label = os.path.splitext(os.path.basename(infile))[0]
@@ -96,11 +96,11 @@ def bowtie_align(infile, ref, outfile=None, remaining=None, verbose=True):
         print ('aligners.BOWTIE_INDEXES variable not set')
         return
     os.environ["BOWTIE_INDEXES"] = BOWTIE_INDEXES
-    print (BOWTIE_INDEXES)
+    #print (BOWTIE_INDEXES)
     params = BOWTIE_PARAMS
     if remaining == None:
         remaining = os.path.join(outpath, label+'_r.fa')
-    cmd = 'bowtie -f -p 2 -S %s --un %s %s %s > %s' %(params,remaining,ref,infile,outfile)
+    cmd = 'bowtie -f -p %s -S %s --un %s %s %s > %s' %(cpus,params,remaining,ref,infile,outfile)
     if verbose == True:
         print (cmd)
     try:

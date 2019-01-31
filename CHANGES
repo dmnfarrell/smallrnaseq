@@ -3,6 +3,19 @@ CHANGES
 =======
 
 ------
+0.5.0
+------
+
+fixes to work with python 3 properly
+snap now works
+updated to use mirbase release 22
+mpl tk fix
+sphinx docs added
+can run novel predictions in parallel
+some fixes to precursor generation
+removed bedtools dependency
+
+------
 0.4.0
 ------
 

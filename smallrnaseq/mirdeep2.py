@@ -216,7 +216,8 @@ def read_results_file(infile):
     colstorename = {'example miRBase miRNA with the same seed':'mirbase seed match',
          'significant randfold p-value': 'randfold'}
     df = df.rename(columns=colstorename)
-    df = df.convert_objects(convert_numeric=True)
+    #df = df.convert_objects(convert_numeric=True)
+    df = df.infer_objects()
     #df['chr'] = df['provisional id'].apply(get_chromosome)
     df['seed'] = df['consensus mature sequence'].apply(lambda x: x[1:8])
     coords = df['precursor coordinate'].apply(get_coords)
