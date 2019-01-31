@@ -52,7 +52,7 @@ def venn_diagram(names,labels,ax=None,**kwargs):
     ax.axis('off')
     #f.patch.set_visible(False)
     ax.set_axis_off()
-    return 
+    return
 
 def heatmap(df,fname=None,cmap='seismic',log=False):
     """Plot a heat map"""
@@ -92,7 +92,7 @@ def plot_sample_variation(df):
     x.plot(kind='bar',ax=axs[0])
     x2 = m.ix[2][ncols]
     x2.plot(kind='bar',ax=axs[1])
-    sns.despine()
+    sns.despine(trim=True,offset=10)
     plt.tight_layout()
     return fig
 
@@ -127,10 +127,12 @@ def plot_fractions(df, label=None):
                       startangle=0, labels=None,legend=True,pctdistance=1.1,
                       fontsize=10, ax=ax)
     else:
-        ax = df.plot(kind='barh',stacked=True,cmap='Spectral',ax=ax)
-        ax.legend(ncol=2)
+        ax = df.plot(kind='barh',stacked=True,linewidth=0,cmap='Spectral',ax=ax)
+        #ax.legend(ncol=2)
+        ax.set_position([0.2,0.1,0.6,0.8])
+        ax.legend(loc="best",bbox_to_anchor=(1.0, .9))
     plt.title('fractions mapped')
-    plt.tight_layout()
+    #plt.tight_layout()
     return fig
 
 def plot_sample_counts(counts):
@@ -152,14 +154,17 @@ def plot_read_count_dists(counts, h=8, n=50):
     w = int(h*(len(df)/60.0))+4
     fig, ax = plt.subplots(figsize=(w,h))
     if len(scols) > 1:
-        sns.boxplot(data=t,linewidth=1.0,saturation=0.2,palette='coolwarm_r')
+        sns.stripplot(data=t,linewidth=1.0,palette='coolwarm_r')
+        ax.xaxis.grid(True)
     else:
         df.plot(kind='bar',ax=ax)
-    sns.despine(trim=True)
+    sns.despine(offset=10,trim=True)
     ax.set_yscale('log')
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
     plt.ylabel('read count')
-    plt.tight_layout()
+    #print (df.index)
+    #plt.tight_layout()
+    fig.subplots_adjust(bottom=0.2,top=0.9)
     return fig
 
 def expression_clustermap(counts, freq=0.8):

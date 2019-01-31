@@ -281,6 +281,9 @@ def plot_results(res, path):
     counts = base.pivot_count_data(res, idxcols=['name','ref'])
     x = base.get_fractions_mapped(res)
     print (x)
+    import seaborn as sns
+    sns.set_style('white')
+    sns.set_context("paper",font_scale=1.2)    
     fig = plotting.plot_fractions(x)
     fig.savefig(os.path.join(path,'libraries_mapped.png'))
     fig = plotting.plot_sample_counts(counts)

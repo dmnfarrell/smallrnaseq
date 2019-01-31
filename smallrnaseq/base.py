@@ -171,6 +171,8 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name',
         readcounts = utils.read_collapsed_file(collapsed)
 
     counts = utils.get_aligned_reads(samfile, readcounts=readcounts)
+    if len(counts) == 0:
+        return pd.DataFrame()
     if count_method == 'split':
         #split multi mapped sequence counts evenly
         counts['reads'] = counts.groupby(['seq'])['reads'].transform(lambda x: x / len(x))
