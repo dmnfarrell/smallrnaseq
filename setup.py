@@ -4,7 +4,7 @@ import sys,os
 inst_requires = ['numpy>=1.10',
                     'pandas>=0.20',
                     'seaborn>=0.7',
-                    'scikit-learn>=0.18',
+                    'scikit-learn==0.19.1',
                     'pyfaidx>=0.5.4',
                     'pysam>=0.10.0',
                     'HTSeq>=0.6',

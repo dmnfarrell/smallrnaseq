@@ -362,6 +362,9 @@ def build_classifier(known, neg):
 def precursor_classifier():
     """Get the stored miRNA precursor classifier model"""
 
+    #avoid being flooded with userwarnings
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
     from sklearn.externals import joblib
     rf = joblib.load(os.path.join(datadir, 'premirna_model.joblib'))
     return rf
@@ -432,7 +435,10 @@ def get_read_clusters(reads, cluster_distance=0, min_size=3, key='align_id'):
             c = c.groupby(['strand']).filter(lambda x: len(x) > 1)
             groups.append(c)
             i+=1
-    df = pd.concat(groups)
+    if len(groups) > 0:
+        df = pd.concat(groups)
+    else:
+        df = pd.DataFrame()
     return df
 
 def get_cluster_groups(rcl):
@@ -707,6 +713,9 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
                                 rcl=rcl, ref_fasta=ref_fasta, score_cutoff=score_cutoff,
                                 read_cutoff=read_cutoff)
 
+    if len(new) == 0:
+        print ('no precursors found above cutoff')
+        return None, None
     new['seed'] = new.apply(lambda x: x.mature[1:7], 1)
     #get coords column
     new['coords'] = new.apply(get_coords_string,1)
@@ -720,6 +729,7 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
 
     u = summarize(new)
     print ('found %s unique novel mirnas' %len(u))
+    print ('score cutoff=%s' %score_cutoff)
     print ('%s with known mature sequences' %len(u[-u.known_id.isnull()]))
     #also return all the reads found in clusters
     #found = pd.concat(X)
@@ -836,15 +846,16 @@ def create_report(df, reads, species=None, outfile='report.html'):
     css = get_css()
     h = '<html><head><meta charset="utf-8">  <title>novel miRNA</title>'
     h += '<style media="screen" type="text/css"> %s </style>' %css
+    h += '<script src="https://cdnjs.cloudflare.com/ajax/libs/sortable/0.8.0/js/sortable.js"></script>'
     h += '</head>'
     h += '<body>'
     h += '<div class="header">'
     h += '<h3>novel miRNA predictions</h3>'
     h += '</div>'
     h += '<div class="sidebar">'
-    links = df[['mature_id','mature_reads','chrom','start','score']].copy()
+    links = df[['mature_id','mature_reads','coords','score']].copy()
     links['mature_id'] = links.mature_id.apply(lambda x: ('<a href=#%s > %s </a>' %(x,x)))
-    links = links.set_index(['mature_id','chrom','start']).sort_index()
+    links = links.set_index(['mature_id','coords']).sort_index()
     #link = links.set_index('mature_id').sort_values(['chrom','start'])
     h += links.to_html(escape=False, classes='sidebar', sparsify=True)#, index=False)
     h += '</div>'

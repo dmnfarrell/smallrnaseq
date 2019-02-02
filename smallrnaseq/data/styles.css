@@ -58,7 +58,7 @@ hr
 	margin-top: 30px;
 	padding: 1em 1.25em;
 	background-color: #fff;
-	width: 70%;
+	width: 65%;
 	float: right;
 	overflow: hidden;
 }
@@ -127,9 +127,9 @@ a:active { color: red; }
 	padding: 5px;
 	margin-top: 40px;
 	margin-right: 5px;
-	float: right;
+	float: left;
 	height: 650px;
-	width: 25%;
+	width: 30%;
 	position: fixed;
 	overflow:hidden;
 	top: 30;
@@ -147,8 +147,39 @@ a:active { color: red; }
 
 .sidebar td, th {
   text-align: left;
-	font-size: 12px;
+	font-size: 11px;
 }
+
+/* Sortable tables */
+.sortable {
+	margin:0px;padding:0px;
+	width:100%;
+	border:1px solid #b2a7a7;
+	font-family: monospace;
+	font-size:11px;
+}
+.sortable table{
+    table-layout: fixed;
+    border-collapse: collapse;
+    border-spacing: 0;
+	height:100%;
+	margin:0px;padding:2px;
+}
+.sortable td{
+	font-size: 11px;
+	border-width: 0px 0px 0px 0px;
+	margin: 1px;
+    padding: 2px 3px;
+    width: 100%;
+}
+.sortable th{
+    background-color:  #ECF0F1;
+    border-width: 0px 0px 0px 0px;
+    max-width: 300px;
+    min-width: 40px;
+    word-wrap: break-word;
+}
+.sortable tr:nth-child(even){ background-color:#F7F7F7; }
 
 .main, .aside
 {
