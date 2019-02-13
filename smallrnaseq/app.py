@@ -167,7 +167,7 @@ class WorkFlow(object):
         mat_name = 'mirbase-%s' %self.species
         self.aligner_params[mat_name] = self.mirna_params
         novel.VERBOSE = self.verbose
-        
+
         if self.check_index(ref_name) == False:
             print ('no index for reference genome')
             ref_name = ''
@@ -215,12 +215,12 @@ class WorkFlow(object):
                                        score_cutoff=float(self.score_cutoff),
                                        read_cutoff=int(self.read_cutoff),
                                        cpus=self.cpus)
-            if self.strict == True:
-                new = new[new.mature_check=='ok']
-                print ('filtered %s' %len(new))
             if new is None or len(new) == 0:
                 print ('could not find any novel mirnas at this score cutoff')
                 return
+            if self.strict == True:
+                new = new[new.mature_check=='ok']
+                print ('filtered %s' %len(new))
             new.to_csv(os.path.join(out,'novel_mirna.csv'), index=False)
 
             #pad mature novel and write to fasta for counting
@@ -286,7 +286,7 @@ def plot_results(res, path):
     print (x)
     import seaborn as sns
     sns.set_style('white')
-    sns.set_context("paper",font_scale=1.2)    
+    sns.set_context("paper",font_scale=1.2)
     fig = plotting.plot_fractions(x)
     fig.savefig(os.path.join(path,'libraries_mapped.png'))
     fig = plotting.plot_sample_counts(counts)
