@@ -26,7 +26,7 @@ There is a video tutorial at https://youtu.be/m24cuLyTqg0
 
 or 
 
-```snap install smallrnaseq```
+```pip install -e git+https://github.com/dmnfarrell/smallrnaseq.git#egg=smallrnaseq```
 
 See the [installation page](http://smallrnaseq.readthedocs.io/en/latest/description.html#installation) for more details 
 

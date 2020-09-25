@@ -783,15 +783,17 @@ def encode_name(s):
     s = s.decode().replace('/','x')
     return s
 
-def forna_view(seq, struct=None):
+def forna_view(seq, mature=None):
     """Forna viewer javascript"""
 
-    if struct == None:
-        struct,sc = utils.rnafold(seq)
-    url='http://nibiru.tbi.univie.ac.at/forna/forna.html?id=url/name&sequence=%s&structure=%s' %(seq,struct)
+    colors=''
+    if mature is not None:
+        mstart = utils.find_subseq(seq, mature)+1
+        mend = mstart+len(mature)-1
+        colors = '%s-%s:lightgreen\\n' %(mstart, mend)
+    url='http://nibiru.tbi.univie.ac.at/forna/forna.html?id=url/name&sequence=%s&structure=%s&colors=%s' %(seq,struct,colors)
     iframe = '<iframe src=' + url + ' width=500 height=500 frameBorder="0" AllowFullScreen></iframe>'
-    display(HTML(iframe))
-    return
+    return iframe
 
 def forna_url(precursor, struct=None, mature=None, star=None):
     """Create link to view mirna structure in forna web app."""

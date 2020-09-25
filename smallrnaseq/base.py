@@ -34,7 +34,7 @@ except:
 from . import utils, aligners
 #make sure we are using the agg backend for melt_samples
 import matplotlib
-matplotlib.use('agg', warn=False)
+matplotlib.use('agg')
 
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'data')
@@ -214,7 +214,7 @@ def pivot_count_data(counts, idxcols='name', norm_method='library', sortby=None)
     x = x.join(n)
     #scols,ncols = get_column_names(x)
     x['total_reads'] = x[scols].sum(1)
-    x['mean_norm'] = x[ncols].apply(lambda r: r[r.nonzero()[0]].mean(),1)
+    x['mean_norm'] = x[ncols].apply(lambda r: r[r.to_numpy().nonzero()[0]].mean(),1)
     x = x.reset_index()
     #print (x[50:])
     if sortby != None:
@@ -481,7 +481,7 @@ def collapse_reads(infile, outfile=None, min_length=15):
         outfile = os.path.splitext(infile)[0]+'_collapsed.fa'
     print ('collapsing reads %s' %infile)
     ext = os.path.splitext(infile)[1]
-    if ext == '.fastq':
+    if ext == '.fastq' or ext == '.fq':
         fastfile = HTSeq.FastqReader(infile, "solexa")
     elif ext == '.fa' or ext == '.fasta':
         fastfile = HTSeq.FastaReader(infile)
@@ -682,8 +682,8 @@ def _get_iso_class(x, refs, crefs):
     """Get isomir class using sRNAbench type scheme"""
 
     name = x['name']
-    ref = refs.ix[name]
-    cseq = crefs.ix[name].sequence
+    ref = refs.loc[name]
+    cseq = crefs.loc[name].sequence
     cstart = utils.find_subseq(ref.sequence, cseq)
     cend = cstart+len(cseq)
     start = utils.find_subseq(ref.sequence, x.seq)

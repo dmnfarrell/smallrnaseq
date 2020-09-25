@@ -548,7 +548,10 @@ def read_collapsed_file(collapsed):
     #original read counts are encoded in fasta names
     df = fasta_to_dataframe(collapsed).reset_index()
     #original count stored in id as second value
-    df['read_id'], df['reads'] = df.name.str.split('_', 1).str
+    #df['read_id'], df['reads'] = df.name.str.split('_', 1).str
+    df2 = df.name.str.split('_', 1, expand=True)
+    df2.columns = ['reads','read_id']
+    df = df.join(df2)
     df['reads'] = df.reads.astype(int)
     df['read_id'] = df.read_id.astype(int)
     df = df.drop(['name','description'],1)
