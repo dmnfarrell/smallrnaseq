@@ -252,17 +252,21 @@ def get_column_names(df):
     cols = [i.split(' ')[0] for i in ncols if i not in ignore]
     return cols, ncols
 
-def total_library_normalize(df):
+def total_library_normalize(df,factor=1e6):
     """Normalise by size of total reads"""
 
     df = df.copy()
     for col in df:
-        df[col] = df[col]/df[col].sum()*1e6
-    df = df.round(2)
+        try:
+            df[col] = df[col]/df[col].sum()*factor
+        except:
+            df[col] = df[col]
+            print ('not a numerical column')
+    #df = df.round(2)
     return df
 
 def quantile_normalize(df):
-    """Quantile normlization of counts for multiple samples.
+    """Quantile normalization of counts for multiple samples.
        see https://github.com/ShawnLYU/Quantile_Normalize
     """
 

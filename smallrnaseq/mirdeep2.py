@@ -27,7 +27,7 @@ import subprocess
 #import pylab as plt
 import numpy as np
 import pandas as pd
-from . import base, utils
+#from . import base, utils
 
 mirdeep2options = {'base': [('input',''),('adapter','TGGAATTCTCGGGTGCCAAGG'),('filetype','fastq'),
                     ('bowtieindex',''),('refgenome',''),('species','hsa'),

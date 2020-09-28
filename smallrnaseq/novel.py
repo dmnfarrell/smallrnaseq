@@ -796,7 +796,6 @@ def forna_view(seq, struct=None):
 def forna_url(precursor, struct=None, mature=None, star=None):
     """Create link to view mirna structure in forna web app."""
 
-    #print x
     pd.options.display.max_colwidth = 500
     #seq = x.precursor
     #mature = x[col1]
@@ -806,7 +805,7 @@ def forna_url(precursor, struct=None, mature=None, star=None):
         colors = '%s-%s:lightgreen\\n' %(mstart, mend)
     else:
         colors = ''
-    if struct==None:
+    if struct == None:
         struct = utils.rnafold(precursor)[0]
 
     if star != None:

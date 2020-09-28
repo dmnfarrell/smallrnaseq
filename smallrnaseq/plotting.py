@@ -179,3 +179,55 @@ def expression_clustermap(counts, freq=0.8):
     mt = plt.setp(cg.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, fontsize=9)
     mt = plt.setp(cg.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
     return cg
+
+def plot_PCA(X, cmap='Spectral', colors=None, dims=(0,1), ax=None, annotate=None, legend=True, **kwargs):
+    '''
+    plot PCA from matrix and label
+        :X:  dataframe with index as categories
+        :dims:  dimensions to plot
+        :return: None
+    '''
+
+    from sklearn import preprocessing
+    from sklearn.decomposition.pca import PCA
+    X = X._get_numeric_data()
+    S = pd.DataFrame(preprocessing.scale(X),columns = X.columns)
+    pca = PCA(n_components=4)
+    pca.fit(S)
+    out = 'explained variance %s' %pca.explained_variance_ratio_
+    print (out)
+    #print pca.components_
+    w = pd.DataFrame(pca.components_,columns=S.columns)
+    #print (w.T.max(1).sort_values())
+    pX = pca.fit_transform(S)
+    pX = pd.DataFrame(pX,index=X.index)
+
+    ### graph
+    if ax is None:
+        fig,ax=plt.subplots(1,1,figsize=(8,8))
+
+    cats = pX.index.unique()
+    if colors is None:
+        colors = sns.mpl_palette(cmap, len(cats))
+
+    y1,y2=dims
+    offset = 7
+    for c, i in zip(colors, cats):
+       ax.scatter(pX.loc[i, y1], pX.loc[i, y2], color=c, label=i, edgecolor='black', **kwargs)
+
+    if annotate is not None:
+       pX['lab#el'] = annotate
+       i=0
+       for idx,r in pX.iterrows():
+          x=r[y1]; y=r[y2]
+          l=annotate[i]
+          ax.annotate(l, (x,y), xycoords='data',xytext=(2,5),textcoords='offset points',fontsize=12)
+          i+=1
+
+    ax.set_xlabel("X[%s]" %y1)
+    ax.set_ylabel("X[%s]" %y2)
+    if legend == True:
+       ax.set_position([0.1,0.1,0.5,0.8])
+       ax.legend(loc="best",bbox_to_anchor=(1.0, .9))
+    ax.set_title("PCA")
+    return pX
