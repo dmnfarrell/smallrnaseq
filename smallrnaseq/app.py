@@ -42,7 +42,7 @@ class WorkFlow(object):
         if self.filenames != '':
             self.files = self.filenames.split(',')
         elif self.path != '':
-            self.files = glob.glob(os.path.join(self.path,'*.fastq'))
+            self.files = glob.glob(os.path.join(self.path,'*.f*q'))
             if len(self.files) == 0:
                 print ('no fastq files found')
                 if check_snap() == True:

@@ -24,7 +24,7 @@ from __future__ import absolute_import, print_function
 import sys, os, string, types
 import itertools
 import matplotlib
-matplotlib.use('agg', warn=False)
+matplotlib.use('agg')
 import pylab as plt
 import numpy as np
 import pandas as pd
