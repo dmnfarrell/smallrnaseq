@@ -402,8 +402,8 @@ def diff_expression(opts):
     m = de.melt_samples(counts, labels, names, samplecol=samplecol)
     import seaborn as sns
     kind = opts['de_plot']
-    g = sns.factorplot(factorcol,'read count', data=m, col='name', kind=kind,
-                            col_wrap=5, size=3, aspect=1.2,
+    g = sns.catplot(x=factorcol,y='read count', data=m, col='name', kind=kind,
+                            col_wrap=5, height=3, aspect=1.2,
                             legend_out=True,sharey=False, order=xorder)
     deplot = os.path.join(path,'de_genes.png')
     g.savefig(deplot)

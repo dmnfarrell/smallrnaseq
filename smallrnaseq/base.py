@@ -177,13 +177,11 @@ def count_aligned(samfile, collapsed=None, readcounts=None, by='name',
         #split multi mapped sequence counts evenly
         counts['reads'] = counts.groupby(['seq'])['reads'].transform(lambda x: x / len(x))
 
-    #if drop_duplicates == True:
-    #    counts = counts.drop_duplicates('seq')
     total = readcounts.reads.sum()
     counts = counts.groupby('name').agg({'reads':np.sum}).reset_index()
     mapped = float(counts.reads.sum())
     if len(counts) > 0:
-        print ('%s/%s reads counted, %.2f percent' %(mapped, total, mapped/total*100))
+        print ('%s/%s reads counted, %.3f percent' %(mapped, total, mapped/total*100))
     else:
         print ('no counts found')
     return counts

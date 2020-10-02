@@ -188,7 +188,7 @@ def melt_samples(df, labels, names, samplecol='filename', index=None):
 
     if index is not None:
         df=df.set_index(index)
-    df = df.ix[names]
+    df = df.loc[names]
     t=df.T
     t.index = df.columns
     t = t.merge(labels,left_index=True,right_on=samplecol)
@@ -201,7 +201,7 @@ def cluster_map(data, names):
 
     import seaborn as sns
     import pylab as plt
-    data = data.ix[names]
+    data = data.loc[names]
     X = np.log(data).fillna(0)
     X = X.apply(lambda x: x-x.mean(), 1)
     cg = sns.clustermap(X,cmap='RdYlBu_r',figsize=(8,10),lw=.5,linecolor='gray')

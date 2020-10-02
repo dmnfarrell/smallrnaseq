@@ -365,14 +365,14 @@ def precursor_classifier():
     #avoid being flooded with userwarnings
     import warnings
     warnings.filterwarnings("ignore", category=UserWarning)
-    from sklearn.externals import joblib
+    import joblib
     rf = joblib.load(os.path.join(datadir, 'premirna_model.joblib'))
     return rf
 
 def save_classifier(reg):
     """Save model fit to disk"""
 
-    from sklearn.externals import joblib
+    import joblib
     joblib.dump(reg, 'premirna_model.joblib', compress=True)
     return
 
@@ -427,7 +427,7 @@ def get_read_clusters(reads, cluster_distance=0, min_size=3, key='align_id'):
         #print (chrom)
         for start, end, ids in cltree.getregions():
             #print (start, end, ids)
-            c = reads.ix[ids].copy()
+            c = reads.loc[ids].copy()
             c['cl_start'] = start
             c['cl_end'] = end
             c['cluster'] = i
@@ -866,7 +866,7 @@ def create_report(df, reads, species=None, outfile='report.html'):
 
     ens_sp = pd.read_csv(os.path.join(datadir, 'ensembl_names.csv'), index_col=0)
     if species in ens_sp.index:
-        ensname = ens_sp.ix[species]['scientific name']
+        ensname = ens_sp.loc[species]['scientific name']
         df['coords'] = df.coords.apply(
             lambda x: ('<a href=http://www.ensembl.org/%s/Location/View?r=%s target="_blank">%s </a>' %(ensname,x,x)),1)
     df['link'] = df.apply(lambda x: forna_url(x.precursor, x.struct, x.mature, x.star), 1)

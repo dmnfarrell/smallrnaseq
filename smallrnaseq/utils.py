@@ -550,7 +550,7 @@ def read_collapsed_file(collapsed):
     #original count stored in id as second value
     #df['read_id'], df['reads'] = df.name.str.split('_', 1).str
     df2 = df.name.str.split('_', 1, expand=True)
-    df2.columns = ['reads','read_id']
+    df2.columns = ['read_id','reads']
     df = df.join(df2)
     df['reads'] = df.reads.astype(int)
     df['read_id'] = df.read_id.astype(int)
