@@ -335,12 +335,14 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     for cfile in cfiles:
         rem = None
         filename = os.path.splitext(os.path.basename(cfile))[0]
-        print (cfile)
+        print ('sample: \033[1m%s\033[0m' %filename)
+        print ('collapsed file: %s' %cfile)
+        print ()
         readcounts = utils.read_collapsed_file(str(cfile))
         total = readcounts.reads.sum()
-        print (filename)
+
         for idx in indexes:
-            print (idx)
+            print ('mapping to %s' %idx)
             if idx in params:
                 align_params = params[idx]
             else:
@@ -352,7 +354,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             else:
                 query = cfile
             samfile = str(os.path.join(outpath, '%s_%s.sam' %(filename,idx)))
-            rem = os.path.join(outpath, filename+'_r.fa')
+            rem = os.path.join(outpath, filename+'_'+idx+'_r.fa')
 
             if aligner == 'bowtie':
                 aligners.bowtie_align(query, idx, outfile=samfile, cpus=cpus,
@@ -373,7 +375,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
             #print (counts.reads.sum(), total)
             result.append(counts)
             print()
-        print()
+        print('--------------------------')
     if len(result) == 0:
         return
     result = pd.concat(result)
@@ -613,7 +615,7 @@ def build_mirbase_index(species, aligner='bowtie', pad5=3, pad3=5,
         idxname = 'precursors-'+species
         outfile = '%s.fa' %idxname
         utils.dataframe_to_fasta(mirs, seqkey='precursor', idkey='mirbase_id',
-                                outfile=outfile)
+                                    outfile=outfile)
         print ('got %s sequences' %len(mirs))
 
     if aligner == 'bowtie':

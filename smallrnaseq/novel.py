@@ -30,8 +30,11 @@ import numpy as np
 import pandas as pd
 from . import base, utils
 
-path = os.path.dirname(os.path.abspath(__file__))
-datadir = os.path.join(path, 'data')
+home = os.path.expanduser("~")
+config_path = os.path.join(home,'.config','smallrnaseq')
+modulepath = os.path.dirname(os.path.abspath(__file__))
+datadir = os.path.join(modulepath, 'data')
+model_file = os.path.join(config_path, 'premirna_model.joblib')
 CLASSIFIER = None
 VERBOSE = True
 
@@ -329,6 +332,7 @@ def get_training_data(known=None, neg=None):
     return X, y
 
 def build_classifier(known, neg):
+    """Build novel precursor classifier from training data"""
 
     from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor)
     X, y = get_training_data(known, neg)
@@ -359,6 +363,18 @@ def build_classifier(known, neg):
     '''
     return rf
 
+def create_classifier(overwrite=False):
+    """Create the classifier"""
+
+    if os.path.exists(model_file) and overwrite==False:
+        return
+    print ('creating novel mirna classifier model')
+    known,kf = get_positives(samples=1000,species='bta')
+    neg,nf = get_negatives('/storage/genomes/human/Homo_sapiens.GRCh38.cds.all.fa',2000)
+    rf = build_classifier(kf, nf)
+    save_classifier(rf)
+    return
+
 def precursor_classifier():
     """Get the stored miRNA precursor classifier model"""
 
@@ -366,14 +382,15 @@ def precursor_classifier():
     import warnings
     warnings.filterwarnings("ignore", category=UserWarning)
     import joblib
-    rf = joblib.load(os.path.join(datadir, 'premirna_model.joblib'))
+    model_file = os.path.join(config_path, 'premirna_model.joblib')
+    rf = joblib.load(model_file)
     return rf
 
 def save_classifier(reg):
     """Save model fit to disk"""
 
     import joblib
-    joblib.dump(reg, 'premirna_model.joblib', compress=True)
+    joblib.dump(reg, model_file, compress=True)
     return
 
 def score_features(data, rf):

@@ -25,6 +25,13 @@ import pandas as pd
 from smallrnaseq import config, base, analysis, utils, aligners, novel, plotting, de
 snap_msg = 'when running from a snap you should use your home folder for reading/writing'
 home = os.path.expanduser('~')
+config_path = os.path.join(home,'.config','smallrnaseq')
+
+if not os.path.exists(config_path):
+    try:
+        os.makedirs(config_path, exist_ok=True)
+    except:
+        os.makedirs(config_path)
 
 class WorkFlow(object):
     """Class for implementing a rna/mirna workflow from a set of options"""
@@ -197,6 +204,9 @@ class WorkFlow(object):
         isocounts.to_csv( os.path.join(out, 'isomir_counts.csv'), index=False, float_format='%.1f')
 
         #novel prediction
+        #train classifier first if not present
+        novel.create_classifier()
+        
         if self.ref_fasta == '' or not os.path.exists(self.ref_fasta):
             print ('no reference genome file, skipping novel mirna step')
         elif ref_name == None or ref_name == '':
