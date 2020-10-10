@@ -369,8 +369,10 @@ def create_classifier(overwrite=False):
     if os.path.exists(model_file) and overwrite==False:
         return
     print ('creating novel mirna classifier model')
-    known,kf = get_positives(samples=1000,species='bta')
-    neg,nf = get_negatives('/storage/genomes/human/Homo_sapiens.GRCh38.cds.all.fa',2000)
+    #known,kf = get_positives(samples=1000,species='bta')
+    #neg,nf = get_negatives('/storage/genomes/human/Homo_sapiens.GRCh38.cds.all.fa',2000)
+    kf = pd.read_csv(os.path.join(datadir,'training_positives.csv'))
+    nf = pd.read_csv(os.path.join(datadir,'training_negatives.csv'))
     rf = build_classifier(kf, nf)
     save_classifier(rf)
     return

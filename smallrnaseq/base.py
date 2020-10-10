@@ -381,7 +381,7 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     result = pd.concat(result)
     counts = pivot_count_data(result, idxcols=['name','ref'], norm_method=norm_method,
                               sortby='total_reads')
-    print ('done')
+    #print ('done')
     return result, counts
 
 def map_genome_features(files, ref, gtf_file, outpath='', aligner='bowtie',

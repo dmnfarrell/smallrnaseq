@@ -6,8 +6,9 @@ CHANGES
 0.6.0
 ------
 
-fixes to bugs in mapping rnas
+fixes to bugs in mapping rnas where fractions were miscalculated
 updated novel module to run with current versions of joblib, sklearn
+added training data files for novel model
 
 ------
 0.5.0
