@@ -101,6 +101,15 @@ class WorkFlow(object):
         else:
             return True
 
+    def save_samples(self):
+        """Save sample info"""
+
+        s = self.samples
+        #df = pd.DataFrame(list(self.labels.items()),columns = ['name','id'])
+        #print (df)
+        s.to_csv(os.path.join(self.output,'samples.csv'),float_format='%4f')
+        return
+
     def run(self):
         """Execute the predefined workflows"""
 
@@ -110,6 +119,7 @@ class WorkFlow(object):
             self.map_libraries()
         if self.features != '':
             self.map_genomic_features()
+        df = self.save_samples()
         print ('done')
         print ('intermediate files saved to %s' %self.temp_path)
         return
@@ -187,6 +197,7 @@ class WorkFlow(object):
                                        params=self.aligner_params,
                                        verbose=self.verbose)
 
+        self.results = res
         #seperate out mature counts and save
         matcounts = counts[counts.ref==mat_name]
         res.to_csv( os.path.join(out, 'results.csv'),index=False )
@@ -194,7 +205,12 @@ class WorkFlow(object):
         matcounts.to_csv( os.path.join(out, 'mirbase_mature_counts.csv'), index=False,
                             float_format='%.1f' )
         counts.to_csv( os.path.join(out, 'all_counts.csv'), index=False, float_format='%.1f')
-        plot_results(res, out)
+
+        #get fractions per sample and plot results
+        c = base.pivot_count_data(res, idxcols=['name','ref'])
+        self.samples = s = base.get_fractions_mapped(res)
+        print (s)
+        plot_results(s, c, out)
 
         #isomir counting
         print ()
@@ -206,7 +222,7 @@ class WorkFlow(object):
         #novel prediction
         #train classifier first if not present
         novel.create_classifier()
-        
+
         if self.ref_fasta == '' or not os.path.exists(self.ref_fasta):
             print ('no reference genome file, skipping novel mirna step')
         elif ref_name == None or ref_name == '':
@@ -286,27 +302,25 @@ def check_viennarna():
     except ImportError as e:
         return False
 
-def plot_results(res, path):
+def plot_results(df, counts, path):
     """Some results plots"""
 
-    if res is None or len(res) == 0:
+    if df is None or len(df) == 0:
         return
-    counts = base.pivot_count_data(res, idxcols=['name','ref'])
-    x = base.get_fractions_mapped(res)
-    print (x)
+
     import seaborn as sns
     sns.set_style('white')
     sns.set_context("paper",font_scale=1.2)
-    fig = plotting.plot_fractions(x)
+    fig = plotting.plot_fractions(df)
     fig.savefig(os.path.join(path,'libraries_mapped.png'))
     fig = plotting.plot_sample_counts(counts)
     fig.savefig(os.path.join(path,'total_per_sample.png'))
     fig = plotting.plot_read_count_dists(counts)
     fig.savefig(os.path.join(path,'top_mapped.png'))
     scols,ncols = base.get_column_names(counts)
-    for l,df in counts.groupby('ref'):
+    for l,g in counts.groupby('ref'):
         if 'mirbase' in l:
-            fig = plotting.plot_read_count_dists(df)
+            fig = plotting.plot_read_count_dists(g)
             fig.savefig(os.path.join(path,'top_%s.png' %l))
     #if len(scols)>1:
     #    fig = plotting.expression_clustermap(counts)
