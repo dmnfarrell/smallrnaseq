@@ -34,7 +34,7 @@ datadir = os.path.join(path, 'data')
 from . import aligners
 
 baseoptions = {'base': [('filenames',''),('path',''),('overwrite',0),
-                    #('adapter',''),
+                    ('adapter',''),
                     ('index_path','indexes'),
                     ('libraries',''),
                     ('ref_fasta',''),('features',''),

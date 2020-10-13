@@ -296,7 +296,7 @@ def deseq_normalize(df):
     df = df.apply(lambda r: r/r.mean(),1)
     return df
 
-def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bowtie',
+def map_rnas(files, indexes, outpath, collapse=True, aligner='bowtie',
              norm_method='library', use_remaining=True, overwrite=False,
              samplelabels=None, params={}, count_method='split', cpus=2, verbose=True):
     """Map reads to one or more gene annotations, assumes adapters are removed.
@@ -304,7 +304,6 @@ def map_rnas(files, indexes, outpath, collapse=True, adapters=None, aligner='bow
     Args:
         files: input fastq read files
         indexes: bowtie indexes of annotations/genomes
-        adapters: if adapters need to be trimmed
         use_remaining: only align to remaining reads after each index
         overwrite: whether to overwrite temp files
         samplelabels: mapping of file names to short ids
@@ -458,14 +457,16 @@ def assign_sample_ids(names, outfile='sample_labels.csv'):
     l.to_csv(outfile)
     return labels
 
-def trim_files(files, outpath, adapters):
+def trim_files(files, outpath, adapter):
     """Trim adapters from fastq files"""
 
+    trimmed = []
     for f in files:
-        cut = os.path.join(outpath, f)
+        cut = os.path.join(outpath, os.path.basename(f))
         if not os.path.exists(cut):
-            trim_adapters(f, adapters, cut)
-    return
+            utils.trim_adapters(f, adapter, cut)
+        trimmed.append(cut)
+    return trimmed
 
 def collapse_reads(infile, outfile=None, min_length=15):
     """Collapse identical reads, writing collapsed reads to a new fasta file.
@@ -673,6 +674,8 @@ def map_isomirs(files, outpath, species, samplelabels=None):
         #countsfile = os.path.join(outpath, '%s.csv' %filename)
         collapsed = os.path.join(outpath, '%s.fa' %filename)
         c = count_isomirs(samfile, collapsed, species)
+        if c is None:
+            return None, None
         if samplelabels != None:
             c['label'] = samplelabels[filename]
         else:
@@ -732,6 +735,8 @@ def count_isomirs(samfile, collapsed, species):
     reads = utils.get_aligned_reads(samfile, collapsed)
     reads = reads.drop(['read_id','start','end'],1)
     x = reads.apply(lambda x: _get_iso_class(x, mirs, canonical),1)
+    if len(x) == 0:
+        return
     reads = reads.join(x)
     reads['name'] = reads.name + '_' + reads.subclass
     return reads

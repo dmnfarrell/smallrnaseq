@@ -61,6 +61,12 @@ class WorkFlow(object):
                 print (snap_msg)
             return False
         self.files = [str(f) for f in self.files]
+        if self.adapter != '':
+            trim_path = os.path.join(self.output, 'trimmed')
+            os.makedirs(trim_path, exist_ok=True)
+            print ('adapter')
+            self.files = base.trim_files(self.files, trim_path, self.adapter)
+
         aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = self.index_path
         if self.default_params != '':
             aligners.set_params(self.aligner, self.default_params)
@@ -189,7 +195,7 @@ class WorkFlow(object):
             print ('no index for reference genome')
             ref_name = ''
 
-        print ('mapping miRNAs..')
+        print ('mapping miRNAs..')        
         res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
                                        species=self.species, ref_genome=ref_name,
                                        pad5=self.pad5, pad3=self.pad3, aligner=self.aligner,
@@ -217,8 +223,11 @@ class WorkFlow(object):
         print ('counting isomirs..')
         iso, isocounts = base.map_isomirs(self.files, temp, self.species,
                                           samplelabels=self.labels)
-        isocounts.to_csv( os.path.join(out, 'isomir_counts.csv'), index=False, float_format='%.1f')
-
+        if isocounts is not None:
+            isocounts.to_csv( os.path.join(out, 'isomir_counts.csv'),
+                                index=False, float_format='%.1f')
+        else:
+            print ('no isomirs could be counted')
         #novel prediction
         #train classifier first if not present
         novel.create_classifier()
@@ -242,7 +251,8 @@ class WorkFlow(object):
                                        read_cutoff=int(self.read_cutoff),
                                        cpus=self.cpus)
             if new is None or len(new) == 0:
-                print ('could not find any novel mirnas at this score cutoff')
+                print ('Could not find any novel mirnas.')
+                print ('There may not be sufficient aligned reads or the score cutoff is too high.\n')
                 return
             if self.strict == True:
                 new = new[new.mature_check=='ok']
@@ -494,7 +504,7 @@ def main():
                         help="input file", metavar="FILE")
     parser.add_option("-l", "--collapse", dest="collapse", action="store_true",
                         default=False, help="collapse reads in input file")
-    parser.add_option("-a", "--trim", dest="trim",  type='string',
+    parser.add_option("-a", "--adapter", dest="adapter",  type='string',
                         help="trim given adapter in input file")
     parser.add_option("-d", "--de", dest="de",  action="store_true",
                         default=False, help="run DE analysis")
@@ -503,8 +513,8 @@ def main():
     opts, remainder = parser.parse_args()
 
     if opts.infile != None:
-        if opts.trim != None:
-            utils.trim_adapters(opts.infile, adapters=opts.trim, outfile='cut.fastq')
+        if opts.adapter != None:
+            utils.trim_adapters(opts.infile, adapters=opts.adapter, outfile='cut.fastq')
         if opts.collapse == True:
             base.collapse_reads(opts.infile)
     elif opts.build != None:

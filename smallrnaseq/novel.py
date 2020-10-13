@@ -714,11 +714,14 @@ def find_mirnas(reads, ref_fasta, score_cutoff=.8, read_cutoff=50, species='',
     if CLASSIFIER == None:
         print ('getting default classifier')
         CLASSIFIER = precursor_classifier()
-
+        
     reads = reads[(reads.length<=max_length) & (reads.length>=min_length)]
+    if len(reads) == 0:
+        return None, None
     #assign reads to clusters
     print ('finding read clusters')
     rcl = get_read_clusters(reads, 10, min_size)
+
     clusts = get_cluster_groups(rcl)
     clusts = clusts[clusts.reads>=read_cutoff]
     print ('%s clusters above reads cutoff' %len(clusts))

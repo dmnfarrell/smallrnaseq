@@ -316,7 +316,7 @@ def get_mifam():
     df = pd.DataFrame(data,columns=['id','name','family'])
     return df
 
-def trim_adapters(infile, adapter, outfile='cut.fastq', method='default'):
+def trim_adapters(infile, adapter, outfile='cut.fastq', method='cutadapt'):
     """Trim adapters using cutadapt"""
 
     if not type(adapter) is str:
@@ -332,7 +332,7 @@ def trim_adapters(infile, adapter, outfile='cut.fastq', method='default'):
             new.write_to_fastq_file( newfile )
         newfile.close()
     elif method == 'cutadapt':
-        cmd = 'cutadapt -m 18 -O 5 -q 20 -a %s %s -o %s' %(adapter,infile,outfile)
+        cmd = 'cutadapt -m 18 -O 5 -q 20 -b %s %s -o %s' %(adapter,infile,outfile)
         print (cmd)
         result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
     return
