@@ -64,7 +64,6 @@ class WorkFlow(object):
         if self.adapter != '':
             trim_path = os.path.join(self.output, 'trimmed')
             os.makedirs(trim_path, exist_ok=True)
-            print ('adapter')
             self.files = base.trim_files(self.files, trim_path, self.adapter)
 
         aligners.BOWTIE_INDEXES = aligners.SUBREAD_INDEXES = self.index_path
@@ -195,7 +194,7 @@ class WorkFlow(object):
             print ('no index for reference genome')
             ref_name = ''
 
-        print ('mapping miRNAs..')        
+        print ('mapping miRNAs..')
         res, counts = base.map_mirbase(self.files, outpath=temp, indexes=libraries,
                                        species=self.species, ref_genome=ref_name,
                                        pad5=self.pad5, pad3=self.pad3, aligner=self.aligner,
@@ -364,6 +363,8 @@ def diff_expression(opts):
     print()
     print ('running differential expression')
     path = opts['output']
+    if not os.path.exists(path):
+        os.makedirs(path,exist_ok=True)
     labelsfile = opts['sample_labels']
     countsfile = opts['count_file']
     logfccutoff = float(opts['logfc_cutoff'])
