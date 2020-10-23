@@ -511,6 +511,9 @@ def main():
                         default=False, help="run DE analysis")
     parser.add_option("-t", "--tests", dest="tests",  action="store_true",
                         default=False, help="run tests")
+    parser.add_option("-v", "--version", dest="version", action="store_true",
+                        help="Get version")
+
     opts, remainder = parser.parse_args()
 
     if opts.infile != None:
@@ -545,6 +548,9 @@ def main():
             print_help()
     elif opts.tests == True:
         test_run()
+    elif opts.version == True:
+        from . import __version__
+        print ('smallrnaseq version %s' %__version__)        
     else:
         if opts.config != None:
             conffile = opts.config

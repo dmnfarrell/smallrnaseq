@@ -84,6 +84,10 @@ Then finally run::
 
   pip install smallrnaseq
 
+Or for the current github version you can use::
+
+  pip install -e git+https://github.com/dmnfarrell/smallrnaseq.git#egg=smallrnaseq
+
 Snap package
 ++++++++++++
 

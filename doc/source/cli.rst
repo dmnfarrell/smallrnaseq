@@ -86,7 +86,9 @@ Settings explained:
 |               |                                 | indexes to map to |
 +---------------+---------------------------------+-------------------+
 | features      | Homo_sapiens.GRCh37.75.gtf      | genome annotation |
-|               |                                 | file              |
+|               |                                 | file. ONLY needed |
+|               |                                 | for counting      |
+|               |                                 | genomic features  |
 +---------------+---------------------------------+-------------------+
 | output        | smrna_results                   | output folder for |
 |               |                                 | temp files        |
