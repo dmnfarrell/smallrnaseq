@@ -511,7 +511,7 @@ def collapse_reads(infile, outfile=None, min_length=15):
     df = df.reset_index()
     l = df.seq.str.len()
     df = df[l>=min_length]
-    df = df.drop(['name'], 1)
+    df = df.drop(columns=['name'])
     df = df.sort_values(by='reads', ascending=False).reset_index()
     df['read_id'] = df.index.copy()
     df['read_id'] = df.apply( lambda x: str(x.read_id)+'_'+str(x.reads), 1 )
@@ -733,7 +733,7 @@ def count_isomirs(samfile, collapsed, species):
     #padded sequences so we can see where each read landed relative to canonical
     mirs = get_mirbase_sequences(species, pad5=6, pad3=6, dna=True).set_index('name')
     reads = utils.get_aligned_reads(samfile, collapsed)
-    reads = reads.drop(['read_id','start','end'],1)
+    reads = reads.drop(columns=['read_id','start','end'])
     x = reads.apply(lambda x: _get_iso_class(x, mirs, canonical),1)
     if len(x) == 0:
         return

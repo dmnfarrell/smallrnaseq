@@ -549,12 +549,12 @@ def read_collapsed_file(collapsed):
     df = fasta_to_dataframe(collapsed).reset_index()
     #original count stored in id as second value
     #df['read_id'], df['reads'] = df.name.str.split('_', 1).str
-    df2 = df.name.str.split('_', 1, expand=True)
+    df2 = df.name.str.split('_', n=1, expand=True)
     df2.columns = ['read_id','reads']
     df = df.join(df2)
     df['reads'] = df.reads.astype(int)
     df['read_id'] = df.read_id.astype(int)
-    df = df.drop(['name','description'],1)
+    df = df.drop(columns=['name','description'])
     df = df.rename(columns={'sequence':'seq'})
     #print (df[:5])
     return df
@@ -572,7 +572,7 @@ def get_aligned_reads(samfile, collapsed=None, readcounts=None):
         #    f.append((seq,a.read.name,'_unmapped'))
     counts = pd.DataFrame(f, columns=['seq','read','name','start','end','strand'])
     counts['length'] = counts.seq.str.len()
-    counts = counts.drop(['read'],1)
+    counts = counts.drop(columns=['read'])
     if collapsed is not None:
         readcounts = read_collapsed_file(collapsed)
     if readcounts is not None:

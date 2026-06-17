@@ -1,16 +1,15 @@
 from setuptools import setup
 import sys,os
 
-inst_requires = ['numpy>=1.10',
-                    'pandas>=0.20',
-                    'seaborn>=0.7',
-                    'scikit-learn>=0.23.2',
-                    'pyfaidx>=0.5.4',
-                    'pysam>=0.10.0',
-                    'HTSeq>=0.6',
-                    'bx-python>=0.5',
-                    'forgi==1.1',
-                    'logging_exceptions']
+inst_requires = ['pandas',
+                'seaborn>=0.7',
+                'scikit-learn>=0.23.2',
+                'pyfaidx>=0.5.4',
+                'pysam>=0.10.0',
+                'HTSeq>=0.6',
+                'bx-python>=0.5',
+                'forgi==1.1',
+                'logging_exceptions']
 
 major, minor, micro = sys.version_info[:3]
 if major == '2':
